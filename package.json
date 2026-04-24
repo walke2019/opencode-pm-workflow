@@ -1,0 +1,49 @@
+{
+  "name": "@weekii/opencode-pm-workflow",
+  "version": "0.1.0",
+  "description": "pm-workflow 的可发布 OpenCode 插件包实现（server + tui + shared package-first implementation）。",
+  "type": "module",
+  "private": false,
+  "main": "./dist/index.js",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./index": "./dist/index.js",
+    "./server": "./dist/server.js",
+    "./tui": "./dist/tui.js",
+    "./shared": "./dist/shared.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "tsconfig.json",
+    "tsconfig.build.json"
+  ],
+  "peerDependencies": {
+    "@opencode-ai/plugin": "^1.4.6"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "check-auth": "npm whoami",
+    "clean": "powershell -NoProfile -Command \"if (Test-Path 'dist') { Remove-Item 'dist' -Recurse -Force }\"",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepare-publish": "npm run typecheck && npm run build",
+    "verify-release": "npm run prepare-publish && npm pack --dry-run",
+    "prepublishOnly": "npm run verify-release"
+  },
+  "keywords": [
+    "opencode",
+    "plugin",
+    "pm-workflow",
+    "workflow"
+  ],
+  "license": "UNLICENSED"
+}
