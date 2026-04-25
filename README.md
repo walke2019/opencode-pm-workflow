@@ -250,6 +250,91 @@ npm run --prefix packages/opencode-pm-workflow prepare-publish
 负责把内部角色 `pm` / `qa_engineer` / `writer` / `frontend` 映射到这些 namespaced agent，避免覆盖用户已有的同名 agent。`fallback_models`
 会生成 `pm_workflow_caocao_fallback_1` 这类 fallback agent，并接入 pm-workflow 的 fallback 执行策略。
 
+## 在 OpenCode 中使用
+
+### 1. 启用插件
+
+在 OpenCode 的全局配置 `~/.config/opencode/opencode.json` 中加入插件：
+
+```json
+{
+  "plugin": [
+    "@walke/opencode-pm-workflow@latest"
+  ]
+}
+```
+
+插件启动后会自动创建或读取：
+
+- `~/.config/opencode/pm-workflow.config.json`
+
+这个文件用于配置 workflow agents 的模型、回退模型、权限、自动化模式和调度映射。项目内如果存在 `.pm-workflow/config.json`，会覆盖全局配置，适合给单个项目单独调模型或权限。
+
+### 2. 推荐使用方式
+
+日常使用时，可以直接在 OpenCode 中选择或呼叫 `pm_workflow_caocao`，把任务交给它：
+
+```text
+请作为 pm-workflow 主协调 agent，帮我把这个功能需求拆成产品目标、开发计划、验收标准和下一步调度建议。
+```
+
+曹操会做统筹判断，但不会亲自写代码。进入开发阶段时，工作流会把真正实现任务指向 OpenCode 内置 `build` agent；如果需要开发计划，则指向内置 `plan` agent。
+
+### 3. 常用命令
+
+这些命令可以在 OpenCode 的 slash command 或工具调用中使用：
+
+| 命令 | 是否执行开发 | 用途 |
+| --- | --- | --- |
+| `/pm-get-state` | 否 | 查看当前 workflow 状态、阶段、文档和 review 状态 |
+| `/pm-get-next-step` | 否 | 查看下一步建议 |
+| `/pm-run-dispatch` | 否 | 生成推荐 agent 和推荐命令，但不执行 |
+| `/pm-dry-run-dispatch` | 否 | 预演一次调度，检查 permission、gate、retry、fallback |
+| `/pm-get-execution-plan` | 否 | 查看 ExecutionPlan v2，只读预览 |
+| `/pm-safety-report` | 否 | 汇总权限、doctor、门禁、调度风险 |
+| `/pm-permission-execute-on` | 否 | 尝试开启执行权限，仍受安全检查约束 |
+| `/pm-permission-execute-off` | 否 | 关闭执行权限 |
+| `/pm-execute-dispatch` | 是 | 通过确认、权限、门禁后执行推荐调度 |
+| `/pm-run-loop` | 是 | 多步循环执行调度，默认应谨慎使用 |
+
+默认建议先用 `/pm-dry-run-dispatch` 看清楚插件会调度谁，再决定是否执行。
+
+### 4. 开发任务如何处理
+
+当用户给出开发类任务时，插件的职责是“判断和编排”，不是替代开发 agent：
+
+1. `pm_workflow_caocao` 先判断当前阶段、目标、验收标准和阻塞点。
+2. 如果缺产品说明或开发计划，会建议先补齐文档或调用 OpenCode 内置 `plan`。
+3. 如果已经可以开发，会把可执行 agent 指向 OpenCode 内置 `build`。
+4. `pm_workflow_frontend` 只用于前端/UI/交互/视觉一致性建议，不作为实际开发执行者。
+5. `pm_workflow_writer` 只用于文档、发布说明和交付摘要。
+6. `pm_workflow_qa` 用于质量审查、风险和缺失测试检查。
+
+因此，开发闭环通常是：
+
+```text
+用户需求 -> 曹操统筹 -> plan 做开发计划 -> build 写代码 -> QA/门禁检查 -> writer 整理交付文档
+```
+
+### 5. 安全执行规则
+
+默认配置是安全模式：
+
+```json
+{
+  "automation": { "mode": "observe" },
+  "permissions": { "allow_execute_tools": false },
+  "confirm": { "require_confirm_for_execute": true }
+}
+```
+
+含义是：
+
+- 插件会观察会话、同步状态、给出调度建议。
+- 插件不会自动拉起开发任务。
+- 即使调用执行工具，也必须先开启 `allow_execute_tools`，并通过确认、权限和 gate 检查。
+- 代码改动后会触发 review marker，后续需要通过 QA/review gate 才能继续进入交付。
+
 ## 工作流流转图
 
 这个插件和 OpenCode 的关系是：插件负责状态、门禁、调度建议和安全执行入口；OpenCode 负责会话、工具、内置 `plan` / `build`
