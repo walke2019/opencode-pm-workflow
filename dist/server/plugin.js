@@ -1,16 +1,17 @@
-import { getAutomationMode, migrateLegacyProjectArtifacts, syncState, } from "../shared.js";
-import { getProjectDir, getSkillDir, log, } from "./runtime.js";
+import { getAutomationMode, buildOpenCodeAgentConfig, migrateLegacyProjectArtifacts, seedWorkflowConfig, syncState, } from "../shared.js";
+import { getProjectDir, log, } from "./runtime.js";
 import { createPmWorkflowHooks } from "./hooks.js";
 import { createAdminTools } from "./tools/admin-tools.js";
 import { createDiagnosticTools } from "./tools/diagnostic-tools.js";
 import { createDispatchTools } from "./tools/dispatch-tools.js";
 import { createExecutionTools } from "./tools/execution-tools.js";
 import { createStateTools } from "./tools/state-tools.js";
-export const PmWorkflowPlugin = async (ctx) => {
+export const PmWorkflowPlugin = async (ctx, options) => {
     const projectDir = getProjectDir(ctx);
+    const config = seedWorkflowConfig(projectDir, options);
     const migration = migrateLegacyProjectArtifacts(projectDir);
     const initialState = syncState(projectDir);
-    const automationMode = getAutomationMode(projectDir);
+    const automationMode = config.automation.mode || getAutomationMode(projectDir);
     const adminTools = createAdminTools();
     const dispatchTools = createDispatchTools();
     const diagnosticTools = createDiagnosticTools();
@@ -19,12 +20,23 @@ export const PmWorkflowPlugin = async (ctx) => {
     const hooks = createPmWorkflowHooks(projectDir, ctx);
     await log(ctx.client, "info", "pm-workflow plugin loaded", {
         projectDir,
-        skillDir: getSkillDir(),
         stage: initialState.stage,
         automationMode,
         migration,
+        standalone: true,
     });
     return {
+        config: async (input) => {
+            if (!config.agents.enabled)
+                return;
+            const existingAgents = input.agent && typeof input.agent === "object"
+                ? input.agent
+                : {};
+            input.agent = {
+                ...buildOpenCodeAgentConfig(config),
+                ...existingAgents,
+            };
+        },
         tool: {
             ...adminTools,
             ...dispatchTools,

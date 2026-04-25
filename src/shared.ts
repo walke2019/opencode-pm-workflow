@@ -1,10 +1,14 @@
 export {
+  buildOpenCodeAgentConfig,
   defaultWorkflowConfig,
   getAutomationMode,
+  normalizeWorkflowConfigOverrides,
   readWorkflowConfig,
+  seedWorkflowConfig,
   setAutomationMode,
   setPermission,
 } from "./core/config.js";
+export type { WorkflowConfigOverrides } from "./core/config.js";
 export {
   DOC_FILENAMES,
   REVIEW_MARKER_FILENAME,

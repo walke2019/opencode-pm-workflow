@@ -2,8 +2,7 @@ import type { DispatchAgent } from "../core/types.js";
 import { escapePrompt } from "../core/recovery.js";
 
 export function getExecutableAgent(agent: DispatchAgent) {
-  if (agent === "build") return "build" as const;
-  return "plan" as const;
+  return agent;
 }
 
 export function buildExecutablePrompt(agent: DispatchAgent, prompt: string) {

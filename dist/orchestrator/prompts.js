@@ -1,8 +1,6 @@
 import { escapePrompt } from "../core/recovery.js";
 export function getExecutableAgent(agent) {
-    if (agent === "build")
-        return "build";
-    return "plan";
+    return agent;
 }
 export function buildExecutablePrompt(agent, prompt) {
     if (agent === "pm") {

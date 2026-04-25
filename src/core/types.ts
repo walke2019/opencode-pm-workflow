@@ -30,7 +30,7 @@ export type AutomationCapability =
   | "review_marker";
 
 export type DispatchAgent = "pm" | "plan" | "build" | "qa_engineer" | "writer";
-export type ExecutableAgent = "plan" | "build";
+export type ExecutableAgent = string;
 
 export type DispatchAction =
   | "collect-spec"
@@ -164,7 +164,12 @@ export type WorkflowConfig = {
   fallback: {
     max_attempts: number;
     enabled_actions: DispatchAction[];
-    agent_map: Partial<Record<ExecutableAgent, ExecutableAgent>>;
+    agent_map: Partial<Record<string, string>>;
+  };
+  agents: {
+    enabled: boolean;
+    default_mode: "primary" | "subagent";
+    definitions: Partial<Record<DispatchAgent, WorkflowAgentConfig>>;
   };
   permissions: {
     allow_execute_tools: boolean;
@@ -182,6 +187,19 @@ export type WorkflowConfig = {
     read_legacy: boolean;
     write_legacy: boolean;
   };
+};
+
+export type WorkflowAgentConfig = {
+  model?: string | null;
+  fallback_models?: string[];
+  mode?: "primary" | "subagent";
+  description?: string;
+  prompt?: string;
+  temperature?: number;
+  top_p?: number;
+  steps?: number;
+  permission?: Record<string, unknown>;
+  disabled?: boolean;
 };
 
 export type PermissionKey = keyof WorkflowConfig["permissions"];

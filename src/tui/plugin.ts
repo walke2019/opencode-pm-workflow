@@ -2,14 +2,16 @@ import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
 import { registerPmWorkflowCommands } from "./commands.js";
 import { createToastHelpers } from "./toasts.js";
 
-function getProjectDir() {
-  return process.cwd();
+function getProjectDir(
+  api: Parameters<NonNullable<TuiPluginModule["tui"]>>[0],
+) {
+  return api.state.path.worktree || api.state.path.directory || process.cwd();
 }
 
 export const plugin: TuiPluginModule = {
   id: "pm-workflow-plugin-tui",
   tui: async (api) => {
-    const projectDir = getProjectDir();
+    const projectDir = getProjectDir(api);
     const toasts = createToastHelpers(api, projectDir);
 
     setTimeout(() => {

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://unpkg.com/@walke/opencode-pm-workflow@latest/pm-workflow.schema.json",
+  "automation": {
+    "mode": "observe"
+  },
+  "permissions": {
+    "allow_execute_tools": false,
+    "allow_repair_tools": true,
+    "allow_release_actions": false
+  },
+  "confirm": {
+    "require_confirm_for_execute": true
+  },
+  "agents": {
+    "enabled": true,
+    "default_mode": "primary",
+    "definitions": {
+      "pm": {
+        "model": "openai/gpt-5.5",
+        "fallback_models": ["openai/gpt-5.4"],
+        "temperature": 0.2
+      },
+      "plan": {
+        "model": "openai/gpt-5.4",
+        "fallback_models": ["openai/gpt-5.4-mini"],
+        "temperature": 0.1
+      },
+      "build": {
+        "model": "openai/gpt-5.4",
+        "fallback_models": ["openai/gpt-5.4-mini"],
+        "temperature": 0.2
+      },
+      "qa_engineer": {
+        "model": "openai/gpt-5.4",
+        "fallback_models": ["openai/gpt-5.4-mini"],
+        "temperature": 0.1
+      },
+      "writer": {
+        "model": "openai/gpt-5.4-mini",
+        "fallback_models": ["openai/gpt-5.4"],
+        "temperature": 0.3
+      }
+    }
+  },
+  "docs": {
+    "storage_mode": "project_scoped",
+    "read_legacy": true,
+    "write_legacy": false
+  },
+  "retry": {
+    "max_attempts": 2,
+    "retryable_actions": [
+      "collect-spec",
+      "create-design-brief",
+      "create-dev-plan",
+      "start-development",
+      "run-code-review",
+      "continue-development"
+    ]
+  },
+  "fallback": {
+    "max_attempts": 1,
+    "enabled_actions": [
+      "collect-spec",
+      "create-design-brief",
+      "create-dev-plan",
+      "start-development",
+      "run-code-review",
+      "continue-development"
+    ],
+    "agent_map": {
+      "plan": "build",
+      "build": "plan"
+    }
+  }
+}

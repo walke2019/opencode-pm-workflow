@@ -11,7 +11,7 @@
 - 包结构已建立完成
 - `server / tui / shared` 已完成包内化与模块化拆分
 - `dist/*` 构建已打通
-- `plugins/*` 兼容壳已转发到 `@weekii/opencode-pm-workflow/server|tui|shared`
+- `plugins/*` 兼容壳已转发到 `@walke/opencode-pm-workflow/server|tui|shared`
 - `npm test` 已通过
 - `npm run --prefix packages/opencode-pm-workflow typecheck` 已通过
 - `npm run --prefix packages/opencode-pm-workflow build` 已通过

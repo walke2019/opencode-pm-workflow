@@ -27,7 +27,7 @@ plugins/pm-workflow-shared.ts
 
 说明：
 
-- 兼容壳会把实际运行转发到已发布包 `@weekii/opencode-pm-workflow`。
+- 兼容壳会把实际运行转发到已发布包 `@walke/opencode-pm-workflow`。
 - 不要再同时把 `packages/opencode-pm-workflow/src/index.ts`、`dist/index.js` 或包根入口重复写进 `opencode.json` / `tui.json`，否则会重复加载。
 
 ### 2. 项目目录建议结构

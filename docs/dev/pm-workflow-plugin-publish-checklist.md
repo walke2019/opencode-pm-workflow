@@ -11,7 +11,7 @@
 - `npm test` 已通过
 - `npm run --prefix packages/opencode-pm-workflow verify-release` 已通过
 - `packages/opencode-pm-workflow/dist/*` 已重新生成
-- 当前运行链路为：`plugins/*` 兼容壳 -> `@weekii/opencode-pm-workflow/server|tui|shared`
+- 当前运行链路为：`plugins/*` 兼容壳 -> `@walke/opencode-pm-workflow/server|tui|shared`
 
 ## 当前发布阻塞
 
@@ -23,7 +23,7 @@
 
 需要决定：
 
-- 是否延续当前包名 `@weekii/opencode-pm-workflow`
+- 是否延续当前包名 `@walke/opencode-pm-workflow`
 - 本次是否只做补丁版本发布
 - changelog / release note 如何记录模块化重构内容
 
@@ -39,7 +39,7 @@
 
 ```json
 {
-  "name": "@weekii/opencode-pm-workflow",
+  "name": "@walke/opencode-pm-workflow",
   "private": false,
   "publishConfig": {
     "access": "public"
@@ -135,7 +135,7 @@ tsconfig.build.json
 
 ```json
 {
-  "name": "@weekii/opencode-pm-workflow",
+  "name": "@walke/opencode-pm-workflow",
   "private": false,
   "version": "0.1.1"
 }

@@ -1,4 +1,5 @@
 export { buildOpenCodeAgentConfig, defaultWorkflowConfig, getAutomationMode, normalizeWorkflowConfigOverrides, readWorkflowConfig, seedWorkflowConfig, setAutomationMode, setPermission, } from "./core/config.js";
+export type { WorkflowConfigOverrides } from "./core/config.js";
 export { DOC_FILENAMES, REVIEW_MARKER_FILENAME, ensureProjectStorageDirs, ensureStateDir, getConfigPath, getFeedbackReadRoots, getHistoryPath, getMigrationManifestPath, getProjectDocsDir, getProjectFeedbackDir, getProjectScopedDocPath, getStatePath, resolveDocReadPath, resolveDocWritePath, } from "./core/project.js";
 export { appendHistory, ensureHistoryBootstrap, getLastFailure, queryHistory, readHistory, } from "./core/history.js";
 export { buildDoctorReport, repairDoctorState } from "./core/doctor.js";
@@ -11,3 +12,5 @@ export { buildExecutionPlan, buildDispatchCommand, buildDispatchPlan, } from "./
 export { buildSafetyReport } from "./orchestrator/safety.js";
 export { buildExecutablePrompt, getExecutableAgent, } from "./orchestrator/prompts.js";
 export { isAutomationCapabilityEnabled } from "./core/automation.js";
+export type { WorkflowDocName } from "./core/project.js";
+export type { AutomationCapability, AutomationMode, DispatchCommand, DispatchAction, DispatchAgent, DispatchPlan, DocsStorageMode, ExecutionAggregationStrategy, ExecutionMode, ExecutionPlan, ExecutionPlanStep, ExecutableAgent, ExecutionReceipt, FallbackStatus, PermissionKey, PhaseStatus, ReleaseStatus, RetryStatus, ReviewStatus, TaskStatus, WorkflowConfig, WorkflowHistoryEvent, WorkflowStage, WorkflowState, } from "./core/types.js";

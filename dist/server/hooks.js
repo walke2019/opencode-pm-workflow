@@ -1,6 +1,6 @@
 import { relative } from "path";
 import { getAutomationMode, isAutomationCapabilityEnabled, syncState, } from "../shared.js";
-import { buildStagePrompt, extractChangedPathsFromPatch, isCodePath, log, runPythonScript, writeReviewMarker, } from "./runtime.js";
+import { buildStagePrompt, checkReviewGate, extractChangedPathsFromPatch, isCodePath, log, runPreCommitCheck, writeReviewMarker, } from "./runtime.js";
 export function createPmWorkflowHooks(projectDir, ctx) {
     return {
         event: async ({ event }) => {
@@ -18,12 +18,11 @@ export function createPmWorkflowHooks(projectDir, ctx) {
             if (event?.type === "session.idle") {
                 syncState(projectDir);
                 if (mode === "strict") {
-                    const stopGate = runPythonScript("stop_gate.py", [projectDir]);
+                    const stopGate = checkReviewGate(projectDir);
                     if (!stopGate.ok) {
                         await log(ctx.client, "warn", "review gate still pending", {
                             projectDir,
-                            stdout: stopGate.stdout.trim(),
-                            stderr: stopGate.stderr.trim(),
+                            message: stopGate.message,
                         });
                     }
                 }
@@ -38,16 +37,16 @@ export function createPmWorkflowHooks(projectDir, ctx) {
                 ? `${output.prompt}\n\n${stagePrompt}`
                 : stagePrompt;
         },
-        "tool.execute.before": async (input, _output) => {
+        "tool.execute.before": async (input, output) => {
             const mode = getAutomationMode(projectDir);
             if (!isAutomationCapabilityEnabled(mode, "commit_gate"))
                 return;
             if (input.tool !== "bash")
                 return;
-            const command = String(input.args?.command || "");
+            const command = String(output.args?.command || "");
             if (!/\bgit\s+commit\b/.test(command))
                 return;
-            const preCheck = runPythonScript("pre_commit_check.py", [projectDir]);
+            const preCheck = runPreCommitCheck(projectDir);
             if (!preCheck.ok) {
                 throw new Error([
                     "pm-workflow pre-commit gate blocked the commit.",
@@ -66,13 +65,7 @@ export function createPmWorkflowHooks(projectDir, ctx) {
                 const filePath = String(input.args?.filePath || "");
                 if (filePath && isCodePath(filePath)) {
                     if (allowReviewMarker) {
-                        const markerResult = runPythonScript("mark_review_needed.py", [
-                            filePath,
-                            projectDir,
-                        ]);
-                        if (!markerResult.ok) {
-                            writeReviewMarker(projectDir);
-                        }
+                        writeReviewMarker(projectDir);
                     }
                     if (allowEventSync) {
                         syncState(projectDir);

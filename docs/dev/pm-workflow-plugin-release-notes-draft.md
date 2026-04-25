@@ -33,10 +33,10 @@ pm-workflow: complete package-first migration and modular plugin runtime
 
 ### 3. 当前运行切到 package 子路径入口
 
-- `plugins/pm-workflow-plugin.ts` 转发到 `@weekii/opencode-pm-workflow/server`
-- `plugins/pm-workflow-plugin-tui.ts` 转发到 `@weekii/opencode-pm-workflow/tui`
-- `plugins/pm-workflow-shared.ts` 转发到 `@weekii/opencode-pm-workflow/shared`
-- 当前实际运行链路为：`plugins/*` -> `@weekii/opencode-pm-workflow/*`
+- `plugins/pm-workflow-plugin.ts` 转发到 `@walke/opencode-pm-workflow/server`
+- `plugins/pm-workflow-plugin-tui.ts` 转发到 `@walke/opencode-pm-workflow/tui`
+- `plugins/pm-workflow-shared.ts` 转发到 `@walke/opencode-pm-workflow/shared`
+- 当前实际运行链路为：`plugins/*` -> `@walke/opencode-pm-workflow/*`
 
 ### 4. 模块化结构已落地
 

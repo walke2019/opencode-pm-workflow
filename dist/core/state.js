@@ -153,7 +153,7 @@ export function createInitialState(projectDir) {
             last_check_at: null,
         },
         session: {
-            preferred_session_id: "ses_2536bfb2affekTj1q0a1HswoVx",
+            preferred_session_id: null,
             last_agent: null,
         },
         retry: defaultRetryState(),

@@ -1,5 +1,12 @@
 import { spawnSync } from "child_process";
-import { existsSync, writeFileSync } from "fs";
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "fs";
 import { join } from "path";
 import {
   REVIEW_MARKER_FILENAME,
@@ -76,6 +83,54 @@ const NON_CODE_EXTENSIONS = new Set([
   ".zip",
 ]);
 
+const IGNORED_TSCONFIG_DIRS = new Set([
+  "node_modules",
+  ".next",
+  "dist",
+  "build",
+  ".venv",
+  "__pycache__",
+]);
+
+const FEEDBACK_SIGNAL_PATTERNS = [
+  /不是这样/,
+  /别这样做/,
+  /你搞错/,
+  /搞错了/,
+  /你错了/,
+  /不对/,
+  /不应该/,
+  /你漏了/,
+  /你忘了/,
+  /改一下/,
+  /不合理/,
+  /你理解错/,
+  /我说的不是/,
+  /你确定/,
+  /到底在/,
+  /为什么没/,
+  /没有执行/,
+  /没有生效/,
+  /你又忘/,
+  /强调了/,
+  /说过了/,
+  /提醒过/,
+  /怎么还/,
+  /一直在/,
+  /每次都/,
+  /我不是让你/,
+  /你先.*看/,
+  /再说一遍/,
+  /你到底/,
+  /什么意思/,
+  /能不能/,
+  /不要再/,
+  /别再/,
+  /停下/,
+  /不用管/,
+  /先不要/,
+];
+
 export function executeDispatchCommand(
   projectPath: string,
   dispatch: ReturnType<typeof buildDispatchCommand>,
@@ -112,14 +167,6 @@ export function getProjectDir(ctx: PluginContext) {
   return ctx.worktree || ctx.directory || process.cwd();
 }
 
-export function getSkillDir() {
-  return join(getConfigDir(), "skills", "pm-workflow");
-}
-
-export function getScriptPath(scriptName: string) {
-  return join(getSkillDir(), "scripts", scriptName);
-}
-
 export async function log(
   client: OpenCodeClient | undefined,
   level: LogLevel,
@@ -136,58 +183,6 @@ export async function log(
   });
 }
 
-export function runPythonScript(
-  scriptName: string,
-  args: string[] = [],
-  stdinText?: string,
-) {
-  const scriptPath = getScriptPath(scriptName);
-  if (!existsSync(scriptPath)) {
-    return {
-      ok: false,
-      code: 1,
-      stdout: "",
-      stderr: `script not found: ${scriptPath}`,
-    };
-  }
-
-  const commandCandidates: Array<[string, string[]]> =
-    process.platform === "win32"
-      ? [
-          ["py", ["-3", scriptPath, ...args]],
-          ["python", [scriptPath, ...args]],
-          ["python3", [scriptPath, ...args]],
-        ]
-      : [
-          ["python3", [scriptPath, ...args]],
-          ["python", [scriptPath, ...args]],
-        ];
-
-  for (const [command, commandArgs] of commandCandidates) {
-    const result = spawnSync(command, commandArgs, {
-      input: stdinText,
-      encoding: "utf-8",
-      timeout: 120000,
-    });
-
-    if (!result.error) {
-      return {
-        ok: result.status === 0,
-        code: result.status ?? 1,
-        stdout: result.stdout || "",
-        stderr: result.stderr || "",
-      };
-    }
-  }
-
-  return {
-    ok: false,
-    code: 1,
-    stdout: "",
-    stderr: "python runtime not available",
-  };
-}
-
 export function isCodePath(filePath: string) {
   const lower = filePath.toLowerCase();
   const lastDot = lower.lastIndexOf(".");
@@ -199,6 +194,98 @@ export function isCodePath(filePath: string) {
 export function writeReviewMarker(projectDir: string) {
   const markerPath = join(projectDir, REVIEW_MARKER_FILENAME);
   writeFileSync(markerPath, "needs_review", "utf-8");
+}
+
+export function checkReviewGate(projectDir: string) {
+  const markerPath = join(projectDir, REVIEW_MARKER_FILENAME);
+  if (!existsSync(markerPath)) {
+    return { ok: true, message: "", markerPath };
+  }
+
+  const state = readFileSync(markerPath, "utf-8").trim();
+  if (state === "clean") {
+    rmSync(markerPath, { force: true });
+    return { ok: true, message: "", markerPath };
+  }
+
+  if (state === "needs_review") {
+    return {
+      ok: false,
+      message: JSON.stringify({
+        decision: "block",
+        reason:
+          "代码已修改但未进行 code review。请先完成两阶段审查，再继续提交或结束流程。",
+      }),
+      markerPath,
+    };
+  }
+
+  return { ok: true, message: "", markerPath };
+}
+
+function findTsconfig(projectDir: string) {
+  const queue: Array<{ dir: string; depth: number }> = [
+    { dir: projectDir, depth: 0 },
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || current.depth > 3) continue;
+
+    const tsconfig = join(current.dir, "tsconfig.json");
+    if (existsSync(tsconfig)) return current.dir;
+    if (current.depth === 3) continue;
+
+    let children: string[] = [];
+    try {
+      children = readdirSync(current.dir).sort();
+    } catch {
+      continue;
+    }
+
+    for (const child of children) {
+      if (IGNORED_TSCONFIG_DIRS.has(child)) continue;
+      const childPath = join(current.dir, child);
+      try {
+        if (statSync(childPath).isDirectory()) {
+          queue.push({ dir: childPath, depth: current.depth + 1 });
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  return null;
+}
+
+export function runPreCommitCheck(projectDir: string) {
+  const codeDir = findTsconfig(projectDir);
+  if (!codeDir) {
+    return { ok: true, stdout: "", stderr: "" };
+  }
+
+  const result = spawnSync("npx", ["tsc", "--noEmit"], {
+    cwd: codeDir,
+    encoding: "utf-8",
+    timeout: 120000,
+  });
+
+  if ((result.status ?? 0) === 0) {
+    return { ok: true, stdout: result.stdout || "", stderr: result.stderr || "" };
+  }
+
+  return {
+    ok: false,
+    stdout: result.stdout || "",
+    stderr: [
+      "编译检查未通过，commit 被阻止。请修复以下错误：",
+      result.stdout || "",
+      result.stderr || "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  };
 }
 
 export function extractChangedPathsFromPatch(patchText: string) {
@@ -238,39 +325,24 @@ export function buildStageSummary(projectDir: string) {
 
 export function buildReviewGateSummary(projectDir: string) {
   const markerPath = join(projectDir, REVIEW_MARKER_FILENAME);
-  if (!existsSync(markerPath)) {
+  const gate = checkReviewGate(projectDir);
+  if (gate.ok) {
     return {
       state: "clean",
-      message: "当前没有待 review 的代码变更。",
+      message: "review gate 已通过，或当前没有待 review 的代码变更。",
       markerPath,
     };
   }
 
-  const state = runPythonScript("stop_gate.py", [projectDir]);
-  if (state.ok) {
-    return {
-      state: "clean",
-      message: "review gate 已通过，或标记已清理。",
-      markerPath,
-    };
-  }
-
-  const stdout = state.stdout.trim();
   return {
     state: "needs_review",
-    message: stdout || "代码已修改但尚未完成 code review。",
+    message: gate.message || "代码已修改但尚未完成 code review。",
     markerPath,
   };
 }
 
 export function buildFeedbackSignalSummary(message: string) {
-  const result = runPythonScript(
-    "detect_feedback_signal.py",
-    [],
-    JSON.stringify({ prompt: message }),
-  );
-
-  if (!result.stdout.trim()) {
+  if (!FEEDBACK_SIGNAL_PATTERNS.some((pattern) => pattern.test(message))) {
     return {
       detected: false,
       message: "未检测到明显的用户修正或反馈信号。",
@@ -281,6 +353,9 @@ export function buildFeedbackSignalSummary(message: string) {
   return {
     detected: true,
     message: "检测到用户修正或反馈信号。",
-    detail: result.stdout.trim(),
+    detail: JSON.stringify({
+      additionalContext:
+        "检测到用户修正信号。请在处理完用户请求后，将这条反馈记录到项目 .pm-workflow/feedback/ 目录。",
+    }),
   };
 }

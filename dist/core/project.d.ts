@@ -1,0 +1,20 @@
+export declare const REVIEW_MARKER_FILENAME = ".needs-review";
+export declare const DOC_FILENAMES: {
+    readonly product_spec: "Product-Spec.md";
+    readonly design_brief: "Design-Brief.md";
+    readonly dev_plan: "DEV-PLAN.md";
+};
+export type WorkflowDocName = keyof typeof DOC_FILENAMES;
+export declare function getStateDir(projectDir: string): string;
+export declare function getStatePath(projectDir: string): string;
+export declare function getHistoryPath(projectDir: string): string;
+export declare function getConfigPath(projectDir: string): string;
+export declare function getMigrationManifestPath(projectDir: string): string;
+export declare function getProjectDocsDir(projectDir: string): string;
+export declare function getProjectFeedbackDir(projectDir: string): string;
+export declare function ensureProjectStorageDirs(projectDir: string): void;
+export declare function ensureStateDir(projectDir: string): void;
+export declare function getProjectScopedDocPath(projectDir: string, docName: WorkflowDocName): string;
+export declare function resolveDocReadPath(projectDir: string, docName: WorkflowDocName): string;
+export declare function resolveDocWritePath(projectDir: string, docName: WorkflowDocName): string;
+export declare function getFeedbackReadRoots(projectDir: string): string[];

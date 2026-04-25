@@ -1107,7 +1107,7 @@ v0.3 在存储层明确三条一致性规则：
 // opencode.json 中注册为插件
 {
   "plugin": [
-    "@weekii/opencode-pm-workflow@latest",
+    "@walke/opencode-pm-workflow@latest",
     "opencode-agent-orchestrator@latest"   // 新增：编排平台插件
   ]
 }

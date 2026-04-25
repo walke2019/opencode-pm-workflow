@@ -1,20 +1,20 @@
 # opencode-pm-workflow
 
-当前状态：已完成包内化、模块化拆分，并已具备本地 `dist` 构建与发布前校验能力。
+当前状态：已完成包内化、模块化拆分，并已具备独立 npm 插件运行、`dist` 构建与发布前校验能力。
 
 ## 目的
 
-为当前 `pm-workflow` 提供一个可发布、可迁移的 OpenCode 插件包实现。
+为 `pm-workflow` 提供一个可发布、可迁移、可独立安装的 OpenCode 插件包实现。
 
 ## 当前状态
 
-当前包已经完成**核心运行逻辑的包内化与模块化拆分**，且已具备 `dist` 构建能力；当前运行仍通过兼容壳接入已发布包：
+当前包已经完成**核心运行逻辑的包内化与模块化拆分**，且已具备 `dist` 构建能力；运行时不再依赖本机 `skills/pm-workflow` 目录或其中的 Python 脚本：
 
 - `src/server.ts` → 兼容转发入口，真实装配位于 `src/server/plugin.ts`
 - `src/tui.ts` → 兼容转发入口，真实装配位于 `src/tui/plugin.ts`
 - `src/shared.ts` → 纯 `re-export` 入口，真实逻辑已分散到 `core/*` 与 `orchestrator/*`
 
-这样做的目标是先把“包边界”固定下来，再逐步把实现从 `plugins/` 平滑迁入包内。
+这样做的目标是固定 npm 包边界，让插件可以通过 `@walke/opencode-pm-workflow@latest` 独立安装与运行。
 
 当前进度：
 
@@ -22,13 +22,8 @@
 - tui：已完成模块化（`plugin/toasts/commands`）
 - shared：已收敛为纯导出入口
 - dist：已可本地构建
-- 当前运行入口：`plugins/*` 兼容壳已转发到已发布包子路径入口
-
-当前兼容壳实际链路：
-
-- `plugins/pm-workflow-plugin.ts` -> `@weekii/opencode-pm-workflow/server`
-- `plugins/pm-workflow-plugin-tui.ts` -> `@weekii/opencode-pm-workflow/tui`
-- `plugins/pm-workflow-shared.ts` -> `@weekii/opencode-pm-workflow/shared`
+- 当前推荐运行入口：OpenCode `plugin` 配置中的 `@walke/opencode-pm-workflow@latest`
+- legacy `plugins/pm-workflow-*.ts` 兼容壳仅用于旧环境迁移，推荐停用以避免重复加载
 
 ## 当前源码结构
 
@@ -145,10 +140,93 @@ npm run --prefix packages/opencode-pm-workflow prepare-publish
 ```json
 {
   "plugin": [
-    "@weekii/opencode-pm-workflow@latest"
+    "@walke/opencode-pm-workflow@latest"
   ]
 }
 ```
+
+也可以在 OpenCode `opencode.json` 中传入可选初始配置。该配置只用于首次生成项目内
+`.pm-workflow/config.json`，后续项目自己的 `.pm-workflow/config.json` 仍是运行时事实来源：
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    [
+      "@walke/opencode-pm-workflow@latest",
+      {
+        "config": {
+          "automation": {
+            "mode": "observe"
+          },
+          "permissions": {
+            "allow_execute_tools": false,
+            "allow_repair_tools": true,
+            "allow_release_actions": false
+          },
+          "confirm": {
+            "require_confirm_for_execute": true
+          },
+          "agents": {
+            "enabled": true,
+            "default_mode": "primary",
+            "definitions": {
+              "pm": {
+                "model": "openai/gpt-5.5",
+                "fallback_models": ["openai/gpt-5.4"],
+                "temperature": 0.2
+              },
+              "plan": {
+                "model": "openai/gpt-5.4",
+                "fallback_models": ["openai/gpt-5.4-mini"],
+                "temperature": 0.1
+              },
+              "build": {
+                "model": "openai/gpt-5.4",
+                "fallback_models": ["openai/gpt-5.4-mini"],
+                "temperature": 0.2
+              },
+              "qa_engineer": {
+                "model": "openai/gpt-5.4",
+                "fallback_models": ["openai/gpt-5.4-mini"],
+                "temperature": 0.1
+              },
+              "writer": {
+                "model": "openai/gpt-5.4-mini",
+                "fallback_models": ["openai/gpt-5.4"],
+                "temperature": 0.3
+              }
+            }
+          },
+          "docs": {
+            "storage_mode": "project_scoped",
+            "read_legacy": true,
+            "write_legacy": false
+          }
+        }
+      }
+    ]
+  ]
+}
+```
+
+项目配置 schema 随包发布：
+
+- `pm-workflow.schema.json`
+- `pm-workflow.config.example.json`
+
+插件会通过 OpenCode `config` hook 自动注入 workflow agents：
+
+- `pm`
+- `plan`
+- `build`
+- `qa_engineer`
+- `writer`
+
+其中 `pm`、`qa_engineer`、`writer` 会带默认 prompt 与权限；`plan`、`build` 默认沿用 OpenCode
+内置 agent，只有当你在 `agents.definitions` 中配置模型或权限时才覆盖。`fallback_models`
+会生成 `pm_fallback_1`、`build_fallback_1` 这类 fallback agent，并接入 pm-workflow 的
+fallback 执行策略。
 
 ## 构建命令
 
@@ -211,10 +289,10 @@ npm run --prefix packages/opencode-pm-workflow check-auth
 
 ## 后续迁移建议
 
-1. 先保持 `plugins/` 兼容壳为当前环境的稳定接入层。
-2. 当前环境中，`plugins/` 兼容壳已经会把实际运行转发到 `@weekii/opencode-pm-workflow` 的子路径入口，因此**不要**再把 `./packages/opencode-pm-workflow/src/index.ts`、`./packages/opencode-pm-workflow/dist/index.js` 或包根入口额外写入 `opencode.json` / `tui.json`，否则会有重复加载风险。
-3. 只有在移除或停用 `plugins/pm-workflow-*.ts` 兼容壳之后，才应把 `plugin` 入口显式切到源码入口、dist 入口或包名入口。
-4. 当前包已经具备本地 `dist` 构建能力，并已完成 `typecheck`、`npm test`、`verify-release` 与 `npm pack --dry-run` 验证。
+1. 推荐在 OpenCode `opencode.json` 中只保留 `@walke/opencode-pm-workflow@latest`。
+2. 如果旧环境还存在 `plugins/pm-workflow-*.ts` 兼容壳，应停用或删除，避免和 npm 包重复加载。
+3. 本包运行时不依赖 `skills/pm-workflow`；review gate、pre-commit check、feedback signal 检测均为包内实现。
+4. 当前包已经具备本地 `dist` 构建能力，并已完成 `typecheck`、`verify-release` 与 `npm pack --dry-run` 验证。
 
 ## 第二阶段预览
 

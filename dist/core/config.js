@@ -13,6 +13,42 @@ function appendConfigHistory(projectDir, payload) {
     const line = `${JSON.stringify({ at: nowIso(), ...payload })}\n`;
     writeFileSync(historyPath, existsSync(historyPath) ? readFileSync(historyPath, "utf-8") + line : line, "utf-8");
 }
+const WORKFLOW_AGENT_ORDER = [
+    "pm",
+    "plan",
+    "build",
+    "qa_engineer",
+    "writer",
+];
+const DEFAULT_WORKFLOW_AGENTS = {
+    pm: {
+        description: "pm-workflow 产品经理，负责需求收集、范围澄清和阶段推进。",
+        prompt: "你是 pm-workflow 的产品经理 agent。负责澄清需求、维护 Product-Spec、识别阻塞，并把任务推进到下一阶段。",
+        permission: {
+            edit: "ask",
+            write: "ask",
+            bash: "ask",
+        },
+    },
+    qa_engineer: {
+        description: "pm-workflow QA/code-review agent，负责审查变更和解除 review gate。",
+        prompt: "你是 pm-workflow 的 QA/code-review agent。优先检查 bug、回归风险、安全问题和缺失测试；除非明确要求，不要直接修改代码。",
+        permission: {
+            edit: "ask",
+            write: "ask",
+            bash: "ask",
+        },
+    },
+    writer: {
+        description: "pm-workflow 文档与发布 agent，负责发布说明、总结和交付文档。",
+        prompt: "你是 pm-workflow 的 writer agent。负责整理发布说明、变更摘要、用户可读文档和交付检查清单。",
+        permission: {
+            edit: "ask",
+            write: "ask",
+            bash: "ask",
+        },
+    },
+};
 export function defaultWorkflowConfig() {
     return {
         retry: {
@@ -39,7 +75,15 @@ export function defaultWorkflowConfig() {
             agent_map: {
                 plan: "build",
                 build: "plan",
+                pm: "plan",
+                qa_engineer: "build",
+                writer: "build",
             },
+        },
+        agents: {
+            enabled: true,
+            default_mode: "primary",
+            definitions: DEFAULT_WORKFLOW_AGENTS,
         },
         permissions: {
             allow_execute_tools: false,
@@ -59,10 +103,202 @@ export function defaultWorkflowConfig() {
         },
     };
 }
-export function readWorkflowConfig(projectDir) {
+function mergeWorkflowConfig(base, overrides = {}) {
+    const agentDefinitions = {
+        ...base.agents.definitions,
+    };
+    for (const [agentName, agent] of Object.entries(overrides.agents?.definitions || {})) {
+        agentDefinitions[agentName] = {
+            ...(agentDefinitions[agentName] || {}),
+            ...agent,
+        };
+    }
+    const merged = {
+        retry: {
+            ...base.retry,
+            ...(overrides.retry || {}),
+        },
+        fallback: {
+            ...base.fallback,
+            ...(overrides.fallback || {}),
+            agent_map: {
+                ...base.fallback.agent_map,
+                ...(overrides.fallback?.agent_map || {}),
+            },
+        },
+        agents: {
+            ...base.agents,
+            ...(overrides.agents || {}),
+            definitions: agentDefinitions,
+        },
+        permissions: {
+            ...base.permissions,
+            ...(overrides.permissions || {}),
+        },
+        confirm: {
+            ...base.confirm,
+            ...(overrides.confirm || {}),
+        },
+        automation: {
+            ...base.automation,
+            ...(overrides.automation || {}),
+        },
+        docs: {
+            ...base.docs,
+            ...(overrides.docs || {}),
+        },
+    };
+    for (const [agentName, agent] of Object.entries(merged.agents.definitions)) {
+        if (agent?.fallback_models?.length &&
+            !merged.fallback.agent_map[agentName]) {
+            merged.fallback.agent_map[agentName] = `${agentName}_fallback_1`;
+        }
+    }
+    return merged;
+}
+function normalizeAgentConfig(input) {
+    if (!input || typeof input !== "object")
+        return undefined;
+    const source = input;
+    const agent = {};
+    if (typeof source.model === "string" || source.model === null) {
+        agent.model = source.model;
+    }
+    if (Array.isArray(source.fallback_models)) {
+        agent.fallback_models = source.fallback_models.filter((model) => typeof model === "string");
+    }
+    if (source.mode === "primary" || source.mode === "subagent") {
+        agent.mode = source.mode;
+    }
+    if (typeof source.description === "string") {
+        agent.description = source.description;
+    }
+    if (typeof source.prompt === "string") {
+        agent.prompt = source.prompt;
+    }
+    if (typeof source.temperature === "number") {
+        agent.temperature = source.temperature;
+    }
+    if (typeof source.top_p === "number") {
+        agent.top_p = source.top_p;
+    }
+    if (typeof source.steps === "number") {
+        agent.steps = source.steps;
+    }
+    if (source.permission && typeof source.permission === "object") {
+        agent.permission = source.permission;
+    }
+    if (typeof source.disabled === "boolean") {
+        agent.disabled = source.disabled;
+    }
+    return Object.keys(agent).length > 0 ? agent : undefined;
+}
+export function normalizeWorkflowConfigOverrides(input) {
+    if (!input || typeof input !== "object")
+        return undefined;
+    const source = input;
+    const configSource = source.config && typeof source.config === "object"
+        ? source.config
+        : source;
+    const overrides = {};
+    if (configSource.retry && typeof configSource.retry === "object") {
+        const retry = configSource.retry;
+        overrides.retry = {};
+        if (typeof retry.max_attempts === "number") {
+            overrides.retry.max_attempts = retry.max_attempts;
+        }
+        if (Array.isArray(retry.retryable_actions)) {
+            overrides.retry.retryable_actions =
+                retry.retryable_actions;
+        }
+    }
+    if (configSource.fallback && typeof configSource.fallback === "object") {
+        const fallback = configSource.fallback;
+        overrides.fallback = {};
+        if (typeof fallback.max_attempts === "number") {
+            overrides.fallback.max_attempts = fallback.max_attempts;
+        }
+        if (Array.isArray(fallback.enabled_actions)) {
+            overrides.fallback.enabled_actions =
+                fallback.enabled_actions;
+        }
+        if (fallback.agent_map && typeof fallback.agent_map === "object") {
+            overrides.fallback.agent_map = fallback.agent_map;
+        }
+    }
+    if (configSource.agents && typeof configSource.agents === "object") {
+        const agents = configSource.agents;
+        overrides.agents = {};
+        if (typeof agents.enabled === "boolean") {
+            overrides.agents.enabled = agents.enabled;
+        }
+        if (agents.default_mode === "primary" ||
+            agents.default_mode === "subagent") {
+            overrides.agents.default_mode = agents.default_mode;
+        }
+        if (agents.definitions && typeof agents.definitions === "object") {
+            const definitions = agents.definitions;
+            overrides.agents.definitions = {};
+            for (const agentName of WORKFLOW_AGENT_ORDER) {
+                const normalized = normalizeAgentConfig(definitions[agentName]);
+                if (normalized) {
+                    overrides.agents.definitions[agentName] = normalized;
+                }
+            }
+        }
+    }
+    if (configSource.permissions &&
+        typeof configSource.permissions === "object") {
+        const permissions = configSource.permissions;
+        overrides.permissions = {};
+        for (const key of [
+            "allow_execute_tools",
+            "allow_repair_tools",
+            "allow_release_actions",
+        ]) {
+            if (typeof permissions[key] === "boolean") {
+                overrides.permissions[key] = permissions[key];
+            }
+        }
+    }
+    if (configSource.confirm && typeof configSource.confirm === "object") {
+        const confirm = configSource.confirm;
+        overrides.confirm = {};
+        if (typeof confirm.require_confirm_for_execute === "boolean") {
+            overrides.confirm.require_confirm_for_execute =
+                confirm.require_confirm_for_execute;
+        }
+    }
+    if (configSource.automation && typeof configSource.automation === "object") {
+        const automation = configSource.automation;
+        overrides.automation = {};
+        if (automation.mode === "off" ||
+            automation.mode === "observe" ||
+            automation.mode === "assist" ||
+            automation.mode === "strict") {
+            overrides.automation.mode = automation.mode;
+        }
+    }
+    if (configSource.docs && typeof configSource.docs === "object") {
+        const docs = configSource.docs;
+        overrides.docs = {};
+        if (docs.storage_mode === "legacy" ||
+            docs.storage_mode === "project_scoped") {
+            overrides.docs.storage_mode = docs.storage_mode;
+        }
+        if (typeof docs.read_legacy === "boolean") {
+            overrides.docs.read_legacy = docs.read_legacy;
+        }
+        if (typeof docs.write_legacy === "boolean") {
+            overrides.docs.write_legacy = docs.write_legacy;
+        }
+    }
+    return Object.keys(overrides).length > 0 ? overrides : undefined;
+}
+export function readWorkflowConfig(projectDir, overrides) {
     ensureStateDir(projectDir);
     const configPath = getConfigPath(projectDir);
-    const defaults = defaultWorkflowConfig();
+    const defaults = mergeWorkflowConfig(defaultWorkflowConfig(), overrides);
     if (!existsSync(configPath)) {
         writeFileSync(configPath, JSON.stringify(defaults, null, 2));
         appendConfigHistory(projectDir, {
@@ -73,36 +309,7 @@ export function readWorkflowConfig(projectDir) {
     }
     try {
         const parsed = JSON.parse(readFileSync(configPath, "utf-8"));
-        const merged = {
-            retry: {
-                ...defaults.retry,
-                ...(parsed.retry || {}),
-            },
-            fallback: {
-                ...defaults.fallback,
-                ...(parsed.fallback || {}),
-                agent_map: {
-                    ...defaults.fallback.agent_map,
-                    ...(parsed.fallback?.agent_map || {}),
-                },
-            },
-            permissions: {
-                ...defaults.permissions,
-                ...(parsed.permissions || {}),
-            },
-            confirm: {
-                ...defaults.confirm,
-                ...(parsed.confirm || {}),
-            },
-            automation: {
-                ...defaults.automation,
-                ...(parsed.automation || {}),
-            },
-            docs: {
-                ...defaults.docs,
-                ...(parsed.docs || {}),
-            },
-        };
+        const merged = mergeWorkflowConfig(defaults, parsed);
         const migrationTypes = [];
         if (!parsed.permissions)
             migrationTypes.push("config.migrate_permissions_v1");
@@ -110,6 +317,8 @@ export function readWorkflowConfig(projectDir) {
             migrationTypes.push("config.migrate_confirm_v1");
         if (!parsed.automation)
             migrationTypes.push("config.migrate_automation_v1");
+        if (!parsed.agents)
+            migrationTypes.push("config.migrate_agents_v1");
         if (!parsed.docs)
             migrationTypes.push("config.migrate_docs_v1");
         if (migrationTypes.length > 0) {
@@ -120,6 +329,7 @@ export function readWorkflowConfig(projectDir) {
                     permissions: merged.permissions,
                     confirm: merged.confirm,
                     automation: merged.automation,
+                    agents: merged.agents,
                     docs: merged.docs,
                 });
             }
@@ -133,6 +343,51 @@ export function readWorkflowConfig(projectDir) {
         });
         return defaults;
     }
+}
+export function seedWorkflowConfig(projectDir, input) {
+    return readWorkflowConfig(projectDir, normalizeWorkflowConfigOverrides(input));
+}
+function toOpenCodeAgentConfig(name, agent, defaultMode) {
+    const output = {
+        description: agent.description || `pm-workflow generated agent: ${name}`,
+        mode: agent.mode || defaultMode,
+    };
+    if (agent.model)
+        output.model = agent.model;
+    if (agent.prompt)
+        output.prompt = agent.prompt;
+    if (typeof agent.temperature === "number") {
+        output.temperature = agent.temperature;
+    }
+    if (typeof agent.top_p === "number")
+        output.top_p = agent.top_p;
+    if (typeof agent.steps === "number")
+        output.steps = agent.steps;
+    if (agent.permission)
+        output.permission = agent.permission;
+    if (typeof agent.disabled === "boolean")
+        output.disable = agent.disabled;
+    return output;
+}
+export function buildOpenCodeAgentConfig(config) {
+    if (!config.agents.enabled)
+        return {};
+    const agents = {};
+    for (const [agentName, agent] of Object.entries(config.agents.definitions)) {
+        if (!agent)
+            continue;
+        agents[agentName] = toOpenCodeAgentConfig(agentName, agent, config.agents.default_mode);
+        for (const [index, model] of (agent.fallback_models || []).entries()) {
+            const fallbackName = `${agentName}_fallback_${index + 1}`;
+            agents[fallbackName] = toOpenCodeAgentConfig(fallbackName, {
+                ...agent,
+                model,
+                description: `${agent.description || agentName} fallback model ${index + 1}`,
+                fallback_models: [],
+            }, config.agents.default_mode);
+        }
+    }
+    return agents;
 }
 export function getAutomationMode(projectDir) {
     return readWorkflowConfig(projectDir).automation.mode;

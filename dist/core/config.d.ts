@@ -1,0 +1,18 @@
+import type { AutomationMode, PermissionKey, WorkflowConfig } from "./types.js";
+export type WorkflowConfigOverrides = {
+    retry?: Partial<WorkflowConfig["retry"]>;
+    fallback?: Partial<WorkflowConfig["fallback"]>;
+    permissions?: Partial<WorkflowConfig["permissions"]>;
+    confirm?: Partial<WorkflowConfig["confirm"]>;
+    automation?: Partial<WorkflowConfig["automation"]>;
+    agents?: Partial<WorkflowConfig["agents"]>;
+    docs?: Partial<WorkflowConfig["docs"]>;
+};
+export declare function defaultWorkflowConfig(): WorkflowConfig;
+export declare function normalizeWorkflowConfigOverrides(input?: unknown): WorkflowConfigOverrides | undefined;
+export declare function readWorkflowConfig(projectDir: string, overrides?: WorkflowConfigOverrides): WorkflowConfig;
+export declare function seedWorkflowConfig(projectDir: string, input?: unknown): WorkflowConfig;
+export declare function buildOpenCodeAgentConfig(config: WorkflowConfig): Record<string, Record<string, unknown>>;
+export declare function getAutomationMode(projectDir: string): AutomationMode;
+export declare function setPermission(projectDir: string, key: PermissionKey, value: boolean): WorkflowConfig;
+export declare function setAutomationMode(projectDir: string, mode: AutomationMode): WorkflowConfig;

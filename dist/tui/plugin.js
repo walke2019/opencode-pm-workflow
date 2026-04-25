@@ -1,12 +1,12 @@
 import { registerPmWorkflowCommands } from "./commands.js";
 import { createToastHelpers } from "./toasts.js";
-function getProjectDir() {
-    return process.cwd();
+function getProjectDir(api) {
+    return api.state.path.worktree || api.state.path.directory || process.cwd();
 }
 export const plugin = {
     id: "pm-workflow-plugin-tui",
     tui: async (api) => {
-        const projectDir = getProjectDir();
+        const projectDir = getProjectDir(api);
         const toasts = createToastHelpers(api, projectDir);
         setTimeout(() => {
             toasts.showProjectStageToast(4500);

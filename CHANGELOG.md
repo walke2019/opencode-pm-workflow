@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+- 移除运行时对 `~/.config/opencode/skills/pm-workflow/scripts` 的依赖，review gate、pre-commit check 与 feedback signal 检测改为包内实现
+- 补齐 workflow agents 的模型与 fallback model 配置，并由 OpenCode config hook 注入 `pm`、`qa_engineer`、`writer` 等 agent
+- 切换发布包名与文档引用到 `@walke/opencode-pm-workflow`
+- 修复 OpenCode 新版 `tool.execute.before` hook 参数读取、TUI workspace 路径、跨平台构建与类型声明发布
+
 ## 0.1.1
 
 - 补齐 `admin-tools` 与 `state-tools`，修复 `server/plugin.ts` 装配链中的缺失模块
@@ -16,7 +23,7 @@
 - 将 `tui` 拆分为 `plugin`、`toasts` 与 `commands` 模块
 - 将 `shared` 收敛为纯 `re-export` 入口，核心逻辑下沉到 `core/*` 与 `orchestrator/*`
 - 提供 `dist/*` 构建产物作为统一发布入口
-- 保留 `plugins/*` 兼容壳，并转发到 `@weekii/opencode-pm-workflow` 子路径入口
+- 保留 `plugins/*` 兼容壳，并转发到 `@walke/opencode-pm-workflow` 子路径入口
 - 补齐 `typecheck`、`build`、`verify-release`、`check-auth`、`prepublishOnly` 等发布前检查链路
 - 增加迁移总结、发布就绪报告、发布清单与发布说明草稿文档
 - 同步契约测试到当前真实 package-first 结构，`npm test` 已达到 `13/13` 全绿

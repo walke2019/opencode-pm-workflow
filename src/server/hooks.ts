@@ -6,11 +6,12 @@ import {
 } from "../shared.js";
 import {
   buildStagePrompt,
+  checkReviewGate,
   extractChangedPathsFromPatch,
   isCodePath,
   log,
   type PluginContext,
-  runPythonScript,
+  runPreCommitCheck,
   type TuiPromptOutput,
   type ToolInput,
   type ToolOutput,
@@ -35,12 +36,11 @@ export function createPmWorkflowHooks(projectDir: string, ctx: PluginContext) {
       if (event?.type === "session.idle") {
         syncState(projectDir);
         if (mode === "strict") {
-          const stopGate = runPythonScript("stop_gate.py", [projectDir]);
+          const stopGate = checkReviewGate(projectDir);
           if (!stopGate.ok) {
             await log(ctx.client, "warn", "review gate still pending", {
               projectDir,
-              stdout: stopGate.stdout.trim(),
-              stderr: stopGate.stderr.trim(),
+              message: stopGate.message,
             });
           }
         }
@@ -57,16 +57,16 @@ export function createPmWorkflowHooks(projectDir: string, ctx: PluginContext) {
         : stagePrompt;
     },
 
-    "tool.execute.before": async (input: ToolInput, _output: ToolOutput) => {
+    "tool.execute.before": async (input: ToolInput, output: ToolOutput) => {
       const mode = getAutomationMode(projectDir);
       if (!isAutomationCapabilityEnabled(mode, "commit_gate")) return;
 
       if (input.tool !== "bash") return;
 
-      const command = String(input.args?.command || "");
+      const command = String(output.args?.command || "");
       if (!/\bgit\s+commit\b/.test(command)) return;
 
-      const preCheck = runPythonScript("pre_commit_check.py", [projectDir]);
+      const preCheck = runPreCommitCheck(projectDir);
       if (!preCheck.ok) {
         throw new Error(
           [
@@ -92,14 +92,7 @@ export function createPmWorkflowHooks(projectDir: string, ctx: PluginContext) {
         const filePath = String(input.args?.filePath || "");
         if (filePath && isCodePath(filePath)) {
           if (allowReviewMarker) {
-            const markerResult = runPythonScript("mark_review_needed.py", [
-              filePath,
-              projectDir,
-            ]);
-
-            if (!markerResult.ok) {
-              writeReviewMarker(projectDir);
-            }
+            writeReviewMarker(projectDir);
           }
 
           if (allowEventSync) {

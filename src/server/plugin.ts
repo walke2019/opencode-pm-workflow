@@ -1,12 +1,13 @@
 import { tool } from "@opencode-ai/plugin";
 import {
   getAutomationMode,
+  buildOpenCodeAgentConfig,
   migrateLegacyProjectArtifacts,
+  seedWorkflowConfig,
   syncState,
 } from "../shared.js";
 import {
   getProjectDir,
-  getSkillDir,
   log,
   type PluginContext,
 } from "./runtime.js";
@@ -17,11 +18,15 @@ import { createDispatchTools } from "./tools/dispatch-tools.js";
 import { createExecutionTools } from "./tools/execution-tools.js";
 import { createStateTools } from "./tools/state-tools.js";
 
-export const PmWorkflowPlugin = async (ctx: PluginContext) => {
+export const PmWorkflowPlugin = async (
+  ctx: PluginContext,
+  options?: Record<string, unknown>,
+) => {
   const projectDir = getProjectDir(ctx);
+  const config = seedWorkflowConfig(projectDir, options);
   const migration = migrateLegacyProjectArtifacts(projectDir);
   const initialState = syncState(projectDir);
-  const automationMode = getAutomationMode(projectDir);
+  const automationMode = config.automation.mode || getAutomationMode(projectDir);
   const adminTools = createAdminTools();
   const dispatchTools = createDispatchTools();
   const diagnosticTools = createDiagnosticTools();
@@ -31,13 +36,24 @@ export const PmWorkflowPlugin = async (ctx: PluginContext) => {
 
   await log(ctx.client, "info", "pm-workflow plugin loaded", {
     projectDir,
-    skillDir: getSkillDir(),
     stage: initialState.stage,
     automationMode,
     migration,
+    standalone: true,
   });
 
   return {
+    config: async (input: Record<string, unknown>) => {
+      if (!config.agents.enabled) return;
+      const existingAgents =
+        input.agent && typeof input.agent === "object"
+          ? (input.agent as Record<string, unknown>)
+          : {};
+      input.agent = {
+        ...buildOpenCodeAgentConfig(config),
+        ...existingAgents,
+      };
+    },
     tool: {
       ...adminTools,
       ...dispatchTools,

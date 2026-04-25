@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://unpkg.com/@walke/opencode-pm-workflow@latest/pm-workflow.schema.json",
+  "title": "opencode-pm-workflow config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "retry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "retryable_actions": {
+          "$ref": "#/$defs/actions"
+        }
+      }
+    },
+    "fallback": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "enabled_actions": {
+          "$ref": "#/$defs/actions"
+        },
+        "agent_map": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allow_execute_tools": {
+          "type": "boolean"
+        },
+        "allow_repair_tools": {
+          "type": "boolean"
+        },
+        "allow_release_actions": {
+          "type": "boolean"
+        }
+      }
+    },
+    "confirm": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "require_confirm_for_execute": {
+          "type": "boolean"
+        }
+      }
+    },
+    "agents": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "default_mode": {
+          "enum": ["primary", "subagent"]
+        },
+        "definitions": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pm": {
+              "$ref": "#/$defs/agent"
+            },
+            "plan": {
+              "$ref": "#/$defs/agent"
+            },
+            "build": {
+              "$ref": "#/$defs/agent"
+            },
+            "qa_engineer": {
+              "$ref": "#/$defs/agent"
+            },
+            "writer": {
+              "$ref": "#/$defs/agent"
+            }
+          }
+        }
+      }
+    },
+    "automation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": ["off", "observe", "assist", "strict"]
+        }
+      }
+    },
+    "docs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "storage_mode": {
+          "enum": ["legacy", "project_scoped"]
+        },
+        "read_legacy": {
+          "type": "boolean"
+        },
+        "write_legacy": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "actions": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "collect-spec",
+          "create-design-brief",
+          "create-dev-plan",
+          "start-development",
+          "run-code-review",
+          "prepare-release",
+          "continue-development",
+          "blocked"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": ["string", "null"]
+        },
+        "fallback_models": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "mode": {
+          "enum": ["primary", "subagent"]
+        },
+        "description": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "top_p": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "permission": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "disabled": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

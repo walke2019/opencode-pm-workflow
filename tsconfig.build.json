@@ -4,7 +4,7 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "noEmit": false,
-    "declaration": false,
+    "declaration": true,
     "sourceMap": false,
     "module": "ESNext",
     "target": "ES2022"

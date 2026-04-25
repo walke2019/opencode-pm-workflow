@@ -1,0 +1,25 @@
+import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
+type TuiApi = Parameters<NonNullable<TuiPluginModule["tui"]>>[0];
+type ToastHelpers = {
+    showConfigToast: (duration?: number) => void;
+    showDispatchToast: (duration?: number) => void;
+    showDoctorToast: (duration?: number) => void;
+    showDryRunDispatchToast: (duration?: number) => void;
+    showDryRunLoopToast: (duration?: number) => void;
+    showExecutePermissionToggleToast: (nextValue: boolean, duration?: number) => void;
+    showExecutionReceiptsToast: (duration?: number) => void;
+    showExecutionPlanToast: (duration?: number) => void;
+    showExecutionSummaryToast: (duration?: number) => void;
+    showHistoryToast: (duration?: number) => void;
+    showLastExecutionToast: (duration?: number) => void;
+    showMigrationReportToast: (duration?: number) => void;
+    showModeToast: (duration?: number) => void;
+    showPermissionsToast: (duration?: number) => void;
+    showProjectStageToast: (duration?: number) => void;
+    showRecoverySummaryToast: (duration?: number) => void;
+    showReviewGateToast: (duration?: number) => void;
+    showSafetyReportToast: (duration?: number) => void;
+    switchModeToast: (nextMode: "off" | "observe" | "assist" | "strict", duration?: number) => void;
+};
+export declare function registerPmWorkflowCommands(api: TuiApi, helpers: ToastHelpers): void;
+export {};

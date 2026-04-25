@@ -28,7 +28,7 @@
 
 ```text
 plugins/* 兼容壳
--> @weekii/opencode-pm-workflow/server|tui|shared
+-> @walke/opencode-pm-workflow/server|tui|shared
 ```
 
 这意味着：
@@ -139,9 +139,9 @@ plugins/pm-workflow-shared.ts
 
 期望：
 
-- `plugins/pm-workflow-plugin.ts` -> `@weekii/opencode-pm-workflow/server`
-- `plugins/pm-workflow-plugin-tui.ts` -> `@weekii/opencode-pm-workflow/tui`
-- `plugins/pm-workflow-shared.ts` -> `@weekii/opencode-pm-workflow/shared`
+- `plugins/pm-workflow-plugin.ts` -> `@walke/opencode-pm-workflow/server`
+- `plugins/pm-workflow-plugin-tui.ts` -> `@walke/opencode-pm-workflow/tui`
+- `plugins/pm-workflow-shared.ts` -> `@walke/opencode-pm-workflow/shared`
 
 ### 5. 运行契约测试
 
@@ -213,7 +213,7 @@ dist/*
 但当前工作区的兼容壳已经转发到已发布包子路径入口：
 
 ```text
-@weekii/opencode-pm-workflow/server|tui|shared
+@walke/opencode-pm-workflow/server|tui|shared
 ```
 
 因此可以同时认为：
