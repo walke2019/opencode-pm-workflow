@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.5
+
+- 新增全局配置文件支持：`~/.config/opencode/pm-workflow.config.json`
+- 插件加载时会自动创建全局配置文件，并按“默认值 -> 全局配置 -> 插件 options -> 项目配置”的顺序合并
+- 项目旧配置中 `pm_workflow_pm` 会自动迁移到 `pm_workflow_caocao`
+
 ## 0.1.4
 
 - 将默认主协调 agent 改为 `pm_workflow_caocao`，以曹操（Cao Cao）作为 pm-workflow primary coordinator 人设

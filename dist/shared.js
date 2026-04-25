@@ -1,4 +1,4 @@
-export { buildOpenCodeAgentConfig, defaultWorkflowConfig, getAutomationMode, normalizeWorkflowConfigOverrides, readWorkflowConfig, seedWorkflowConfig, setAutomationMode, setPermission, } from "./core/config.js";
+export { buildOpenCodeAgentConfig, defaultWorkflowConfig, ensureGlobalWorkflowConfig, getAutomationMode, getGlobalWorkflowConfigPath, normalizeWorkflowConfigOverrides, readGlobalWorkflowConfigOverrides, readWorkflowConfig, seedWorkflowConfig, setAutomationMode, setPermission, } from "./core/config.js";
 export { DOC_FILENAMES, REVIEW_MARKER_FILENAME, ensureProjectStorageDirs, ensureStateDir, getConfigPath, getFeedbackReadRoots, getHistoryPath, getMigrationManifestPath, getProjectDocsDir, getProjectFeedbackDir, getProjectScopedDocPath, getStatePath, resolveDocReadPath, resolveDocWritePath, } from "./core/project.js";
 export { appendHistory, ensureHistoryBootstrap, getLastFailure, queryHistory, readHistory, } from "./core/history.js";
 export { buildDoctorReport, repairDoctorState } from "./core/doctor.js";

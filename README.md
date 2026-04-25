@@ -145,8 +145,18 @@ npm run --prefix packages/opencode-pm-workflow prepare-publish
 }
 ```
 
-也可以在 OpenCode `opencode.json` 中传入可选初始配置。该配置只用于首次生成项目内
-`.pm-workflow/config.json`，后续项目自己的 `.pm-workflow/config.json` 仍是运行时事实来源：
+插件会自动确保全局配置文件存在：
+
+- `~/.config/opencode/pm-workflow.config.json`
+
+运行时配置合并顺序为：
+
+1. 包内默认值
+2. `~/.config/opencode/pm-workflow.config.json`
+3. OpenCode `opencode.json` 中传入的插件 options
+4. 项目内 `.pm-workflow/config.json`
+
+也可以在 OpenCode `opencode.json` 中传入可选初始配置；项目级配置仍可覆盖全局配置：
 
 ```json
 {

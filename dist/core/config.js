@@ -1,5 +1,15 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { homedir } from "os";
+import { dirname, join } from "path";
 import { getConfigPath, getHistoryPath, ensureStateDir } from "./project.js";
+const GLOBAL_CONFIG_FILENAME = "pm-workflow.config.json";
+export function getGlobalWorkflowConfigPath() {
+    const configHome = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
+    return join(configHome, "opencode", GLOBAL_CONFIG_FILENAME);
+}
+function readJsonFile(path) {
+    return JSON.parse(readFileSync(path, "utf-8"));
+}
 function nowIso() {
     return new Date().toISOString();
 }
@@ -315,10 +325,33 @@ export function normalizeWorkflowConfigOverrides(input) {
     }
     return Object.keys(overrides).length > 0 ? overrides : undefined;
 }
+export function readGlobalWorkflowConfigOverrides() {
+    const configPath = getGlobalWorkflowConfigPath();
+    if (!existsSync(configPath))
+        return undefined;
+    try {
+        return normalizeWorkflowConfigOverrides(readJsonFile(configPath));
+    }
+    catch {
+        return undefined;
+    }
+}
+export function ensureGlobalWorkflowConfig(input) {
+    const configPath = getGlobalWorkflowConfigPath();
+    if (!existsSync(configPath)) {
+        mkdirSync(dirname(configPath), { recursive: true });
+        writeFileSync(configPath, JSON.stringify(mergeWorkflowConfig(defaultWorkflowConfig(), normalizeWorkflowConfigOverrides(input)), null, 2), "utf-8");
+    }
+    return configPath;
+}
+function buildDefaultWorkflowConfig(overrides) {
+    const globalOverrides = readGlobalWorkflowConfigOverrides();
+    return mergeWorkflowConfig(mergeWorkflowConfig(defaultWorkflowConfig(), globalOverrides), overrides);
+}
 export function readWorkflowConfig(projectDir, overrides) {
     ensureStateDir(projectDir);
     const configPath = getConfigPath(projectDir);
-    const defaults = mergeWorkflowConfig(defaultWorkflowConfig(), overrides);
+    const defaults = buildDefaultWorkflowConfig(overrides);
     if (!existsSync(configPath)) {
         writeFileSync(configPath, JSON.stringify(defaults, null, 2));
         appendConfigHistory(projectDir, {
@@ -328,7 +361,7 @@ export function readWorkflowConfig(projectDir, overrides) {
         return defaults;
     }
     try {
-        const parsed = JSON.parse(readFileSync(configPath, "utf-8"));
+        const parsed = readJsonFile(configPath);
         const merged = mergeWorkflowConfig(defaults, parsed);
         const migrationTypes = [];
         if (!parsed.permissions)
@@ -341,6 +374,11 @@ export function readWorkflowConfig(projectDir, overrides) {
             migrationTypes.push("config.migrate_agents_v1");
         if (!parsed.docs)
             migrationTypes.push("config.migrate_docs_v1");
+        if (parsed.agents?.dispatch_map?.pm === "pm_workflow_pm") {
+            merged.agents.dispatch_map.pm = "pm_workflow_caocao";
+            delete merged.agents.definitions.pm_workflow_pm;
+            migrationTypes.push("config.migrate_caocao_agent_v1");
+        }
         if (migrationTypes.length > 0) {
             writeFileSync(configPath, JSON.stringify(merged, null, 2));
             for (const type of migrationTypes) {
@@ -365,6 +403,7 @@ export function readWorkflowConfig(projectDir, overrides) {
     }
 }
 export function seedWorkflowConfig(projectDir, input) {
+    ensureGlobalWorkflowConfig(input);
     return readWorkflowConfig(projectDir, normalizeWorkflowConfigOverrides(input));
 }
 function toOpenCodeAgentConfig(name, agent, defaultMode) {
