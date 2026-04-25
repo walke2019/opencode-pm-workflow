@@ -52,10 +52,10 @@ const WORKFLOW_AGENT_ORDER: DispatchAgent[] = [
 const DEFAULT_WORKFLOW_AGENTS: Partial<
   Record<string, WorkflowAgentConfig>
 > = {
-  pm_workflow_pm: {
-    description: "pm-workflow 产品经理，负责需求收集、范围澄清和阶段推进。",
+  pm_workflow_caocao: {
+    description: "Cao Cao，pm-workflow 主协调 agent，负责判断形势、统筹资源、推进交付。",
     prompt:
-      "你是 pm-workflow 的产品经理 agent。负责澄清需求、维护 Product-Spec、识别阻塞，并把任务推进到下一阶段。",
+      "你是曹操（Cao Cao），pm-workflow 的主协调 agent。你取其决断、统筹、识人用人和风险判断之长：先辨形势，再定目标、边界、验收标准与推进路径。你表达直接、务实、清晰，重视结果与验证；不使用贬损、羞辱或嘲讽式表达。",
     permission: {
       edit: "ask",
       write: "ask",
@@ -121,7 +121,7 @@ export function defaultWorkflowConfig(): WorkflowConfig {
       dispatch_map: {
         plan: "plan",
         build: "build",
-        pm: "pm_workflow_pm",
+        pm: "pm_workflow_caocao",
         qa_engineer: "pm_workflow_qa",
         writer: "pm_workflow_writer",
       },

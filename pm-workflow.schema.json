@@ -105,7 +105,7 @@
             "$ref": "#/$defs/agent"
           },
           "properties": {
-            "pm_workflow_pm": {
+            "pm_workflow_caocao": {
               "$ref": "#/$defs/agent"
             },
             "plan": {

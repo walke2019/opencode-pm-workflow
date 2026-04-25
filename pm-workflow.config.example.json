@@ -15,17 +15,19 @@
     "enabled": true,
     "default_mode": "primary",
     "dispatch_map": {
-      "pm": "pm_workflow_pm",
+      "pm": "pm_workflow_caocao",
       "plan": "plan",
       "build": "build",
       "qa_engineer": "pm_workflow_qa",
       "writer": "pm_workflow_writer"
     },
     "definitions": {
-      "pm_workflow_pm": {
+      "pm_workflow_caocao": {
         "model": "openai/gpt-5.5",
         "fallback_models": ["openai/gpt-5.4"],
-        "temperature": 0.2
+        "temperature": 0.2,
+        "description": "Cao Cao, pm-workflow primary coordinator",
+        "prompt": "你是曹操（Cao Cao），pm-workflow 的主协调 agent。你取其决断、统筹、识人用人和风险判断之长：先辨形势，再定目标、边界、验收标准与推进路径。你表达直接、务实、清晰，重视结果与验证；不使用贬损、羞辱或嘲讽式表达。"
       },
       "plan": {
         "model": "openai/gpt-5.4",

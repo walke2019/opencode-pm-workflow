@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4
+
+- 将默认主协调 agent 改为 `pm_workflow_caocao`，以曹操（Cao Cao）作为 pm-workflow primary coordinator 人设
+- 更新默认 `agents.dispatch_map`、配置示例与 schema，使内部 `pm` 角色映射到 `pm_workflow_caocao`
+
 ## 0.1.3
 
 - 将默认 workflow agents 改为 `pm_workflow_pm`、`pm_workflow_qa`、`pm_workflow_writer`，避免覆盖用户已有的 `pm` / `qa_engineer` / `writer` agent

@@ -171,17 +171,19 @@ npm run --prefix packages/opencode-pm-workflow prepare-publish
             "enabled": true,
             "default_mode": "primary",
             "dispatch_map": {
-              "pm": "pm_workflow_pm",
+              "pm": "pm_workflow_caocao",
               "plan": "plan",
               "build": "build",
               "qa_engineer": "pm_workflow_qa",
               "writer": "pm_workflow_writer"
             },
             "definitions": {
-              "pm_workflow_pm": {
+              "pm_workflow_caocao": {
                 "model": "openai/gpt-5.5",
                 "fallback_models": ["openai/gpt-5.4"],
-                "temperature": 0.2
+                "temperature": 0.2,
+                "description": "Cao Cao, pm-workflow primary coordinator",
+                "prompt": "你是曹操（Cao Cao），pm-workflow 的主协调 agent。你取其决断、统筹、识人用人和风险判断之长：先辨形势，再定目标、边界、验收标准与推进路径。你表达直接、务实、清晰，重视结果与验证；不使用贬损、羞辱或嘲讽式表达。"
               },
               "plan": {
                 "model": "openai/gpt-5.4",
@@ -224,16 +226,16 @@ npm run --prefix packages/opencode-pm-workflow prepare-publish
 
 插件会通过 OpenCode `config` hook 自动注入 workflow agents：
 
-- `pm_workflow_pm`
+- `pm_workflow_caocao`
 - `plan`
 - `build`
 - `pm_workflow_qa`
 - `pm_workflow_writer`
 
-其中 `pm_workflow_pm`、`pm_workflow_qa`、`pm_workflow_writer` 会带默认 prompt 与权限；`plan`、`build` 默认沿用 OpenCode
+其中 `pm_workflow_caocao`、`pm_workflow_qa`、`pm_workflow_writer` 会带默认 prompt 与权限；`plan`、`build` 默认沿用 OpenCode
 内置 agent，只有当你在 `agents.definitions` 中配置模型或权限时才覆盖。`agents.dispatch_map`
 负责把内部角色 `pm` / `qa_engineer` / `writer` 映射到这些 namespaced agent，避免覆盖用户已有的同名 agent。`fallback_models`
-会生成 `pm_workflow_pm_fallback_1`、`build_fallback_1` 这类 fallback agent，并接入 pm-workflow 的
+会生成 `pm_workflow_caocao_fallback_1`、`build_fallback_1` 这类 fallback agent，并接入 pm-workflow 的
 fallback 执行策略。
 
 ## 构建命令

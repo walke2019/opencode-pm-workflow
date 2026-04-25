@@ -4,7 +4,7 @@ import { escapePrompt } from "../core/recovery.js";
 const DEFAULT_DISPATCH_AGENT_MAP: Partial<Record<DispatchAgent, string>> = {
   plan: "plan",
   build: "build",
-  pm: "pm_workflow_pm",
+  pm: "pm_workflow_caocao",
   qa_engineer: "pm_workflow_qa",
   writer: "pm_workflow_writer",
 };
