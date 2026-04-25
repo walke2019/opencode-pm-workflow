@@ -76,11 +76,36 @@
         "default_mode": {
           "enum": ["primary", "subagent"]
         },
-        "definitions": {
+        "dispatch_map": {
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": {
+            "type": "string"
+          },
           "properties": {
             "pm": {
+              "type": "string"
+            },
+            "plan": {
+              "type": "string"
+            },
+            "build": {
+              "type": "string"
+            },
+            "qa_engineer": {
+              "type": "string"
+            },
+            "writer": {
+              "type": "string"
+            }
+          }
+        },
+        "definitions": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/agent"
+          },
+          "properties": {
+            "pm_workflow_pm": {
               "$ref": "#/$defs/agent"
             },
             "plan": {
@@ -89,10 +114,10 @@
             "build": {
               "$ref": "#/$defs/agent"
             },
-            "qa_engineer": {
+            "pm_workflow_qa": {
               "$ref": "#/$defs/agent"
             },
-            "writer": {
+            "pm_workflow_writer": {
               "$ref": "#/$defs/agent"
             }
           }

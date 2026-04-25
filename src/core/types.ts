@@ -169,7 +169,8 @@ export type WorkflowConfig = {
   agents: {
     enabled: boolean;
     default_mode: "primary" | "subagent";
-    definitions: Partial<Record<DispatchAgent, WorkflowAgentConfig>>;
+    dispatch_map: Partial<Record<DispatchAgent, ExecutableAgent>>;
+    definitions: Partial<Record<string, WorkflowAgentConfig>>;
   };
   permissions: {
     allow_execute_tools: boolean;

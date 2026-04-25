@@ -50,9 +50,9 @@ const WORKFLOW_AGENT_ORDER: DispatchAgent[] = [
 ];
 
 const DEFAULT_WORKFLOW_AGENTS: Partial<
-  Record<DispatchAgent, WorkflowAgentConfig>
+  Record<string, WorkflowAgentConfig>
 > = {
-  pm: {
+  pm_workflow_pm: {
     description: "pm-workflow 产品经理，负责需求收集、范围澄清和阶段推进。",
     prompt:
       "你是 pm-workflow 的产品经理 agent。负责澄清需求、维护 Product-Spec、识别阻塞，并把任务推进到下一阶段。",
@@ -62,7 +62,7 @@ const DEFAULT_WORKFLOW_AGENTS: Partial<
       bash: "ask",
     },
   },
-  qa_engineer: {
+  pm_workflow_qa: {
     description: "pm-workflow QA/code-review agent，负责审查变更和解除 review gate。",
     prompt:
       "你是 pm-workflow 的 QA/code-review agent。优先检查 bug、回归风险、安全问题和缺失测试；除非明确要求，不要直接修改代码。",
@@ -72,7 +72,7 @@ const DEFAULT_WORKFLOW_AGENTS: Partial<
       bash: "ask",
     },
   },
-  writer: {
+  pm_workflow_writer: {
     description: "pm-workflow 文档与发布 agent，负责发布说明、总结和交付文档。",
     prompt:
       "你是 pm-workflow 的 writer agent。负责整理发布说明、变更摘要、用户可读文档和交付检查清单。",
@@ -118,6 +118,13 @@ export function defaultWorkflowConfig(): WorkflowConfig {
     agents: {
       enabled: true,
       default_mode: "primary",
+      dispatch_map: {
+        plan: "plan",
+        build: "build",
+        pm: "pm_workflow_pm",
+        qa_engineer: "pm_workflow_qa",
+        writer: "pm_workflow_writer",
+      },
       definitions: DEFAULT_WORKFLOW_AGENTS,
     },
     permissions: {
@@ -149,8 +156,8 @@ function mergeWorkflowConfig(
   for (const [agentName, agent] of Object.entries(
     overrides.agents?.definitions || {},
   )) {
-    agentDefinitions[agentName as DispatchAgent] = {
-      ...(agentDefinitions[agentName as DispatchAgent] || {}),
+    agentDefinitions[agentName] = {
+      ...(agentDefinitions[agentName] || {}),
       ...agent,
     };
   }
@@ -171,6 +178,10 @@ function mergeWorkflowConfig(
     agents: {
       ...base.agents,
       ...(overrides.agents || {}),
+      dispatch_map: {
+        ...base.agents.dispatch_map,
+        ...(overrides.agents?.dispatch_map || {}),
+      },
       definitions: agentDefinitions,
     },
     permissions: {
@@ -297,11 +308,22 @@ export function normalizeWorkflowConfigOverrides(
     ) {
       overrides.agents.default_mode = agents.default_mode;
     }
+    if (agents.dispatch_map && typeof agents.dispatch_map === "object") {
+      const dispatchMap = agents.dispatch_map as Record<string, unknown>;
+      overrides.agents.dispatch_map = {};
+      for (const agentName of WORKFLOW_AGENT_ORDER) {
+        if (typeof dispatchMap[agentName] === "string") {
+          overrides.agents.dispatch_map[agentName] = dispatchMap[
+            agentName
+          ] as string;
+        }
+      }
+    }
     if (agents.definitions && typeof agents.definitions === "object") {
       const definitions = agents.definitions as Record<string, unknown>;
       overrides.agents.definitions = {};
-      for (const agentName of WORKFLOW_AGENT_ORDER) {
-        const normalized = normalizeAgentConfig(definitions[agentName]);
+      for (const [agentName, agentConfig] of Object.entries(definitions)) {
+        const normalized = normalizeAgentConfig(agentConfig);
         if (normalized) {
           overrides.agents.definitions[agentName] = normalized;
         }

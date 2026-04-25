@@ -14,8 +14,15 @@
   "agents": {
     "enabled": true,
     "default_mode": "primary",
+    "dispatch_map": {
+      "pm": "pm_workflow_pm",
+      "plan": "plan",
+      "build": "build",
+      "qa_engineer": "pm_workflow_qa",
+      "writer": "pm_workflow_writer"
+    },
     "definitions": {
-      "pm": {
+      "pm_workflow_pm": {
         "model": "openai/gpt-5.5",
         "fallback_models": ["openai/gpt-5.4"],
         "temperature": 0.2
@@ -30,12 +37,12 @@
         "fallback_models": ["openai/gpt-5.4-mini"],
         "temperature": 0.2
       },
-      "qa_engineer": {
+      "pm_workflow_qa": {
         "model": "openai/gpt-5.4",
         "fallback_models": ["openai/gpt-5.4-mini"],
         "temperature": 0.1
       },
-      "writer": {
+      "pm_workflow_writer": {
         "model": "openai/gpt-5.4-mini",
         "fallback_models": ["openai/gpt-5.4"],
         "temperature": 0.3

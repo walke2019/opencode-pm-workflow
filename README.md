@@ -170,8 +170,15 @@ npm run --prefix packages/opencode-pm-workflow prepare-publish
           "agents": {
             "enabled": true,
             "default_mode": "primary",
+            "dispatch_map": {
+              "pm": "pm_workflow_pm",
+              "plan": "plan",
+              "build": "build",
+              "qa_engineer": "pm_workflow_qa",
+              "writer": "pm_workflow_writer"
+            },
             "definitions": {
-              "pm": {
+              "pm_workflow_pm": {
                 "model": "openai/gpt-5.5",
                 "fallback_models": ["openai/gpt-5.4"],
                 "temperature": 0.2
@@ -186,12 +193,12 @@ npm run --prefix packages/opencode-pm-workflow prepare-publish
                 "fallback_models": ["openai/gpt-5.4-mini"],
                 "temperature": 0.2
               },
-              "qa_engineer": {
+              "pm_workflow_qa": {
                 "model": "openai/gpt-5.4",
                 "fallback_models": ["openai/gpt-5.4-mini"],
                 "temperature": 0.1
               },
-              "writer": {
+              "pm_workflow_writer": {
                 "model": "openai/gpt-5.4-mini",
                 "fallback_models": ["openai/gpt-5.4"],
                 "temperature": 0.3
@@ -217,15 +224,16 @@ npm run --prefix packages/opencode-pm-workflow prepare-publish
 
 插件会通过 OpenCode `config` hook 自动注入 workflow agents：
 
-- `pm`
+- `pm_workflow_pm`
 - `plan`
 - `build`
-- `qa_engineer`
-- `writer`
+- `pm_workflow_qa`
+- `pm_workflow_writer`
 
-其中 `pm`、`qa_engineer`、`writer` 会带默认 prompt 与权限；`plan`、`build` 默认沿用 OpenCode
-内置 agent，只有当你在 `agents.definitions` 中配置模型或权限时才覆盖。`fallback_models`
-会生成 `pm_fallback_1`、`build_fallback_1` 这类 fallback agent，并接入 pm-workflow 的
+其中 `pm_workflow_pm`、`pm_workflow_qa`、`pm_workflow_writer` 会带默认 prompt 与权限；`plan`、`build` 默认沿用 OpenCode
+内置 agent，只有当你在 `agents.definitions` 中配置模型或权限时才覆盖。`agents.dispatch_map`
+负责把内部角色 `pm` / `qa_engineer` / `writer` 映射到这些 namespaced agent，避免覆盖用户已有的同名 agent。`fallback_models`
+会生成 `pm_workflow_pm_fallback_1`、`build_fallback_1` 这类 fallback agent，并接入 pm-workflow 的
 fallback 执行策略。
 
 ## 构建命令

@@ -1,16 +1,23 @@
 import { escapePrompt } from "../core/recovery.js";
-export function getExecutableAgent(agent) {
-    return agent;
+const DEFAULT_DISPATCH_AGENT_MAP = {
+    plan: "plan",
+    build: "build",
+    pm: "pm_workflow_pm",
+    qa_engineer: "pm_workflow_qa",
+    writer: "pm_workflow_writer",
+};
+export function getExecutableAgent(agent, dispatchMap = DEFAULT_DISPATCH_AGENT_MAP) {
+    return dispatchMap[agent] || DEFAULT_DISPATCH_AGENT_MAP[agent] || agent;
 }
 export function buildExecutablePrompt(agent, prompt) {
     if (agent === "pm") {
-        return `以产品经理视角处理以下 pm-workflow 任务；如需要，可在当前会话中委派给 pm subagent：${prompt}`;
+        return `以产品经理视角处理以下 pm-workflow 任务：${prompt}`;
     }
     if (agent === "qa_engineer") {
-        return `以 QA/code-review 视角处理以下 pm-workflow 任务；如需要，可在当前会话中委派给 qa_engineer subagent：${prompt}`;
+        return `以 QA/code-review 视角处理以下 pm-workflow 任务：${prompt}`;
     }
     if (agent === "writer") {
-        return `以文档写作者视角处理以下 pm-workflow 任务；如需要，可在当前会话中委派给 writer subagent：${prompt}`;
+        return `以文档写作者视角处理以下 pm-workflow 任务：${prompt}`;
     }
     return prompt;
 }

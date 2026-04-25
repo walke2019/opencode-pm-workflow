@@ -1,4 +1,5 @@
 import { buildExecutionGate, buildGateSummary } from "../core/gates.js";
+import { readWorkflowConfig } from "../core/config.js";
 import { buildStateSummary } from "../core/state.js";
 import { buildDispatchCommandStrings, buildExecutablePrompt, getExecutableAgent, } from "./prompts.js";
 function buildExecutionPlanSteps(dispatch) {
@@ -243,9 +244,10 @@ export function buildDispatchPlan(projectDir) {
 }
 export function buildDispatchCommand(projectDir, prompt) {
     const plan = buildDispatchPlan(projectDir);
+    const config = readWorkflowConfig(projectDir);
     const sessionID = plan.preferredSession;
     const quotedPrompt = prompt?.trim() || "继续当前阶段的推荐动作";
-    const executableAgent = getExecutableAgent(plan.recommendedAgent);
+    const executableAgent = getExecutableAgent(plan.recommendedAgent, config.agents.dispatch_map);
     const executablePrompt = buildExecutablePrompt(plan.recommendedAgent, quotedPrompt);
     const { command, commandArgs } = buildDispatchCommandStrings(sessionID, executableAgent, executablePrompt);
     return {
