@@ -250,6 +250,80 @@ npm run --prefix packages/opencode-pm-workflow prepare-publish
 负责把内部角色 `pm` / `qa_engineer` / `writer` / `frontend` 映射到这些 namespaced agent，避免覆盖用户已有的同名 agent。`fallback_models`
 会生成 `pm_workflow_caocao_fallback_1` 这类 fallback agent，并接入 pm-workflow 的 fallback 执行策略。
 
+## 工作流流转图
+
+这个插件和 OpenCode 的关系是：插件负责状态、门禁、调度建议和安全执行入口；OpenCode 负责会话、工具、内置 `plan` / `build`
+agent 与真实模型调用。默认配置下，插件会观察并给出调度，不会擅自执行开发任务；只有显式调用执行工具并通过权限与确认门禁后，才会拉起对应 OpenCode agent。
+
+```mermaid
+flowchart TD
+  A["OpenCode session starts or user asks for work"] --> B["pm-workflow plugin loads"]
+  B --> C["Merge config: package defaults -> global pm-workflow.config.json -> plugin options -> project config"]
+  C --> D["Inject agents through OpenCode config hook"]
+  D --> E["Cao Cao primary agent available"]
+  D --> F["Hidden subagents available: QA, writer, frontend"]
+  D --> G["OpenCode built-in agents remain: plan, build"]
+
+  A --> H{"Trigger type"}
+  H -->|"session.created / session.idle"| I["Observe mode: sync state and gates"]
+  H -->|"prompt append in assist/strict"| J["Append stage summary to prompt"]
+  H -->|"tool after edit/write/apply_patch"| K["Mark review needed and sync state"]
+  H -->|"slash/tool command"| L{"Dispatch command"}
+
+  L -->|"pm-run-dispatch"| M["Return recommended command only"]
+  L -->|"pm-dry-run-dispatch / pm-dry-run-loop"| N["Preview execution plan, permission, gate, retry, fallback"]
+  L -->|"pm-execute-dispatch / pm-run-loop"| O{"Confirm + permission + gate pass?"}
+
+  O -->|"No"| P["Stop and report blocked reason"]
+  O -->|"Yes"| Q["Execute opencode run with selected agent"]
+
+  I --> R["Build state summary: docs, stage, phase, task, review, release"]
+  J --> R
+  K --> R
+  M --> R
+  N --> R
+  R --> S{"Dispatch decision"}
+
+  S -->|"Need product/spec/coordination"| T["pm_workflow_caocao: primary coordinator"]
+  S -->|"Need development plan"| U["OpenCode built-in plan"]
+  S -->|"Need implementation"| V["OpenCode built-in build"]
+  S -->|"Need frontend/UI advice"| W["pm_workflow_frontend: hidden subagent"]
+  S -->|"Need docs/release notes"| X["pm_workflow_writer: hidden subagent"]
+  S -->|"Need review/quality gate"| Y["pm_workflow_qa: hidden subagent"]
+
+  Q --> T
+  Q --> U
+  Q --> V
+  Q --> W
+  Q --> X
+  Q --> Y
+
+  V --> Z["Code changes happen in OpenCode build agent"]
+  W --> AA["Frontend advice, interaction review, visual acceptance points"]
+  X --> AB["Docs, changelog, release summary"]
+  Y --> AC["Review findings, risk, missing tests"]
+  T --> AD["Clarify goal, scope, acceptance, next step"]
+  U --> AE["Implementation plan and task breakdown"]
+
+  Z --> AF["Review marker / gate"]
+  AA --> AF
+  AB --> AF
+  AC --> AF
+  AD --> AF
+  AE --> AF
+  AF --> AG{"Done?"}
+  AG -->|"No"| R
+  AG -->|"Yes"| AH["Release-ready / completed state"]
+```
+
+分工边界：
+
+- `pm_workflow_caocao`：唯一 workflow primary agent，负责统筹、判断阶段、拆目标、看门禁。
+- `pm_workflow_frontend`：隐藏 subagent，只做前端/UI/交互/视觉一致性建议，不作为开发执行者。
+- `pm_workflow_writer`：隐藏 subagent，负责文档、发布说明、交付摘要。
+- `pm_workflow_qa`：隐藏 subagent，负责审查、质量风险、验收与缺失测试。
+- `plan` / `build`：OpenCode 内置 primary agents。真正开发实现交给 `build`，开发计划交给 `plan`。
+
 ## 构建命令
 
 ```bash
