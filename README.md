@@ -255,6 +255,8 @@ npm run --prefix packages/opencode-pm-workflow prepare-publish
 这个插件和 OpenCode 的关系是：插件负责状态、门禁、调度建议和安全执行入口；OpenCode 负责会话、工具、内置 `plan` / `build`
 agent 与真实模型调用。默认配置下，插件会观察并给出调度，不会擅自执行开发任务；只有显式调用执行工具并通过权限与确认门禁后，才会拉起对应 OpenCode agent。
 
+![opencode-pm-workflow dispatch flow](docs/workflow-flow.svg)
+
 ```mermaid
 flowchart TD
   A["OpenCode session starts or user asks for work"] --> B["pm-workflow plugin loads"]
