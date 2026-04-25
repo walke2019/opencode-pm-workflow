@@ -179,41 +179,44 @@ npm run --prefix packages/opencode-pm-workflow prepare-publish
           },
           "agents": {
             "enabled": true,
-            "default_mode": "primary",
+            "default_mode": "subagent",
             "dispatch_map": {
               "pm": "pm_workflow_caocao",
               "plan": "plan",
               "build": "build",
               "qa_engineer": "pm_workflow_qa",
-              "writer": "pm_workflow_writer"
+              "writer": "pm_workflow_writer",
+              "frontend": "pm_workflow_frontend"
             },
             "definitions": {
               "pm_workflow_caocao": {
                 "model": "openai/gpt-5.5",
                 "fallback_models": ["openai/gpt-5.4"],
+                "mode": "primary",
                 "temperature": 0.2,
                 "description": "Cao Cao, pm-workflow primary coordinator",
                 "prompt": "你是曹操（Cao Cao），pm-workflow 的主协调 agent。你取其决断、统筹、识人用人和风险判断之长：先辨形势，再定目标、边界、验收标准与推进路径。你表达直接、务实、清晰，重视结果与验证；不使用贬损、羞辱或嘲讽式表达。"
               },
-              "plan": {
-                "model": "openai/gpt-5.4",
-                "fallback_models": ["openai/gpt-5.4-mini"],
-                "temperature": 0.1
-              },
-              "build": {
-                "model": "openai/gpt-5.4",
-                "fallback_models": ["openai/gpt-5.4-mini"],
-                "temperature": 0.2
-              },
               "pm_workflow_qa": {
                 "model": "openai/gpt-5.4",
                 "fallback_models": ["openai/gpt-5.4-mini"],
+                "mode": "subagent",
+                "hidden": true,
                 "temperature": 0.1
               },
               "pm_workflow_writer": {
                 "model": "openai/gpt-5.4-mini",
                 "fallback_models": ["openai/gpt-5.4"],
+                "mode": "subagent",
+                "hidden": true,
                 "temperature": 0.3
+              },
+              "pm_workflow_frontend": {
+                "model": "openai/gpt-5.4-mini",
+                "fallback_models": ["openai/gpt-5.4"],
+                "mode": "subagent",
+                "hidden": true,
+                "temperature": 0.25
               }
             }
           },
@@ -237,16 +240,15 @@ npm run --prefix packages/opencode-pm-workflow prepare-publish
 插件会通过 OpenCode `config` hook 自动注入 workflow agents：
 
 - `pm_workflow_caocao`
-- `plan`
-- `build`
 - `pm_workflow_qa`
 - `pm_workflow_writer`
+- `pm_workflow_frontend`
 
-其中 `pm_workflow_caocao`、`pm_workflow_qa`、`pm_workflow_writer` 会带默认 prompt 与权限；`plan`、`build` 默认沿用 OpenCode
-内置 agent，只有当你在 `agents.definitions` 中配置模型或权限时才覆盖。`agents.dispatch_map`
-负责把内部角色 `pm` / `qa_engineer` / `writer` 映射到这些 namespaced agent，避免覆盖用户已有的同名 agent。`fallback_models`
-会生成 `pm_workflow_caocao_fallback_1`、`build_fallback_1` 这类 fallback agent，并接入 pm-workflow 的
-fallback 执行策略。
+其中只有 `pm_workflow_caocao` 是 `primary`；`pm_workflow_qa`、`pm_workflow_writer`、`pm_workflow_frontend`
+默认都是 `subagent` 且 `hidden: true`，供曹操通过 Task tool 委派使用，不作为常用主 agent 出现在用户切换流里。
+`plan`、`build` 默认沿用 OpenCode 内置 agent，插件不再主动注入它们。`agents.dispatch_map`
+负责把内部角色 `pm` / `qa_engineer` / `writer` / `frontend` 映射到这些 namespaced agent，避免覆盖用户已有的同名 agent。`fallback_models`
+会生成 `pm_workflow_caocao_fallback_1` 这类 fallback agent，并接入 pm-workflow 的 fallback 执行策略。
 
 ## 构建命令
 

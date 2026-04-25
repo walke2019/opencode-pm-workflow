@@ -8,7 +8,7 @@ export type FallbackStatus = "idle" | "used" | "exhausted";
 export type AutomationMode = "off" | "observe" | "assist" | "strict";
 export type DocsStorageMode = "legacy" | "project_scoped";
 export type AutomationCapability = "event_sync" | "prompt_inject" | "commit_gate" | "review_marker";
-export type DispatchAgent = "pm" | "plan" | "build" | "qa_engineer" | "writer";
+export type DispatchAgent = "pm" | "plan" | "build" | "qa_engineer" | "writer" | "frontend";
 export type ExecutableAgent = string;
 export type DispatchAction = "collect-spec" | "create-design-brief" | "create-dev-plan" | "start-development" | "run-code-review" | "prepare-release" | "continue-development" | "blocked";
 export type DispatchPlan = {
@@ -159,6 +159,7 @@ export type WorkflowAgentConfig = {
     steps?: number;
     permission?: Record<string, unknown>;
     disabled?: boolean;
+    hidden?: boolean;
 };
 export type PermissionKey = keyof WorkflowConfig["permissions"];
 export type WorkflowHistoryEvent = {

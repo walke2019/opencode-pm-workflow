@@ -96,6 +96,9 @@
             },
             "writer": {
               "type": "string"
+            },
+            "frontend": {
+              "type": "string"
             }
           }
         },
@@ -118,6 +121,9 @@
               "$ref": "#/$defs/agent"
             },
             "pm_workflow_writer": {
+              "$ref": "#/$defs/agent"
+            },
+            "pm_workflow_frontend": {
               "$ref": "#/$defs/agent"
             }
           }
@@ -182,6 +188,9 @@
         },
         "mode": {
           "enum": ["primary", "subagent"]
+        },
+        "hidden": {
+          "type": "boolean"
         },
         "description": {
           "type": "string"

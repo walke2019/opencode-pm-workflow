@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.8
+
+- 自动生成的 fallback agents 默认带 `hidden: true`，减少 agent 切换列表噪音
+
+## 0.1.7
+
+- 将默认 agent 模式收紧为 `subagent`，并显式声明 `pm_workflow_caocao` 为唯一 primary workflow agent
+- 新增 `pm_workflow_frontend` 前端/UI subagent，默认 `hidden: true`
+- QA、writer、frontend 默认都作为隐藏 subagent 注入，避免被 OpenCode 当成常用主 agent
+- 配置 schema 与示例新增 `hidden` 和 `frontend` dispatch 支持
+
 ## 0.1.6
 
 - 迁移并忽略旧项目配置中的 `pm`、`qa_engineer`、`writer` agent 定义，避免再次覆盖用户本地同名 subagent

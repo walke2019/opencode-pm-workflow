@@ -29,6 +29,7 @@ const WORKFLOW_AGENT_ORDER = [
     "build",
     "qa_engineer",
     "writer",
+    "frontend",
 ];
 const LEGACY_SEMANTIC_AGENT_NAMES = [
     "pm",
@@ -37,6 +38,7 @@ const LEGACY_SEMANTIC_AGENT_NAMES = [
 ];
 const DEFAULT_WORKFLOW_AGENTS = {
     pm_workflow_caocao: {
+        mode: "primary",
         description: "Cao Cao，pm-workflow 主协调 agent，负责判断形势、统筹资源、推进交付。",
         prompt: "你是曹操（Cao Cao），pm-workflow 的主协调 agent。你取其决断、统筹、识人用人和风险判断之长：先辨形势，再定目标、边界、验收标准与推进路径。你表达直接、务实、清晰，重视结果与验证；不使用贬损、羞辱或嘲讽式表达。",
         permission: {
@@ -46,6 +48,8 @@ const DEFAULT_WORKFLOW_AGENTS = {
         },
     },
     pm_workflow_qa: {
+        mode: "subagent",
+        hidden: true,
         description: "pm-workflow QA/code-review agent，负责审查变更和解除 review gate。",
         prompt: "你是 pm-workflow 的 QA/code-review agent。优先检查 bug、回归风险、安全问题和缺失测试；除非明确要求，不要直接修改代码。",
         permission: {
@@ -55,8 +59,21 @@ const DEFAULT_WORKFLOW_AGENTS = {
         },
     },
     pm_workflow_writer: {
+        mode: "subagent",
+        hidden: true,
         description: "pm-workflow 文档与发布 agent，负责发布说明、总结和交付文档。",
         prompt: "你是 pm-workflow 的 writer agent。负责整理发布说明、变更摘要、用户可读文档和交付检查清单。",
+        permission: {
+            edit: "ask",
+            write: "ask",
+            bash: "ask",
+        },
+    },
+    pm_workflow_frontend: {
+        mode: "subagent",
+        hidden: true,
+        description: "pm-workflow 前端/UI subagent，负责界面实现、交互、可访问性与视觉一致性。",
+        prompt: "你是 pm-workflow 的 frontend subagent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。除非明确要求，不要直接修改代码；优先给出可执行建议、风险和验收点。",
         permission: {
             edit: "ask",
             write: "ask",
@@ -97,13 +114,14 @@ export function defaultWorkflowConfig() {
         },
         agents: {
             enabled: true,
-            default_mode: "primary",
+            default_mode: "subagent",
             dispatch_map: {
                 plan: "plan",
                 build: "build",
                 pm: "pm_workflow_caocao",
                 qa_engineer: "pm_workflow_qa",
                 writer: "pm_workflow_writer",
+                frontend: "pm_workflow_frontend",
             },
             definitions: DEFAULT_WORKFLOW_AGENTS,
         },
@@ -195,6 +213,9 @@ function normalizeAgentConfig(input) {
     }
     if (source.mode === "primary" || source.mode === "subagent") {
         agent.mode = source.mode;
+    }
+    if (typeof source.hidden === "boolean") {
+        agent.hidden = source.hidden;
     }
     if (typeof source.description === "string") {
         agent.description = source.description;
@@ -437,6 +458,8 @@ function toOpenCodeAgentConfig(name, agent, defaultMode) {
         output.permission = agent.permission;
     if (typeof agent.disabled === "boolean")
         output.disable = agent.disabled;
+    if (typeof agent.hidden === "boolean")
+        output.hidden = agent.hidden;
     return output;
 }
 export function buildOpenCodeAgentConfig(config) {
@@ -456,6 +479,7 @@ export function buildOpenCodeAgentConfig(config) {
                 model,
                 description: `${agent.description || agentName} fallback model ${index + 1}`,
                 fallback_models: [],
+                hidden: true,
             }, config.agents.default_mode);
         }
     }

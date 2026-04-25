@@ -29,7 +29,13 @@ export type AutomationCapability =
   | "commit_gate"
   | "review_marker";
 
-export type DispatchAgent = "pm" | "plan" | "build" | "qa_engineer" | "writer";
+export type DispatchAgent =
+  | "pm"
+  | "plan"
+  | "build"
+  | "qa_engineer"
+  | "writer"
+  | "frontend";
 export type ExecutableAgent = string;
 
 export type DispatchAction =
@@ -201,6 +207,7 @@ export type WorkflowAgentConfig = {
   steps?: number;
   permission?: Record<string, unknown>;
   disabled?: boolean;
+  hidden?: boolean;
 };
 
 export type PermissionKey = keyof WorkflowConfig["permissions"];
