@@ -255,7 +255,16 @@ npm run --prefix packages/opencode-pm-workflow prepare-publish
 这个插件和 OpenCode 的关系是：插件负责状态、门禁、调度建议和安全执行入口；OpenCode 负责会话、工具、内置 `plan` / `build`
 agent 与真实模型调用。默认配置下，插件会观察并给出调度，不会擅自执行开发任务；只有显式调用执行工具并通过权限与确认门禁后，才会拉起对应 OpenCode agent。
 
-![opencode-pm-workflow dispatch flow](docs/workflow-flow.svg)
+![opencode-pm-workflow 中文调度流转图](docs/workflow-flow.svg)
+
+按实际使用可以理解为：
+
+1. 用户在 OpenCode 中提出任务，插件启动后先合并配置，并把 `pm_workflow_caocao`、`pm_workflow_qa`、`pm_workflow_writer`、`pm_workflow_frontend` 注入到 OpenCode。
+2. 插件默认处于 `observe` 模式，只观察会话、同步状态、更新门禁，不会自己执行开发。
+3. 当用户调用 `pm-run-dispatch` 或 `pm-dry-run-dispatch` 时，插件只给出“下一步该谁做、为什么、会不会被门禁拦住”的建议。
+4. 只有调用 `pm-execute-dispatch` 或 `pm-run-loop`，并且确认、权限、门禁都通过时，插件才会真正执行 `opencode run --agent ...`。
+5. 需求/统筹交给曹操，开发计划交给 OpenCode 内置 `plan`，真正写代码交给 OpenCode 内置 `build`，前端/文档/QA 三个 hidden subagent 只做专业辅助。
+6. 代码改动后插件会标记 review gate，再由 QA/门禁检查形成闭环；未完成则重新调度，完成后进入 release-ready / completed 状态。
 
 ```mermaid
 flowchart TD
