@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.6
+
+- 迁移并忽略旧项目配置中的 `pm`、`qa_engineer`、`writer` agent 定义，避免再次覆盖用户本地同名 subagent
+- `buildOpenCodeAgentConfig` 防御性跳过 legacy semantic agent keys，只注入 namespaced workflow agents
+
 ## 0.1.5
 
 - 新增全局配置文件支持：`~/.config/opencode/pm-workflow.config.json`

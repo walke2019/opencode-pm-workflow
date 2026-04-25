@@ -63,6 +63,12 @@ const WORKFLOW_AGENT_ORDER: DispatchAgent[] = [
   "writer",
 ];
 
+const LEGACY_SEMANTIC_AGENT_NAMES = [
+  "pm",
+  "qa_engineer",
+  "writer",
+] as const;
+
 const DEFAULT_WORKFLOW_AGENTS: Partial<
   Record<string, WorkflowAgentConfig>
 > = {
@@ -475,6 +481,12 @@ export function readWorkflowConfig(
       delete merged.agents.definitions.pm_workflow_pm;
       migrationTypes.push("config.migrate_caocao_agent_v1");
     }
+    for (const agentName of LEGACY_SEMANTIC_AGENT_NAMES) {
+      if (parsed.agents?.definitions?.[agentName]) {
+        delete merged.agents.definitions[agentName];
+        migrationTypes.push("config.migrate_namespaced_agents_v1");
+      }
+    }
 
     if (migrationTypes.length > 0) {
       writeFileSync(configPath, JSON.stringify(merged, null, 2));
@@ -534,6 +546,8 @@ export function buildOpenCodeAgentConfig(config: WorkflowConfig) {
   const agents: Record<string, Record<string, unknown>> = {};
   for (const [agentName, agent] of Object.entries(config.agents.definitions)) {
     if (!agent) continue;
+    if ((LEGACY_SEMANTIC_AGENT_NAMES as readonly string[]).includes(agentName))
+      continue;
     agents[agentName] = toOpenCodeAgentConfig(
       agentName,
       agent,

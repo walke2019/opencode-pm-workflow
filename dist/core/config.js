@@ -30,6 +30,11 @@ const WORKFLOW_AGENT_ORDER = [
     "qa_engineer",
     "writer",
 ];
+const LEGACY_SEMANTIC_AGENT_NAMES = [
+    "pm",
+    "qa_engineer",
+    "writer",
+];
 const DEFAULT_WORKFLOW_AGENTS = {
     pm_workflow_caocao: {
         description: "Cao Cao，pm-workflow 主协调 agent，负责判断形势、统筹资源、推进交付。",
@@ -379,6 +384,12 @@ export function readWorkflowConfig(projectDir, overrides) {
             delete merged.agents.definitions.pm_workflow_pm;
             migrationTypes.push("config.migrate_caocao_agent_v1");
         }
+        for (const agentName of LEGACY_SEMANTIC_AGENT_NAMES) {
+            if (parsed.agents?.definitions?.[agentName]) {
+                delete merged.agents.definitions[agentName];
+                migrationTypes.push("config.migrate_namespaced_agents_v1");
+            }
+        }
         if (migrationTypes.length > 0) {
             writeFileSync(configPath, JSON.stringify(merged, null, 2));
             for (const type of migrationTypes) {
@@ -434,6 +445,8 @@ export function buildOpenCodeAgentConfig(config) {
     const agents = {};
     for (const [agentName, agent] of Object.entries(config.agents.definitions)) {
         if (!agent)
+            continue;
+        if (LEGACY_SEMANTIC_AGENT_NAMES.includes(agentName))
             continue;
         agents[agentName] = toOpenCodeAgentConfig(agentName, agent, config.agents.default_mode);
         for (const [index, model] of (agent.fallback_models || []).entries()) {
