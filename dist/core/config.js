@@ -31,11 +31,12 @@ const WORKFLOW_AGENT_ORDER = [
     "writer",
     "frontend",
 ];
-const LEGACY_SEMANTIC_AGENT_NAMES = [
-    "pm",
-    "qa_engineer",
-    "writer",
-];
+const LEGACY_SEMANTIC_AGENT_NAMES = ["pm", "qa_engineer", "writer"];
+const CLI_COMPATIBLE_SUBAGENTS = new Set([
+    "pm_workflow_qa",
+    "pm_workflow_writer",
+    "pm_workflow_frontend",
+]);
 const DEFAULT_WORKFLOW_AGENTS = {
     pm_workflow_caocao: {
         mode: "primary",
@@ -48,7 +49,7 @@ const DEFAULT_WORKFLOW_AGENTS = {
         },
     },
     pm_workflow_qa: {
-        mode: "subagent",
+        mode: "all",
         hidden: true,
         description: "pm-workflow QA/code-review agent，负责审查变更和解除 review gate。",
         prompt: "你是 pm-workflow 的 QA/code-review agent。优先检查 bug、回归风险、安全问题和缺失测试；除非明确要求，不要直接修改代码。",
@@ -59,7 +60,7 @@ const DEFAULT_WORKFLOW_AGENTS = {
         },
     },
     pm_workflow_writer: {
-        mode: "subagent",
+        mode: "all",
         hidden: true,
         description: "pm-workflow 文档与发布 agent，负责发布说明、总结和交付文档。",
         prompt: "你是 pm-workflow 的 writer agent。负责整理发布说明、变更摘要、用户可读文档和交付检查清单。",
@@ -70,7 +71,7 @@ const DEFAULT_WORKFLOW_AGENTS = {
         },
     },
     pm_workflow_frontend: {
-        mode: "subagent",
+        mode: "all",
         hidden: true,
         description: "pm-workflow 前端/UI subagent，负责界面实现、交互、可访问性与视觉一致性。",
         prompt: "你是 pm-workflow 的 frontend subagent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。除非明确要求，不要直接修改代码；优先给出可执行建议、风险和验收点。",
@@ -211,7 +212,9 @@ function normalizeAgentConfig(input) {
     if (Array.isArray(source.fallback_models)) {
         agent.fallback_models = source.fallback_models.filter((model) => typeof model === "string");
     }
-    if (source.mode === "primary" || source.mode === "subagent") {
+    if (source.mode === "primary" ||
+        source.mode === "subagent" ||
+        source.mode === "all") {
         agent.mode = source.mode;
     }
     if (typeof source.hidden === "boolean") {
@@ -239,6 +242,31 @@ function normalizeAgentConfig(input) {
         agent.disabled = source.disabled;
     }
     return Object.keys(agent).length > 0 ? agent : undefined;
+}
+function normalizeWorkflowAgentMode(agentName, agent) {
+    if (!agent)
+        return agent;
+    if (agent.mode === "subagent" && CLI_COMPATIBLE_SUBAGENTS.has(agentName)) {
+        return {
+            ...agent,
+            // 这些 agent 既要保留委派能力，也要兼容当前 CLI 直调链路。
+            mode: "all",
+        };
+    }
+    return agent;
+}
+function normalizeWorkflowConfigModes(config) {
+    const definitions = Object.fromEntries(Object.entries(config.agents.definitions).map(([agentName, agent]) => [
+        agentName,
+        normalizeWorkflowAgentMode(agentName, agent),
+    ]));
+    return {
+        ...config,
+        agents: {
+            ...config.agents,
+            definitions,
+        },
+    };
 }
 export function normalizeWorkflowConfigOverrides(input) {
     if (!input || typeof input !== "object")
@@ -270,7 +298,8 @@ export function normalizeWorkflowConfigOverrides(input) {
                 fallback.enabled_actions;
         }
         if (fallback.agent_map && typeof fallback.agent_map === "object") {
-            overrides.fallback.agent_map = fallback.agent_map;
+            overrides.fallback.agent_map =
+                fallback.agent_map;
         }
     }
     if (configSource.agents && typeof configSource.agents === "object") {
@@ -280,7 +309,8 @@ export function normalizeWorkflowConfigOverrides(input) {
             overrides.agents.enabled = agents.enabled;
         }
         if (agents.default_mode === "primary" ||
-            agents.default_mode === "subagent") {
+            agents.default_mode === "subagent" ||
+            agents.default_mode === "all") {
             overrides.agents.default_mode = agents.default_mode;
         }
         if (agents.dispatch_map && typeof agents.dispatch_map === "object") {
@@ -356,7 +386,20 @@ export function readGlobalWorkflowConfigOverrides() {
     if (!existsSync(configPath))
         return undefined;
     try {
-        return normalizeWorkflowConfigOverrides(readJsonFile(configPath));
+        const overrides = normalizeWorkflowConfigOverrides(readJsonFile(configPath));
+        if (!overrides?.agents?.definitions)
+            return overrides;
+        const definitions = Object.fromEntries(Object.entries(overrides.agents.definitions).map(([agentName, agent]) => [
+            agentName,
+            normalizeWorkflowAgentMode(agentName, agent),
+        ]));
+        return {
+            ...overrides,
+            agents: {
+                ...overrides.agents,
+                definitions,
+            },
+        };
     }
     catch {
         return undefined;
@@ -388,7 +431,7 @@ export function readWorkflowConfig(projectDir, overrides) {
     }
     try {
         const parsed = readJsonFile(configPath);
-        const merged = mergeWorkflowConfig(defaults, parsed);
+        const merged = normalizeWorkflowConfigModes(mergeWorkflowConfig(defaults, parsed));
         const migrationTypes = [];
         if (!parsed.permissions)
             migrationTypes.push("config.migrate_permissions_v1");
@@ -409,6 +452,12 @@ export function readWorkflowConfig(projectDir, overrides) {
             if (parsed.agents?.definitions?.[agentName]) {
                 delete merged.agents.definitions[agentName];
                 migrationTypes.push("config.migrate_namespaced_agents_v1");
+            }
+        }
+        for (const agentName of CLI_COMPATIBLE_SUBAGENTS) {
+            if (parsed.agents?.definitions?.[agentName]?.mode === "subagent") {
+                migrationTypes.push("config.migrate_cli_compatible_agent_modes_v1");
+                break;
             }
         }
         if (migrationTypes.length > 0) {

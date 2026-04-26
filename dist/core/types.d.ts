@@ -127,7 +127,7 @@ export type WorkflowConfig = {
     };
     agents: {
         enabled: boolean;
-        default_mode: "primary" | "subagent";
+        default_mode: "primary" | "subagent" | "all";
         dispatch_map: Partial<Record<DispatchAgent, ExecutableAgent>>;
         definitions: Partial<Record<string, WorkflowAgentConfig>>;
     };
@@ -151,7 +151,7 @@ export type WorkflowConfig = {
 export type WorkflowAgentConfig = {
     model?: string | null;
     fallback_models?: string[];
-    mode?: "primary" | "subagent";
+    mode?: "primary" | "subagent" | "all";
     description?: string;
     prompt?: string;
     temperature?: number;

@@ -14,8 +14,7 @@ import type {
 const GLOBAL_CONFIG_FILENAME = "pm-workflow.config.json";
 
 export function getGlobalWorkflowConfigPath() {
-  const configHome =
-    process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
+  const configHome = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
   return join(configHome, "opencode", GLOBAL_CONFIG_FILENAME);
 }
 
@@ -64,18 +63,19 @@ const WORKFLOW_AGENT_ORDER: DispatchAgent[] = [
   "frontend",
 ];
 
-const LEGACY_SEMANTIC_AGENT_NAMES = [
-  "pm",
-  "qa_engineer",
-  "writer",
-] as const;
+const LEGACY_SEMANTIC_AGENT_NAMES = ["pm", "qa_engineer", "writer"] as const;
 
-const DEFAULT_WORKFLOW_AGENTS: Partial<
-  Record<string, WorkflowAgentConfig>
-> = {
+const CLI_COMPATIBLE_SUBAGENTS = new Set([
+  "pm_workflow_qa",
+  "pm_workflow_writer",
+  "pm_workflow_frontend",
+]);
+
+const DEFAULT_WORKFLOW_AGENTS: Partial<Record<string, WorkflowAgentConfig>> = {
   pm_workflow_caocao: {
     mode: "primary",
-    description: "Cao Cao，pm-workflow 主协调 agent，负责判断形势、统筹资源、推进交付。",
+    description:
+      "Cao Cao，pm-workflow 主协调 agent，负责判断形势、统筹资源、推进交付。",
     prompt:
       "你是曹操（Cao Cao），pm-workflow 的主协调 agent。你取其决断、统筹、识人用人和风险判断之长：先辨形势，再定目标、边界、验收标准与推进路径。你表达直接、务实、清晰，重视结果与验证；不使用贬损、羞辱或嘲讽式表达。",
     permission: {
@@ -85,9 +85,10 @@ const DEFAULT_WORKFLOW_AGENTS: Partial<
     },
   },
   pm_workflow_qa: {
-    mode: "subagent",
+    mode: "all",
     hidden: true,
-    description: "pm-workflow QA/code-review agent，负责审查变更和解除 review gate。",
+    description:
+      "pm-workflow QA/code-review agent，负责审查变更和解除 review gate。",
     prompt:
       "你是 pm-workflow 的 QA/code-review agent。优先检查 bug、回归风险、安全问题和缺失测试；除非明确要求，不要直接修改代码。",
     permission: {
@@ -97,7 +98,7 @@ const DEFAULT_WORKFLOW_AGENTS: Partial<
     },
   },
   pm_workflow_writer: {
-    mode: "subagent",
+    mode: "all",
     hidden: true,
     description: "pm-workflow 文档与发布 agent，负责发布说明、总结和交付文档。",
     prompt:
@@ -109,7 +110,7 @@ const DEFAULT_WORKFLOW_AGENTS: Partial<
     },
   },
   pm_workflow_frontend: {
-    mode: "subagent",
+    mode: "all",
     hidden: true,
     description:
       "pm-workflow 前端/UI subagent，负责界面实现、交互、可访问性与视觉一致性。",
@@ -267,7 +268,11 @@ function normalizeAgentConfig(input: unknown): WorkflowAgentConfig | undefined {
       (model): model is string => typeof model === "string",
     );
   }
-  if (source.mode === "primary" || source.mode === "subagent") {
+  if (
+    source.mode === "primary" ||
+    source.mode === "subagent" ||
+    source.mode === "all"
+  ) {
     agent.mode = source.mode;
   }
   if (typeof source.hidden === "boolean") {
@@ -296,6 +301,38 @@ function normalizeAgentConfig(input: unknown): WorkflowAgentConfig | undefined {
   }
 
   return Object.keys(agent).length > 0 ? agent : undefined;
+}
+
+function normalizeWorkflowAgentMode(
+  agentName: string,
+  agent?: WorkflowAgentConfig,
+) {
+  if (!agent) return agent;
+  if (agent.mode === "subagent" && CLI_COMPATIBLE_SUBAGENTS.has(agentName)) {
+    return {
+      ...agent,
+      // 这些 agent 既要保留委派能力，也要兼容当前 CLI 直调链路。
+      mode: "all" as const,
+    };
+  }
+  return agent;
+}
+
+function normalizeWorkflowConfigModes(config: WorkflowConfig): WorkflowConfig {
+  const definitions = Object.fromEntries(
+    Object.entries(config.agents.definitions).map(([agentName, agent]) => [
+      agentName,
+      normalizeWorkflowAgentMode(agentName, agent),
+    ]),
+  );
+
+  return {
+    ...config,
+    agents: {
+      ...config.agents,
+      definitions,
+    },
+  };
 }
 
 export function normalizeWorkflowConfigOverrides(
@@ -333,9 +370,8 @@ export function normalizeWorkflowConfigOverrides(
         fallback.enabled_actions as DispatchAction[];
     }
     if (fallback.agent_map && typeof fallback.agent_map === "object") {
-      overrides.fallback.agent_map = fallback.agent_map as WorkflowConfig[
-        "fallback"
-      ]["agent_map"];
+      overrides.fallback.agent_map =
+        fallback.agent_map as WorkflowConfig["fallback"]["agent_map"];
     }
   }
 
@@ -347,7 +383,8 @@ export function normalizeWorkflowConfigOverrides(
     }
     if (
       agents.default_mode === "primary" ||
-      agents.default_mode === "subagent"
+      agents.default_mode === "subagent" ||
+      agents.default_mode === "all"
     ) {
       overrides.agents.default_mode = agents.default_mode;
     }
@@ -438,7 +475,25 @@ export function readGlobalWorkflowConfigOverrides() {
   if (!existsSync(configPath)) return undefined;
 
   try {
-    return normalizeWorkflowConfigOverrides(readJsonFile(configPath));
+    const overrides = normalizeWorkflowConfigOverrides(
+      readJsonFile(configPath),
+    );
+    if (!overrides?.agents?.definitions) return overrides;
+
+    const definitions = Object.fromEntries(
+      Object.entries(overrides.agents.definitions).map(([agentName, agent]) => [
+        agentName,
+        normalizeWorkflowAgentMode(agentName, agent),
+      ]),
+    );
+
+    return {
+      ...overrides,
+      agents: {
+        ...overrides.agents,
+        definitions,
+      },
+    };
   } catch {
     return undefined;
   }
@@ -491,7 +546,9 @@ export function readWorkflowConfig(
 
   try {
     const parsed = readJsonFile(configPath) as Partial<WorkflowConfig>;
-    const merged = mergeWorkflowConfig(defaults, parsed);
+    const merged = normalizeWorkflowConfigModes(
+      mergeWorkflowConfig(defaults, parsed),
+    );
     const migrationTypes: string[] = [];
     if (!parsed.permissions)
       migrationTypes.push("config.migrate_permissions_v1");
@@ -508,6 +565,12 @@ export function readWorkflowConfig(
       if (parsed.agents?.definitions?.[agentName]) {
         delete merged.agents.definitions[agentName];
         migrationTypes.push("config.migrate_namespaced_agents_v1");
+      }
+    }
+    for (const agentName of CLI_COMPATIBLE_SUBAGENTS) {
+      if (parsed.agents?.definitions?.[agentName]?.mode === "subagent") {
+        migrationTypes.push("config.migrate_cli_compatible_agent_modes_v1");
+        break;
       }
     }
 
@@ -536,17 +599,19 @@ export function readWorkflowConfig(
 
 export function seedWorkflowConfig(projectDir: string, input?: unknown) {
   ensureGlobalWorkflowConfig(input);
-  return readWorkflowConfig(projectDir, normalizeWorkflowConfigOverrides(input));
+  return readWorkflowConfig(
+    projectDir,
+    normalizeWorkflowConfigOverrides(input),
+  );
 }
 
 function toOpenCodeAgentConfig(
   name: string,
   agent: WorkflowAgentConfig,
-  defaultMode: "primary" | "subagent",
+  defaultMode: "primary" | "subagent" | "all",
 ) {
   const output: Record<string, unknown> = {
-    description:
-      agent.description || `pm-workflow generated agent: ${name}`,
+    description: agent.description || `pm-workflow generated agent: ${name}`,
     mode: agent.mode || defaultMode,
   };
 

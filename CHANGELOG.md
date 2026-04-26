@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.9
+
+- 新增对 workflow agent `mode: "all"` 的配置支持，兼容可同时作为 primary 与 subagent 的 OpenCode agent 模式
+- 对 `pm_workflow_qa`、`pm_workflow_writer`、`pm_workflow_frontend` 增加 legacy `subagent -> all` 归一化兼容，避免现有全局/项目配置继续把它们锁死为 subagent
+- 修复当前 CLI `opencode run --agent ...` 直调链路下，上述 workflow agents 被错误识别为 subagent 并 fallback 到默认 `build` agent 的问题
+
 ## 0.1.8
 
 - 自动生成的 fallback agents 默认带 `hidden: true`，减少 agent 切换列表噪音
