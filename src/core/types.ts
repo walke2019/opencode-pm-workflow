@@ -35,7 +35,9 @@ export type DispatchAgent =
   | "build"
   | "qa_engineer"
   | "writer"
-  | "frontend";
+  | "frontend"
+  | "commander"
+  | "backend";
 export type ExecutableAgent = string;
 
 export type DispatchAction =

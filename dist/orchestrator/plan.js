@@ -203,19 +203,19 @@ export function buildDispatchPlan(projectDir) {
         reason = "当前存在待 review 代码变更，应先完成 code review。";
     }
     else if (state.stage === "plan_ready") {
-        recommendedAgent = "build";
+        recommendedAgent = "commander";
         recommendedAction = "start-development";
-        reason = "计划已就绪，下一步应由 build agent 开始开发。";
+        reason = "计划已就绪，下一步应由总指挥 commander 协调分发并开始开发。";
     }
     else if (state.stage === "development") {
-        recommendedAgent = "build";
+        recommendedAgent = "commander";
         recommendedAction = "continue-development";
-        reason = "当前处于开发阶段，应继续实现、修复或完善当前 phase。";
+        reason = "当前处于开发阶段，应继续由总指挥协调实现、修复或完善当前 phase。";
     }
     else if (state.stage === "release_ready" && gates.releaseGate) {
-        recommendedAgent = "build";
+        recommendedAgent = "writer";
         recommendedAction = "prepare-release";
-        reason = "当前已满足 release gate，可进入发布准备流程。";
+        reason = "当前已满足 release gate，由文档专家 writer 进入发布准备流程。";
     }
     else if (state.stage === "released" || state.stage === "maintenance") {
         recommendedAgent = "pm";
