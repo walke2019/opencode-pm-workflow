@@ -17,16 +17,186 @@ import {
   recordFallbackExecution,
   setLastAgent,
 } from "../../shared.js";
-import { executeDispatchCommand } from "../runtime.js";
+import {
+  buildAutoContinueDispatch,
+  executeDispatchCommand,
+} from "../runtime.js";
+
+type AutoContinueCollectionInput = {
+  projectPath: string;
+  prompt: string;
+  firstEvaluation?: EvaluationResult;
+  subsequentEvaluations?: Array<EvaluationResult | undefined>;
+  maxAutoSteps?: number;
+};
+
+type AutoContinueGateDecision = {
+  allowed: boolean;
+  reasons: string[];
+};
+
+type AutoContinueExecutionInput = {
+  projectPath: string;
+  prompt: string;
+  firstEvaluation?: EvaluationResult;
+  maxAutoSteps?: number;
+  canExecute: (
+    dispatch: ReturnType<typeof buildDispatchCommand>,
+  ) => AutoContinueGateDecision;
+  runDispatch: (dispatch: ReturnType<typeof buildDispatchCommand>) => {
+    dispatch: ReturnType<typeof buildDispatchCommand>;
+    result: { status?: number | null; stdout?: string; stderr?: string };
+    evaluation?: EvaluationResult;
+  };
+};
+
+export function collectAutoContinueDispatches({
+  projectPath,
+  prompt,
+  firstEvaluation,
+  subsequentEvaluations = [],
+  maxAutoSteps = 2,
+}: AutoContinueCollectionInput) {
+  const collected = [];
+  let currentEvaluation = firstEvaluation;
+  const safeMaxSteps = Math.max(0, Math.min(3, maxAutoSteps));
+
+  for (let index = 0; index < safeMaxSteps; index += 1) {
+    const nextDispatch = currentEvaluation
+      ? buildAutoContinueDispatch(projectPath, prompt, currentEvaluation)
+      : undefined;
+    if (!nextDispatch) {
+      break;
+    }
+    collected.push(nextDispatch);
+    currentEvaluation = subsequentEvaluations[index];
+  }
+
+  return collected;
+}
+
+export function executeAutoContinueChain({
+  projectPath,
+  prompt,
+  firstEvaluation,
+  maxAutoSteps = 2,
+  canExecute,
+  runDispatch,
+}: AutoContinueExecutionInput) {
+  const executions: Array<{
+    dispatch: ReturnType<typeof buildDispatchCommand>;
+    result: { status?: number | null; stdout?: string; stderr?: string };
+    evaluation?: EvaluationResult;
+  }> = [];
+  const safeMaxSteps = Math.max(0, Math.min(3, maxAutoSteps));
+  let currentEvaluation = firstEvaluation;
+  let stopReason:
+    | "no-auto-continue"
+    | "gate-blocked"
+    | "execution-failed"
+    | "completed"
+    | "max-steps-reached" = "no-auto-continue";
+
+  for (let index = 0; index < safeMaxSteps; index += 1) {
+    const dispatch = currentEvaluation
+      ? buildAutoContinueDispatch(projectPath, prompt, currentEvaluation)
+      : undefined;
+    if (!dispatch) {
+      stopReason = executions.length > 0 ? "completed" : "no-auto-continue";
+      break;
+    }
+
+    const gate = canExecute(dispatch);
+    if (!gate.allowed) {
+      stopReason = "gate-blocked";
+      break;
+    }
+
+    const execution = runDispatch(dispatch);
+    executions.push(execution);
+    const exitCode = execution.result.status ?? -1;
+    if (exitCode !== 0) {
+      stopReason = "execution-failed";
+      break;
+    }
+
+    currentEvaluation = execution.evaluation;
+    if (
+      !currentEvaluation?.canAutoContinue ||
+      !currentEvaluation?.autoContinueSafe
+    ) {
+      stopReason = "completed";
+      break;
+    }
+
+    stopReason = index === safeMaxSteps - 1 ? "max-steps-reached" : stopReason;
+  }
+
+  return {
+    executions,
+    stopReason,
+  };
+}
+
+function buildAutoContinueGate(
+  projectPath: string,
+  dispatch: ReturnType<typeof buildDispatchCommand>,
+) {
+  const permission = buildPermissionGate(projectPath, {
+    kind: "execute",
+    action: dispatch.recommendedAction,
+  });
+  if (!permission.allowed) {
+    return {
+      allowed: false,
+      reasons: permission.reasons,
+    };
+  }
+
+  const gate = buildExecutionGate(projectPath, dispatch.recommendedAction);
+  return {
+    allowed: gate.allowed,
+    reasons: gate.reasons,
+  };
+}
+
+function formatAutoContinueExecutionLines(
+  autoContinue: ReturnType<typeof executeAutoContinueChain>,
+) {
+  const lines = [
+    `- auto-continue executed steps: ${autoContinue.executions.length}`,
+    `- auto-continue stop reason: ${autoContinue.stopReason}`,
+  ];
+
+  autoContinue.executions.forEach((execution, index) => {
+    lines.push(
+      `- auto-continue executed step ${index + 1}: ${execution.dispatch.recommendedAgent}/${execution.dispatch.recommendedAction}`,
+    );
+    lines.push(`  auto-continue exitCode: ${execution.result.status ?? -1}`);
+    lines.push(...formatLoopEvaluationLines(execution.evaluation));
+  });
+
+  return lines;
+}
 
 export function formatTaskAnalysisLines(analysis?: TaskAnalysis): string[] {
   if (!analysis) {
     return ["- task analysis: unavailable"];
   }
 
+  const coordinationLine =
+    analysis.recommendedAgent === "pm"
+      ? analysis.expectedNextAgents.includes("commander")
+        ? "- task analysis coordination: pm 负责主协调，commander 作为顾问支持"
+        : "- task analysis coordination: pm 负责主协调"
+      : analysis.recommendedAgent === "commander"
+        ? "- task analysis coordination: commander 负责顾问式拆解支持"
+        : undefined;
+
   return [
     `- task analysis: domain=${analysis.domain} complexity=${analysis.complexity} mode=${analysis.executionMode}`,
     `- task analysis agent: recommended=${analysis.recommendedAgent} fallback=${analysis.fallbackAgents.join(",") || "none"}`,
+    ...(coordinationLine ? [coordinationLine] : []),
     `- task analysis decomposition: ${analysis.needsDecomposition ? "yes" : "no"}`,
     analysis.rationale.length
       ? `- task analysis rationale: ${analysis.rationale.join("；")}`
@@ -72,6 +242,11 @@ export function formatEvaluationLines(evaluation?: EvaluationResult): string[] {
     evaluation.recommendedNextAction
       ? `- recommended next action: ${evaluation.recommendedNextAction}`
       : "- recommended next action: none",
+    `- auto continue: ${evaluation.canAutoContinue ? "yes" : "no"}`,
+    `- auto continue safe: ${evaluation.autoContinueSafe ? "yes" : "no"}`,
+    evaluation.nextAutoAction
+      ? `- next auto action: ${evaluation.nextAutoAction}`
+      : "- next auto action: none",
   ];
 }
 
@@ -96,6 +271,48 @@ export function formatLoopEvaluationLines(
       (line) => `  ${line.slice(2)}`,
     ),
   ];
+}
+
+function executeSingleDispatch(
+  projectPath: string,
+  dispatch: ReturnType<typeof buildDispatchCommand>,
+  prompt: string,
+) {
+  const result = executeDispatchCommand(projectPath, dispatch, prompt);
+  const evaluation = dispatch.handoffPacket
+    ? evaluateDispatchResult({
+        packet: dispatch.handoffPacket,
+        exitCode: result.status ?? -1,
+        stdout: result.stdout || "",
+        stderr: result.stderr || "",
+      })
+    : undefined;
+
+  return { result, evaluation };
+}
+
+function appendAutoContinueSummary(
+  outputs: string[],
+  projectPath: string,
+  prompt: string,
+  evaluation?: EvaluationResult,
+  maxAutoSteps = 2,
+) {
+  const nextDispatches = collectAutoContinueDispatches({
+    projectPath,
+    prompt,
+    firstEvaluation: evaluation,
+    maxAutoSteps,
+  });
+
+  outputs.push(
+    `- auto-continue planned steps: ${nextDispatches.length}/${Math.max(0, Math.min(3, maxAutoSteps))}`,
+  );
+  for (const [index, dispatch] of nextDispatches.entries()) {
+    outputs.push(
+      `- auto-continue step ${index + 1}: ${dispatch.recommendedAgent}/${dispatch.recommendedAction}`,
+    );
+  }
 }
 
 export function createDispatchTools() {
@@ -246,30 +463,44 @@ export function createDispatchTools() {
           ].join("\n");
         }
 
-        const result = executeDispatchCommand(
+        const executionPrompt = args.prompt || "继续当前阶段的推荐动作";
+        const { result, evaluation } = executeSingleDispatch(
           projectPath,
           dispatch,
-          args.prompt || "继续当前阶段的推荐动作",
+          executionPrompt,
         );
-        const evaluation = dispatch.handoffPacket
-          ? evaluateDispatchResult({
-              packet: dispatch.handoffPacket,
-              exitCode: result.status ?? -1,
-              stdout: result.stdout || "",
-              stderr: result.stderr || "",
-            })
-          : undefined;
         const afterState = buildStateSummary(projectPath);
         const receipt = recordExecutionReceipt(projectPath, {
           action: dispatch.recommendedAction,
           executableAgent: dispatch.executableAgent,
-          prompt: args.prompt || "继续当前阶段的推荐动作",
+          prompt: executionPrompt,
           commandArgs: dispatch.commandArgs,
           exitCode: result.status ?? -1,
           retryUsed: false,
           fallbackUsed: false,
           stageBefore: beforeState.stage,
           stageAfter: afterState.stage,
+        });
+        const autoContinue = executeAutoContinueChain({
+          projectPath,
+          prompt: executionPrompt,
+          firstEvaluation: evaluation,
+          maxAutoSteps: 2,
+          canExecute: (nextDispatch) =>
+            buildAutoContinueGate(projectPath, nextDispatch),
+          runDispatch: (nextDispatch) => {
+            const { result: nextResult, evaluation: nextEvaluation } =
+              executeSingleDispatch(projectPath, nextDispatch, executionPrompt);
+            return {
+              dispatch: nextDispatch,
+              result: {
+                status: nextResult.status ?? -1,
+                stdout: nextResult.stdout || "",
+                stderr: nextResult.stderr || "",
+              },
+              evaluation: nextEvaluation,
+            };
+          },
         });
 
         return [
@@ -284,6 +515,18 @@ export function createDispatchTools() {
           ...formatHandoffPacketLines(dispatch.handoffPacket),
           ...formatEvaluationLines(evaluation),
           ...formatNextDispatchHintLines(evaluation),
+          ...(() => {
+            const lines: string[] = [];
+            appendAutoContinueSummary(
+              lines,
+              projectPath,
+              executionPrompt,
+              evaluation,
+              2,
+            );
+            return lines;
+          })(),
+          ...formatAutoContinueExecutionLines(autoContinue),
           result.stdout?.trim()
             ? `- stdout:\n${result.stdout.trim()}`
             : "- stdout: (empty)",
@@ -429,21 +672,44 @@ export function createDispatchTools() {
             break;
           }
 
-          const result = executeDispatchCommand(
+          const { result, evaluation } = executeSingleDispatch(
             projectPath,
             dispatch,
             args.prompt,
           );
-          const evaluation = dispatch.handoffPacket
-            ? evaluateDispatchResult({
-                packet: dispatch.handoffPacket,
-                exitCode: result.status ?? -1,
-                stdout: result.stdout || "",
-                stderr: result.stderr || "",
-              })
-            : undefined;
           outputs.push(`  exitCode: ${result.status ?? -1}`);
           outputs.push(...formatLoopEvaluationLines(evaluation));
+          appendAutoContinueSummary(
+            outputs,
+            projectPath,
+            args.prompt,
+            evaluation,
+            2,
+          );
+          if ((result.status ?? -1) === 0) {
+            const autoContinue = executeAutoContinueChain({
+              projectPath,
+              prompt: args.prompt,
+              firstEvaluation: evaluation,
+              maxAutoSteps: 2,
+              canExecute: (nextDispatch) =>
+                buildAutoContinueGate(projectPath, nextDispatch),
+              runDispatch: (nextDispatch) => {
+                const { result: nextResult, evaluation: nextEvaluation } =
+                  executeSingleDispatch(projectPath, nextDispatch, args.prompt);
+                return {
+                  dispatch: nextDispatch,
+                  result: {
+                    status: nextResult.status ?? -1,
+                    stdout: nextResult.stdout || "",
+                    stderr: nextResult.stderr || "",
+                  },
+                  evaluation: nextEvaluation,
+                };
+              },
+            });
+            outputs.push(...formatAutoContinueExecutionLines(autoContinue));
+          }
 
           if ((result.status ?? -1) !== 0) {
             const retry = buildRetryPlan(
@@ -454,19 +720,8 @@ export function createDispatchTools() {
               outputs.push(
                 `  retry: ${retry.attempts + 1}/${retry.maxAttempts}`,
               );
-              const retryResult = executeDispatchCommand(
-                projectPath,
-                dispatch,
-                args.prompt,
-              );
-              const retryEvaluation = dispatch.handoffPacket
-                ? evaluateDispatchResult({
-                    packet: dispatch.handoffPacket,
-                    exitCode: retryResult.status ?? -1,
-                    stdout: retryResult.stdout || "",
-                    stderr: retryResult.stderr || "",
-                  })
-                : undefined;
+              const { result: retryResult, evaluation: retryEvaluation } =
+                executeSingleDispatch(projectPath, dispatch, args.prompt);
               outputs.push(`  retryExitCode: ${retryResult.status ?? -1}`);
               outputs.push(...formatLoopEvaluationLines(retryEvaluation));
               if ((retryResult.status ?? -1) === 0) {
@@ -504,19 +759,14 @@ export function createDispatchTools() {
                   fallback.toAgent,
                   args.prompt,
                 );
-                const fallbackResult = executeDispatchCommand(
+                const {
+                  result: fallbackResult,
+                  evaluation: fallbackEvaluation,
+                } = executeSingleDispatch(
                   projectPath,
                   fallbackDispatch,
                   args.prompt,
                 );
-                const fallbackEvaluation = fallbackDispatch.handoffPacket
-                  ? evaluateDispatchResult({
-                      packet: fallbackDispatch.handoffPacket,
-                      exitCode: fallbackResult.status ?? -1,
-                      stdout: fallbackResult.stdout || "",
-                      stderr: fallbackResult.stderr || "",
-                    })
-                  : undefined;
                 recordFallbackExecution(projectPath, {
                   action: dispatch.recommendedAction,
                   fromAgent: fallback.fromAgent,
@@ -564,19 +814,12 @@ export function createDispatchTools() {
                 fallback.toAgent,
                 args.prompt,
               );
-              const fallbackResult = executeDispatchCommand(
-                projectPath,
-                fallbackDispatch,
-                args.prompt,
-              );
-              const fallbackEvaluation = fallbackDispatch.handoffPacket
-                ? evaluateDispatchResult({
-                    packet: fallbackDispatch.handoffPacket,
-                    exitCode: fallbackResult.status ?? -1,
-                    stdout: fallbackResult.stdout || "",
-                    stderr: fallbackResult.stderr || "",
-                  })
-                : undefined;
+              const { result: fallbackResult, evaluation: fallbackEvaluation } =
+                executeSingleDispatch(
+                  projectPath,
+                  fallbackDispatch,
+                  args.prompt,
+                );
               recordFallbackExecution(projectPath, {
                 action: dispatch.recommendedAction,
                 fromAgent: fallback.fromAgent,

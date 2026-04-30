@@ -11,11 +11,18 @@ import { join } from "path";
 import {
   REVIEW_MARKER_FILENAME,
   buildDispatchCommand,
+  buildExecutablePrompt,
   buildDispatchPlan,
   buildStateSummary,
+  getExecutableAgent,
   recordDispatchExecution,
+  readWorkflowConfig,
   setLastAgent,
 } from "../shared.js";
+import type { DispatchCommand, EvaluationResult } from "../core/types.js";
+import { buildDispatchCommandStrings } from "../orchestrator/prompts.js";
+import { analyzeDispatchTask } from "../orchestrator/analyzer.js";
+import { buildHandoffPacket } from "../orchestrator/handoff.js";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -156,6 +163,63 @@ export function executeDispatchCommand(
   return result;
 }
 
+export function buildAutoContinueDispatch(
+  projectDir: string,
+  prompt: string,
+  evaluation: EvaluationResult,
+): DispatchCommand | undefined {
+  if (
+    !evaluation.canAutoContinue ||
+    !evaluation.autoContinueSafe ||
+    !evaluation.recommendedNextAgent ||
+    !evaluation.nextAutoAction
+  ) {
+    return undefined;
+  }
+
+  const plan = buildDispatchPlan(projectDir);
+  const config = readWorkflowConfig(projectDir);
+  const sessionID = plan.preferredSession;
+  const analysis = analyzeDispatchTask({
+    prompt,
+    stage: plan.stage,
+    blockedReasons: plan.blockedReasons,
+    preferredAgent: evaluation.recommendedNextAgent,
+  });
+  const handoffPacket = buildHandoffPacket({
+    prompt,
+    analysis,
+    targetAgent: evaluation.recommendedNextAgent,
+  });
+  const executableAgent = getExecutableAgent(
+    evaluation.recommendedNextAgent,
+    config.agents.dispatch_map,
+  );
+  const executablePrompt = buildExecutablePrompt(
+    evaluation.recommendedNextAgent,
+    prompt,
+    handoffPacket,
+  );
+  const { command, commandArgs } = buildDispatchCommandStrings(
+    sessionID,
+    executableAgent,
+    executablePrompt,
+  );
+
+  return {
+    ...plan,
+    recommendedAgent: evaluation.recommendedNextAgent,
+    recommendedAction: evaluation.nextAutoAction,
+    reason: `自动续跑下一步：${evaluation.recommendedNextAgent}/${evaluation.nextAutoAction}`,
+    analysis,
+    handoffPacket,
+    executableAgent,
+    executablePrompt,
+    command,
+    commandArgs,
+  };
+}
+
 export function getConfigDir() {
   if (process.platform === "win32") {
     return join(process.env.APPDATA || "", "opencode");
@@ -272,7 +336,11 @@ export function runPreCommitCheck(projectDir: string) {
   });
 
   if ((result.status ?? 0) === 0) {
-    return { ok: true, stdout: result.stdout || "", stderr: result.stderr || "" };
+    return {
+      ok: true,
+      stdout: result.stdout || "",
+      stderr: result.stderr || "",
+    };
   }
 
   return {

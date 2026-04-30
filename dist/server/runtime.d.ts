@@ -1,4 +1,5 @@
 import { buildDispatchCommand } from "../shared.js";
+import type { DispatchCommand, EvaluationResult } from "../core/types.js";
 export type LogLevel = "debug" | "info" | "warn" | "error";
 export type OpenCodeClient = {
     app?: {
@@ -38,6 +39,7 @@ export type TuiPromptOutput = {
     prompt?: string;
 };
 export declare function executeDispatchCommand(projectPath: string, dispatch: ReturnType<typeof buildDispatchCommand>, prompt: string): import("child_process").SpawnSyncReturns<string>;
+export declare function buildAutoContinueDispatch(projectDir: string, prompt: string, evaluation: EvaluationResult): DispatchCommand | undefined;
 export declare function getConfigDir(): string;
 export declare function getProjectDir(ctx: PluginContext): string;
 export declare function log(client: OpenCodeClient | undefined, level: LogLevel, message: string, extra?: Record<string, unknown>): Promise<void>;
