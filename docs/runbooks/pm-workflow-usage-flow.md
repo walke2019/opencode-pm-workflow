@@ -115,11 +115,12 @@ project/
 
 当前主要角色：
 
-- `pm`：需求收集、阶段判断、路线推进
-- `plan`：开发计划整理
-- `build`：实现与修复
-- `qa_engineer`：代码审查与质量验证
-- `writer`：文档整理
+- `pm`：主协调入口，负责任务分析、阶段判断、路线推进
+- `commander`：顾问角色，仅在复杂拆解场景下提供建议，不是默认总入口
+- `backend`：后端实现、接口、服务与数据逻辑
+- `frontend`：前端界面、交互与用户体验实现
+- `qa_engineer`：代码审查、验证与质量把关
+- `writer`：文档整理、说明补全与发布材料编写
 
 ## 2. 启动后先看三类提示
 
@@ -156,26 +157,45 @@ DEV-PLAN 是否存在
 
 ## 4. 总流程图
 
+下面这张图用于帮助第一次接触项目的读者快速理解：任务进入系统后，始终先由 `pm` 统筹；`commander` 只在复杂场景下提供顾问建议；真正执行由专业 agent 完成；执行结果会经过评估，并在低风险条件下受控自动续跑。
+
+对应 SVG 成品：
+
+```text
+docs/pm-workflow-overview.svg
+```
+
 ```mermaid
 flowchart TD
-    A[想法 / 新需求] --> B{是否已有 Product-Spec.md}
-    B -- 否 --> C[collect-spec\n生成 Product-Spec.md]
-    B -- 是 --> D{是否已有 DEV-PLAN.md}
-    C --> D
-    D -- 否 --> E[create-dev-plan\n生成 DEV-PLAN.md]
-    D -- 是 --> F{当前是否有待 review 变更}
-    E --> F
-    F -- 是 --> G[run-code-review\n先完成审查]
-    F -- 否 --> H{当前阶段}
-    H -- plan_ready --> I[start-development]
-    H -- development --> J[continue-development]
-    H -- release_ready --> K[prepare-release]
-    H -- released / maintenance --> L[进入下一轮需求规划]
-    I --> J
-    J --> F
-    G --> H
-    K --> L
+    A[用户提出任务] --> B[pm 主协调分析任务]
+
+    B --> C{是否需要复杂拆解建议}
+    C -- 是 --> D[commander 提供顾问建议<br/>advisor-only]
+    C -- 否 --> E[直接选择专业 agent]
+    D --> E
+
+    E --> F[backend / frontend / writer / qa_engineer 执行]
+    F --> G[evaluator 评估结果]
+
+    G --> H{是否满足低风险自动续跑}
+    H -- 是 --> I[自动进入下一步分派]
+    I --> B
+
+    H -- 否 --> J{是否 blocked / 高风险 / 信息不足}
+    J -- 是 --> K[停止并返回原因]
+    J -- 否 --> L[等待下一次调度或人工继续]
+
+    G --> M[阶段推进或收尾]
 ```
+
+这张图刻意不展示实现字段与内部返回结构，只强调 6 个关键认知：
+
+1. `pm` 是唯一主协调入口。
+2. `commander` 是 advisor-only，不是默认总入口。
+3. 专业 agent 才是实际执行者。
+4. `evaluator` 负责判断结果与下一步方向。
+5. 系统支持低风险条件下的自动续跑。
+6. 自动推进不会绕过 `gate / permission / confirm`，不安全时会停住并返回原因。
 
 ## 5. 每个阶段怎么用
 
@@ -297,7 +317,7 @@ prepare-release
 
 ```mermaid
 flowchart TD
-    A[读取当前 Task 的 Spec / Plan / 设计参照] --> B[build 实现代码]
+    A[读取当前 Task 的 Spec / Plan / 设计参照] --> B[backend / frontend / writer 实现代码]
     B --> C[对照功能与视觉做自检]
     C --> D[qa_engineer 审查 Stage 1\nSpec Compliance]
     D -- 不通过 --> E[补实现]

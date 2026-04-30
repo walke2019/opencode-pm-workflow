@@ -58,7 +58,8 @@
     "pack-dry-run": "node ./scripts/pack-dry-run.mjs",
     "prepare-publish": "npm run typecheck && npm run build",
     "verify-release": "npm run prepare-publish && npm run smoke && npm run pack-dry-run",
-    "prepublishOnly": "npm run verify-release"
+    "prepublishOnly": "npm run verify-release",
+    "test": "node test/workflow-redesign.test.mjs && node test/dispatch-quality-loop.test.mjs && node test/model-inventory.test.mjs"
   },
   "keywords": [
     "opencode",

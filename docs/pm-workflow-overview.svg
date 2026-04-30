@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900" role="img" aria-labelledby="title desc">
+  <title id="title">pm-workflow 总览图</title>
+  <desc id="desc">展示用户任务如何先进入 pm 主协调，再由 commander 在复杂场景下提供 advisor-only 建议，随后由专业 agent 执行并经过 evaluator 判断，在低风险条件下自动续跑，否则停止并返回原因。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#42526e"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#091e42" flood-opacity="0.16"/>
+    </filter>
+    <style>
+      .bg { fill: #f7f9fc; }
+      .lane { fill: #ffffff; stroke: #d8dee9; stroke-width: 1.5; rx: 18; }
+      .lane-title { font: 700 20px Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #172b4d; }
+      .box { fill: #ffffff; stroke: #7a869a; stroke-width: 1.6; rx: 14; filter: url(#shadow); }
+      .box-blue { fill: #e9f2ff; stroke: #3578d4; }
+      .box-green { fill: #e8f7ef; stroke: #2f855a; }
+      .box-yellow { fill: #fff6df; stroke: #b7791f; }
+      .box-purple { fill: #f2edff; stroke: #7650c4; }
+      .box-red { fill: #fff0f0; stroke: #c53030; }
+      .decision { fill: #fffdf5; stroke: #b7791f; stroke-width: 1.8; filter: url(#shadow); }
+      .label { font: 600 16px Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #172b4d; }
+      .small { font: 400 13px Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #42526e; }
+      .tiny { font: 400 12px Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #5e6c84; }
+      .edge { fill: none; stroke: #42526e; stroke-width: 2.2; marker-end: url(#arrow); }
+      .edge-soft { fill: none; stroke: #7a869a; stroke-width: 1.8; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1400" height="900"/>
+
+  <rect class="lane" x="40" y="40" width="1320" height="170"/>
+  <text class="lane-title" x="70" y="76">1. 任务进入与主协调</text>
+  <rect class="box box-blue" x="90" y="108" width="240" height="58"/>
+  <text class="label" x="118" y="133">用户提出任务</text>
+  <text class="small" x="118" y="154">需求、问题、修复或发布动作</text>
+
+  <rect class="box box-blue" x="430" y="108" width="260" height="58"/>
+  <text class="label" x="458" y="133">pm 主协调分析任务</text>
+  <text class="small" x="458" y="154">统一入口，负责判断路线与下一步</text>
+
+  <path class="edge" d="M330 137 H430"/>
+
+  <rect class="lane" x="40" y="240" width="1320" height="250"/>
+  <text class="lane-title" x="70" y="276">2. 顾问建议与专业执行</text>
+  <polygon class="decision" points="560,360 670,300 780,360 670,420"/>
+  <text class="label" x="605" y="354">是否需要</text>
+  <text class="small" x="592" y="374">复杂拆解建议</text>
+
+  <rect class="box box-purple" x="900" y="290" width="280" height="64"/>
+  <text class="label" x="930" y="316">commander 提供顾问建议</text>
+  <text class="small" x="930" y="338">advisor-only，不是默认总入口</text>
+
+  <rect class="box box-green" x="900" y="385" width="320" height="68"/>
+  <text class="label" x="930" y="412">backend / frontend / writer / qa_engineer</text>
+  <text class="small" x="930" y="434">专业 agent 负责真实执行</text>
+
+  <path class="edge" d="M690 166 V250 C690 275 680 280 670 300"/>
+  <path class="edge" d="M780 360 H900"/>
+  <text class="tiny" x="827" y="345">是</text>
+  <path class="edge" d="M745 399 C820 430 840 433 900 433"/>
+  <text class="tiny" x="798" y="420">否</text>
+  <path class="edge-soft" d="M1040 354 V376 C1040 388 1040 392 1040 385"/>
+
+  <rect class="lane" x="40" y="520" width="1320" height="300"/>
+  <text class="lane-title" x="70" y="556">3. 评估、自动续跑与停止条件</text>
+
+  <rect class="box" x="120" y="620" width="240" height="58"/>
+  <text class="label" x="150" y="645">evaluator 评估结果</text>
+  <text class="small" x="150" y="666">判断是否能进入下一步</text>
+
+  <polygon class="decision" points="560,650 665,595 770,650 665,705"/>
+  <text class="label" x="598" y="646">是否满足</text>
+  <text class="small" x="591" y="667">低风险自动续跑</text>
+
+  <rect class="box box-green" x="900" y="588" width="260" height="62"/>
+  <text class="label" x="930" y="614">自动进入下一步分派</text>
+  <text class="small" x="930" y="636">回到 pm，继续受控推进</text>
+
+  <polygon class="decision" points="560,760 665,705 770,760 665,815"/>
+  <text class="label" x="592" y="752">是否 blocked /</text>
+  <text class="small" x="585" y="773">高风险 / 信息不足</text>
+
+  <rect class="box box-red" x="900" y="710" width="250" height="62"/>
+  <text class="label" x="930" y="736">停止并返回原因</text>
+  <text class="small" x="930" y="758">不绕过 gate / permission / confirm</text>
+
+  <rect class="box box-yellow" x="1190" y="710" width="140" height="62"/>
+  <text class="label" x="1216" y="736">等待继续</text>
+  <text class="small" x="1204" y="758">人工或下次调度</text>
+
+  <rect class="box" x="1190" y="588" width="140" height="62"/>
+  <text class="label" x="1216" y="614">阶段推进</text>
+  <text class="small" x="1208" y="636">或任务收尾</text>
+
+  <path class="edge" d="M1220 453 C1220 540 310 548 310 620"/>
+  <path class="edge" d="M360 650 H560"/>
+  <path class="edge" d="M770 650 H900"/>
+  <text class="tiny" x="825" y="635">是</text>
+  <path class="edge-soft" d="M1030 588 C1030 520 650 500 620 200"/>
+  <path class="edge-soft" d="M360 650 C460 650 470 718 560 760"/>
+  <text class="tiny" x="458" y="705">否</text>
+  <path class="edge" d="M770 760 H900"/>
+  <text class="tiny" x="825" y="745">是</text>
+  <path class="edge-soft" d="M770 760 H1190"/>
+  <text class="tiny" x="948" y="745">否</text>
+  <path class="edge-soft" d="M360 650 C700 570 1010 590 1190 620"/>
+  <text class="tiny" x="880" y="576">评估后可直接推进收尾</text>
+</svg>

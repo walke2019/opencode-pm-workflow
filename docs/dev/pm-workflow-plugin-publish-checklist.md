@@ -194,8 +194,8 @@ npm pack --dry-run --prefix packages/opencode-pm-workflow
 如果这份发布清单与最终策略不一致，只需要更新以下文件：
 
 ```text
-packages/opencode-pm-workflow/package.json
-packages/opencode-pm-workflow/README.md
+package.json
+README.md
 docs/dev/pm-workflow-plugin-release-readiness.md
 docs/dev/pm-workflow-plugin-publish-checklist.md
 ```

@@ -74,7 +74,7 @@ plugins/pm-workflow-shared.ts
 
 ```text
 test/plugin-contract.test.mjs
-packages/opencode-pm-workflow/README.md
+README.md
 docs/dev/pm-workflow-plugin-package-plan.md
 docs/dev/pm-workflow-plugin-migration-summary.md
 ```

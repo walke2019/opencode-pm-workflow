@@ -74,7 +74,7 @@
           "type": "boolean"
         },
         "default_mode": {
-          "enum": ["primary", "subagent"]
+          "enum": ["primary", "subagent", "all"]
         },
         "dispatch_map": {
           "type": "object",
@@ -98,6 +98,12 @@
               "type": "string"
             },
             "frontend": {
+              "type": "string"
+            },
+            "commander": {
+              "type": "string"
+            },
+            "backend": {
               "type": "string"
             }
           }
@@ -124,6 +130,15 @@
               "$ref": "#/$defs/agent"
             },
             "pm_workflow_frontend": {
+              "$ref": "#/$defs/agent"
+            },
+            "pm_workflow_zhuge": {
+              "$ref": "#/$defs/agent"
+            },
+            "pm_workflow_lvbu": {
+              "$ref": "#/$defs/agent"
+            },
+            "pm_workflow_diaochan": {
               "$ref": "#/$defs/agent"
             }
           }
@@ -187,7 +202,7 @@
           "uniqueItems": true
         },
         "mode": {
-          "enum": ["primary", "subagent"]
+          "enum": ["primary", "subagent", "all"]
         },
         "hidden": {
           "type": "boolean"

@@ -4,53 +4,66 @@
     "mode": "observe"
   },
   "permissions": {
-    "allow_execute_tools": false,
+    "allow_execute_tools": true,
     "allow_repair_tools": true,
     "allow_release_actions": false
   },
   "confirm": {
-    "require_confirm_for_execute": true
+    "require_confirm_for_execute": false
   },
   "agents": {
     "enabled": true,
     "default_mode": "subagent",
     "dispatch_map": {
       "pm": "pm_workflow_caocao",
-      "plan": "plan",
-      "build": "build",
+      "plan": "pm_workflow_zhuge",
+      "build": "pm_workflow_zhuge",
+      "commander": "pm_workflow_zhuge",
+      "backend": "pm_workflow_lvbu",
+      "frontend": "pm_workflow_frontend",
       "qa_engineer": "pm_workflow_qa",
-      "writer": "pm_workflow_writer",
-      "frontend": "pm_workflow_frontend"
+      "writer": "pm_workflow_writer"
     },
     "definitions": {
       "pm_workflow_caocao": {
-        "model": "openai/gpt-5.5",
-        "fallback_models": ["openai/gpt-5.4"],
+        "model": "cx/gpt-5.5",
         "mode": "primary",
         "temperature": 0.2,
         "description": "Cao Cao, pm-workflow primary coordinator",
-        "prompt": "你是曹操（Cao Cao），pm-workflow 的主协调 agent。你取其决断、统筹、识人用人和风险判断之长：先辨形势，再定目标、边界、验收标准与推进路径。你表达直接、务实、清晰，重视结果与验证；不使用贬损、羞辱或嘲讽式表达。"
+        "prompt": "你是曹操（Cao Cao），pm-workflow 的主协调 agent。快速压缩需求，确定目标、边界、todo、验收标准与分派路径；随后推进开发、测试与发布摘要。"
       },
-      "pm_workflow_qa": {
-        "model": "openai/gpt-5.4",
-        "fallback_models": ["openai/gpt-5.4-mini"],
-        "mode": "subagent",
-        "hidden": true,
-        "temperature": 0.1
+      "pm_workflow_zhuge": {
+        "model": "kr/claude-sonnet-4.5",
+        "mode": "all",
+        "temperature": 0.2,
+        "description": "Zhuge Liang, advisor-only decomposition agent"
       },
-      "pm_workflow_writer": {
-        "model": "openai/gpt-5.4-mini",
-        "fallback_models": ["openai/gpt-5.4"],
-        "mode": "subagent",
-        "hidden": true,
-        "temperature": 0.3
+      "pm_workflow_lvbu": {
+        "model": "cx/gpt-5.3-codex",
+        "mode": "all",
+        "temperature": 0.2,
+        "description": "Lv Bu, backend/plugin/API implementation agent"
       },
       "pm_workflow_frontend": {
-        "model": "openai/gpt-5.4-mini",
-        "fallback_models": ["openai/gpt-5.4"],
-        "mode": "subagent",
+        "model": "antigravity/gemini-3-flash-preview",
+        "mode": "all",
         "hidden": true,
-        "temperature": 0.25
+        "temperature": 0.25,
+        "description": "Frontend/UI implementation agent"
+      },
+      "pm_workflow_qa": {
+        "model": "kr/claude-sonnet-4.5",
+        "mode": "all",
+        "hidden": true,
+        "temperature": 0.1,
+        "description": "QA/code-review verification agent"
+      },
+      "pm_workflow_writer": {
+        "model": "kr/claude-haiku-4.5",
+        "mode": "all",
+        "hidden": true,
+        "temperature": 0.3,
+        "description": "Documentation and release notes agent"
       }
     }
   },
@@ -81,8 +94,12 @@
       "continue-development"
     ],
     "agent_map": {
-      "plan": "build",
-      "build": "plan"
+      "plan": "pm_workflow_zhuge",
+      "build": "pm_workflow_zhuge",
+      "backend": "pm_workflow_lvbu",
+      "frontend": "pm_workflow_frontend",
+      "qa_engineer": "pm_workflow_qa",
+      "writer": "pm_workflow_writer"
     }
   }
 }
