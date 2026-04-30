@@ -91,9 +91,14 @@ async function testPrompts() {
 
 async function testDispatchRouting() {
   console.log('\nTesting dispatch routing regressions...');
-  const simpleWriterDispatch = buildDispatchCommand(
-    process.cwd(),
-    '帮我补 README 的安装说明',
+  const simpleWriterDispatch = await withTempProject((projectDir) => {
+    createDoc(projectDir, 'Product-Spec.md');
+    createDoc(projectDir, 'DEV-PLAN.md');
+  }, (projectDir) =>
+    buildDispatchCommand(
+      projectDir,
+      '帮我补 README 的安装说明',
+    ),
   );
   assert.notStrictEqual(
     simpleWriterDispatch.recommendedAgent,
@@ -110,15 +115,34 @@ async function testDispatchRouting() {
   console.log('✓ Simple writer task does not default to commander');
   console.log('✓ Dispatch includes analysis and handoff packet');
 
-  const backendDispatch = buildDispatchCommand(
-    process.cwd(),
-    '实现 OpenCode plugin 工具调用和 workflow 路由，并补齐测试',
+  const backendDispatch = await withTempProject((projectDir) => {
+    createDoc(projectDir, 'Product-Spec.md');
+    createDoc(projectDir, 'DEV-PLAN.md');
+  }, (projectDir) =>
+    buildDispatchCommand(
+      projectDir,
+      '实现 OpenCode plugin 工具调用和 workflow 路由，并补齐测试',
+    ),
   );
   assert.strictEqual(backendDispatch.recommendedAgent, 'backend');
   assert.ok(backendDispatch.analysis.expectedNextAgents.includes('qa_engineer'));
   assert.ok(backendDispatch.executablePrompt.includes('Workflow 标准'));
   assert.ok(backendDispatch.executablePrompt.includes('todo'));
   console.log('✓ PM default dispatch routes implementation work to backend with QA follow-up');
+
+  const gatedDispatch = await withTempProject(() => {}, (projectDir) =>
+    buildDispatchCommand(
+      projectDir,
+      '实现 OpenCode plugin 工具调用和 workflow 路由，并补齐测试',
+    ),
+  );
+  assert.strictEqual(gatedDispatch.recommendedAction, 'collect-spec');
+  assert.strictEqual(
+    gatedDispatch.recommendedAgent,
+    'pm',
+    'Spec gate should keep collect-spec on PM instead of routing to backend',
+  );
+  console.log('✓ Spec gate keeps requirements compression on PM before development routing');
 }
 
 async function testStageDefaultRouting() {

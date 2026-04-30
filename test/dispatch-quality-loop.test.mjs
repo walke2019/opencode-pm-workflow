@@ -1,4 +1,7 @@
 import assert from 'node:assert';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   analyzeDispatchTask,
   buildHandoffPacket,
@@ -16,6 +19,20 @@ import {
   formatTaskAnalysisLines,
 } from '../dist/server/tools/dispatch-tools.js';
 import { buildAutoContinueDispatch } from '../dist/server/runtime.js';
+
+async function withPlanReadyProject(run) {
+  const projectDir = mkdtempSync(join(tmpdir(), 'pm-workflow-dispatch-'));
+  const docsDir = join(projectDir, '.pm-workflow', 'docs');
+  mkdirSync(docsDir, { recursive: true });
+  writeFileSync(join(docsDir, 'Product-Spec.md'), '# test\n', 'utf-8');
+  writeFileSync(join(docsDir, 'DEV-PLAN.md'), '# test\n', 'utf-8');
+
+  try {
+    return await run(projectDir);
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
 
 async function testPublicLoopExports() {
   assert.strictEqual(typeof analyzeDispatchTask, 'function');
@@ -83,10 +100,11 @@ async function testHandoffPacket() {
 }
 
 async function testDispatchCommandIncludesHandoffPacket() {
-  const projectDir = process.cwd();
-  const dispatch = buildDispatchCommand(
-    projectDir,
-    '修复认证接口 401 并确认不影响现有登录流程',
+  const dispatch = await withPlanReadyProject((projectDir) =>
+    buildDispatchCommand(
+      projectDir,
+      '修复认证接口 401 并确认不影响现有登录流程',
+    ),
   );
 
   assert.ok(dispatch.handoffPacket);

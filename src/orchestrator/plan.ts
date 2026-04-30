@@ -16,6 +16,11 @@ import {
 import { analyzeDispatchTask } from "./analyzer.js";
 import { buildHandoffPacket } from "./handoff.js";
 
+
+function shouldUsePromptSpecialist(action: DispatchAction) {
+  return action === "start-development" || action === "continue-development";
+}
+
 function buildExecutionPlanSteps(
   dispatch: DispatchCommand,
 ): ExecutionPlan["steps"] {
@@ -281,7 +286,9 @@ export function buildDispatchCommand(
     blockedReasons: plan.blockedReasons,
     preferredAgent: plan.recommendedAgent,
   });
-  const targetAgent = analysis.recommendedAgent;
+  const targetAgent = shouldUsePromptSpecialist(plan.recommendedAction)
+    ? analysis.recommendedAgent
+    : plan.recommendedAgent;
   const handoffPacket = buildHandoffPacket({
     prompt: quotedPrompt,
     analysis,

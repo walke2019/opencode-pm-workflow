@@ -4,6 +4,9 @@ import { buildStateSummary } from "../core/state.js";
 import { buildDispatchCommandStrings, buildExecutablePrompt, getExecutableAgent, } from "./prompts.js";
 import { analyzeDispatchTask } from "./analyzer.js";
 import { buildHandoffPacket } from "./handoff.js";
+function shouldUsePromptSpecialist(action) {
+    return action === "start-development" || action === "continue-development";
+}
 function buildExecutionPlanSteps(dispatch) {
     if (dispatch.recommendedAction === "blocked") {
         return [
@@ -255,7 +258,9 @@ export function buildDispatchCommand(projectDir, prompt) {
         blockedReasons: plan.blockedReasons,
         preferredAgent: plan.recommendedAgent,
     });
-    const targetAgent = analysis.recommendedAgent;
+    const targetAgent = shouldUsePromptSpecialist(plan.recommendedAction)
+        ? analysis.recommendedAgent
+        : plan.recommendedAgent;
     const handoffPacket = buildHandoffPacket({
         prompt: quotedPrompt,
         analysis,
