@@ -1,6 +1,70 @@
 import { tool } from "@opencode-ai/plugin";
-import { buildConfirmGate, buildFallbackCommand, buildDispatchCommand, buildExecutionPlan, buildExecutionGate, buildFallbackPlan, buildPermissionGate, buildRetryPlan, buildStateSummary, recordExecutionReceipt, recordFallbackExecution, setLastAgent, } from "../../shared.js";
+import { evaluateDispatchResult, buildConfirmGate, buildFallbackCommand, buildDispatchCommand, buildExecutionPlan, buildExecutionGate, buildFallbackPlan, buildPermissionGate, buildRetryPlan, buildStateSummary, recordExecutionReceipt, recordFallbackExecution, setLastAgent, } from "../../shared.js";
 import { executeDispatchCommand } from "../runtime.js";
+export function formatTaskAnalysisLines(analysis) {
+    if (!analysis) {
+        return ["- task analysis: unavailable"];
+    }
+    return [
+        `- task analysis: domain=${analysis.domain} complexity=${analysis.complexity} mode=${analysis.executionMode}`,
+        `- task analysis agent: recommended=${analysis.recommendedAgent} fallback=${analysis.fallbackAgents.join(",") || "none"}`,
+        `- task analysis decomposition: ${analysis.needsDecomposition ? "yes" : "no"}`,
+        analysis.rationale.length
+            ? `- task analysis rationale: ${analysis.rationale.join("；")}`
+            : "- task analysis rationale: 无",
+        analysis.risks.length
+            ? `- task analysis risks: ${analysis.risks.join("；")}`
+            : "- task analysis risks: 无",
+        analysis.expectedNextAgents.length
+            ? `- task analysis next agents: ${analysis.expectedNextAgents.join(" -> ")}`
+            : "- task analysis next agents: 无",
+    ];
+}
+export function formatHandoffPacketLines(packet) {
+    if (!packet) {
+        return ["- handoff packet: unavailable"];
+    }
+    return [
+        `- handoff packet: target=${packet.targetAgent} type=${packet.taskType}`,
+        `- handoff goal: ${packet.goal}`,
+        `- handoff scope: ${packet.scope.join("；") || "无"}`,
+        `- handoff acceptance: ${packet.acceptanceCriteria.join("；") || "无"}`,
+        `- handoff deliverables: ${packet.deliverables.join("；") || "无"}`,
+        `- handoff next step: ${packet.nextStepHint || "无"}`,
+    ];
+}
+export function formatEvaluationLines(evaluation) {
+    if (!evaluation) {
+        return ["- evaluation status: unavailable"];
+    }
+    return [
+        `- evaluation status: ${evaluation.status}`,
+        `- evaluation summary: ${evaluation.summary}`,
+        evaluation.gaps.length
+            ? `- evaluation gaps: ${evaluation.gaps.join("；")}`
+            : "- evaluation gaps: 无",
+        evaluation.recommendedNextAgent
+            ? `- recommended next agent: ${evaluation.recommendedNextAgent}`
+            : "- recommended next agent: none",
+        evaluation.recommendedNextAction
+            ? `- recommended next action: ${evaluation.recommendedNextAction}`
+            : "- recommended next action: none",
+    ];
+}
+export function formatNextDispatchHintLines(evaluation) {
+    if (!evaluation?.recommendedNextAgent || !evaluation.recommendedNextAction) {
+        return ["- next dispatch hint: none"];
+    }
+    return [
+        `- next dispatch hint: ${evaluation.recommendedNextAgent}/${evaluation.recommendedNextAction}`,
+    ];
+}
+export function formatLoopEvaluationLines(evaluation) {
+    return [
+        ...formatEvaluationLines(evaluation).map((line) => `  ${line.slice(2)}`),
+        ...formatNextDispatchHintLines(evaluation).map((line) => `  ${line.slice(2)}`),
+    ];
+}
 export function createDispatchTools() {
     return {
         "pm-run-dispatch": tool({
@@ -25,6 +89,8 @@ export function createDispatchTools() {
                     dispatch.blockedReasons.length
                         ? `- 阻塞原因: ${dispatch.blockedReasons.join("；")}`
                         : "- 阻塞原因: 无",
+                    ...formatTaskAnalysisLines(dispatch.analysis),
+                    ...formatHandoffPacketLines(dispatch.handoffPacket),
                     `- 推荐命令: ${dispatch.command}`,
                 ].join("\n");
             },
@@ -76,6 +142,8 @@ export function createDispatchTools() {
                         : "- gate reasons: 无",
                     `- retry: ${retry.retryable ? "retryable" : "not-retryable"} ${retry.attempts}/${retry.maxAttempts}`,
                     `- fallback: ${fallback.allowed && fallback.toAgent ? `${fallback.fromAgent}->${fallback.toAgent}` : "not-available"}`,
+                    ...formatTaskAnalysisLines(dispatch.analysis),
+                    ...formatHandoffPacketLines(dispatch.handoffPacket),
                     `- command（不会执行）: ${dispatch.command}`,
                 ].join("\n");
             },
@@ -127,6 +195,14 @@ export function createDispatchTools() {
                     ].join("\n");
                 }
                 const result = executeDispatchCommand(projectPath, dispatch, args.prompt || "继续当前阶段的推荐动作");
+                const evaluation = dispatch.handoffPacket
+                    ? evaluateDispatchResult({
+                        packet: dispatch.handoffPacket,
+                        exitCode: result.status ?? -1,
+                        stdout: result.stdout || "",
+                        stderr: result.stderr || "",
+                    })
+                    : undefined;
                 const afterState = buildStateSummary(projectPath);
                 const receipt = recordExecutionReceipt(projectPath, {
                     action: dispatch.recommendedAction,
@@ -147,6 +223,10 @@ export function createDispatchTools() {
                     `- 推荐动作: ${dispatch.recommendedAction}`,
                     `- 执行命令: ${dispatch.command}`,
                     `- exitCode: ${result.status ?? -1}`,
+                    ...formatTaskAnalysisLines(dispatch.analysis),
+                    ...formatHandoffPacketLines(dispatch.handoffPacket),
+                    ...formatEvaluationLines(evaluation),
+                    ...formatNextDispatchHintLines(evaluation),
                     result.stdout?.trim()
                         ? `- stdout:\n${result.stdout.trim()}`
                         : "- stdout: (empty)",
@@ -184,6 +264,7 @@ export function createDispatchTools() {
                     const retry = buildRetryPlan(projectPath, dispatch.recommendedAction);
                     const fallback = buildFallbackPlan(projectPath, dispatch.recommendedAction, dispatch.executableAgent);
                     outputs.push(`- Step ${index + 1}: ${dispatch.recommendedAgent}/${dispatch.executableAgent} -> ${dispatch.recommendedAction}`);
+                    outputs.push(...formatLoopEvaluationLines());
                     outputs.push(`  execution plan summary: mode=${executionPlan.mode} steps=${executionPlan.steps.length} primary=${executionPlan.primaryAction}`);
                     outputs.push(...executionPlan.steps.map((step, stepIndex) => `    step ${stepIndex + 1}: ${step.id} | ${step.mode} | ${step.agent ?? "local"} | ${step.action}`));
                     outputs.push("  execution plan:");
@@ -248,13 +329,31 @@ export function createDispatchTools() {
                         break;
                     }
                     const result = executeDispatchCommand(projectPath, dispatch, args.prompt);
+                    const evaluation = dispatch.handoffPacket
+                        ? evaluateDispatchResult({
+                            packet: dispatch.handoffPacket,
+                            exitCode: result.status ?? -1,
+                            stdout: result.stdout || "",
+                            stderr: result.stderr || "",
+                        })
+                        : undefined;
                     outputs.push(`  exitCode: ${result.status ?? -1}`);
+                    outputs.push(...formatLoopEvaluationLines(evaluation));
                     if ((result.status ?? -1) !== 0) {
                         const retry = buildRetryPlan(projectPath, dispatch.recommendedAction);
                         if (retry.allowed) {
                             outputs.push(`  retry: ${retry.attempts + 1}/${retry.maxAttempts}`);
                             const retryResult = executeDispatchCommand(projectPath, dispatch, args.prompt);
+                            const retryEvaluation = dispatch.handoffPacket
+                                ? evaluateDispatchResult({
+                                    packet: dispatch.handoffPacket,
+                                    exitCode: retryResult.status ?? -1,
+                                    stdout: retryResult.stdout || "",
+                                    stderr: retryResult.stderr || "",
+                                })
+                                : undefined;
                             outputs.push(`  retryExitCode: ${retryResult.status ?? -1}`);
+                            outputs.push(...formatLoopEvaluationLines(retryEvaluation));
                             if ((retryResult.status ?? -1) === 0) {
                                 const state = buildStateSummary(projectPath);
                                 const receipt = recordExecutionReceipt(projectPath, {
@@ -278,6 +377,14 @@ export function createDispatchTools() {
                                 outputs.push(`  fallback: ${fallback.fromAgent} -> ${fallback.toAgent}`);
                                 const fallbackDispatch = buildFallbackCommand(projectPath, dispatch, fallback.toAgent, args.prompt);
                                 const fallbackResult = executeDispatchCommand(projectPath, fallbackDispatch, args.prompt);
+                                const fallbackEvaluation = fallbackDispatch.handoffPacket
+                                    ? evaluateDispatchResult({
+                                        packet: fallbackDispatch.handoffPacket,
+                                        exitCode: fallbackResult.status ?? -1,
+                                        stdout: fallbackResult.stdout || "",
+                                        stderr: fallbackResult.stderr || "",
+                                    })
+                                    : undefined;
                                 recordFallbackExecution(projectPath, {
                                     action: dispatch.recommendedAction,
                                     fromAgent: fallback.fromAgent,
@@ -287,6 +394,7 @@ export function createDispatchTools() {
                                     stderr: fallbackResult.stderr || "",
                                 });
                                 outputs.push(`  fallbackExitCode: ${fallbackResult.status ?? -1}`);
+                                outputs.push(...formatLoopEvaluationLines(fallbackEvaluation));
                                 if ((fallbackResult.status ?? -1) === 0) {
                                     const state = buildStateSummary(projectPath);
                                     const receipt = recordExecutionReceipt(projectPath, {
@@ -312,6 +420,14 @@ export function createDispatchTools() {
                             outputs.push(`  fallback: ${fallback.fromAgent} -> ${fallback.toAgent}`);
                             const fallbackDispatch = buildFallbackCommand(projectPath, dispatch, fallback.toAgent, args.prompt);
                             const fallbackResult = executeDispatchCommand(projectPath, fallbackDispatch, args.prompt);
+                            const fallbackEvaluation = fallbackDispatch.handoffPacket
+                                ? evaluateDispatchResult({
+                                    packet: fallbackDispatch.handoffPacket,
+                                    exitCode: fallbackResult.status ?? -1,
+                                    stdout: fallbackResult.stdout || "",
+                                    stderr: fallbackResult.stderr || "",
+                                })
+                                : undefined;
                             recordFallbackExecution(projectPath, {
                                 action: dispatch.recommendedAction,
                                 fromAgent: fallback.fromAgent,
@@ -321,6 +437,7 @@ export function createDispatchTools() {
                                 stderr: fallbackResult.stderr || "",
                             });
                             outputs.push(`  fallbackExitCode: ${fallbackResult.status ?? -1}`);
+                            outputs.push(...formatLoopEvaluationLines(fallbackEvaluation));
                             if ((fallbackResult.status ?? -1) === 0) {
                                 const state = buildStateSummary(projectPath);
                                 const receipt = recordExecutionReceipt(projectPath, {

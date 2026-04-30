@@ -85,6 +85,7 @@ export {
   buildDispatchCommand,
   buildDispatchPlan,
 } from "./orchestrator/plan.js";
+export { evaluateDispatchResult } from "./orchestrator/evaluator.js";
 export { buildSafetyReport } from "./orchestrator/safety.js";
 export {
   buildExecutablePrompt,
@@ -100,11 +101,13 @@ export type {
   DispatchAgent,
   DispatchPlan,
   DocsStorageMode,
+  HandoffPacket,
   ExecutionAggregationStrategy,
   ExecutionMode,
   ExecutionPlan,
   ExecutionPlanStep,
   ExecutableAgent,
+  EvaluationResult,
   ExecutionReceipt,
   FallbackStatus,
   PermissionKey,
@@ -112,6 +115,7 @@ export type {
   ReleaseStatus,
   RetryStatus,
   ReviewStatus,
+  TaskAnalysis,
   TaskStatus,
   WorkflowConfig,
   WorkflowHistoryEvent,

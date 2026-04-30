@@ -13,6 +13,8 @@ import {
   buildExecutablePrompt,
   getExecutableAgent,
 } from "./prompts.js";
+import { analyzeDispatchTask } from "./analyzer.js";
+import { buildHandoffPacket } from "./handoff.js";
 
 function buildExecutionPlanSteps(
   dispatch: DispatchCommand,
@@ -273,6 +275,17 @@ export function buildDispatchCommand(
   const config = readWorkflowConfig(projectDir);
   const sessionID = plan.preferredSession;
   const quotedPrompt = prompt?.trim() || "继续当前阶段的推荐动作";
+  const analysis = analyzeDispatchTask({
+    prompt: quotedPrompt,
+    stage: plan.stage,
+    blockedReasons: plan.blockedReasons,
+    preferredAgent: plan.recommendedAgent,
+  });
+  const handoffPacket = buildHandoffPacket({
+    prompt: quotedPrompt,
+    analysis,
+    targetAgent: plan.recommendedAgent,
+  });
   const executableAgent = getExecutableAgent(
     plan.recommendedAgent,
     config.agents.dispatch_map,
@@ -280,6 +293,7 @@ export function buildDispatchCommand(
   const executablePrompt = buildExecutablePrompt(
     plan.recommendedAgent,
     quotedPrompt,
+    handoffPacket,
   );
   const { command, commandArgs } = buildDispatchCommandStrings(
     sessionID,
@@ -289,10 +303,12 @@ export function buildDispatchCommand(
 
   return {
     ...plan,
+    analysis,
     executableAgent,
     executablePrompt,
     command,
     commandArgs,
+    handoffPacket,
   };
 }
 
