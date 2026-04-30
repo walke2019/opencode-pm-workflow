@@ -158,9 +158,6 @@ function inferRecommendedAgent(
   if (preferredAgent) {
     return preferredAgent;
   }
-  if (domain === "orchestration" && complexity === "composite") {
-    return "commander";
-  }
   return mapDomainToAgent(domain);
 }
 

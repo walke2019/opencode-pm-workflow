@@ -1,7 +1,28 @@
 import assert from 'node:assert';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { defaultWorkflowConfig } from '../dist/core/config.js';
+import { buildDispatchPlan } from '../dist/orchestrator/plan.js';
 import { buildDispatchCommand } from '../dist/orchestrator/plan.js';
 import { buildExecutablePrompt } from '../dist/orchestrator/prompts.js';
+
+async function withTempProject(setup, run) {
+  const projectDir = mkdtempSync(join(tmpdir(), 'pm-workflow-routing-'));
+
+  try {
+    await setup(projectDir);
+    return await run(projectDir);
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
+function createDoc(projectDir, name, content = '# test\n') {
+  const docsDir = join(projectDir, '.pm-workflow', 'docs');
+  mkdirSync(docsDir, { recursive: true });
+  writeFileSync(join(docsDir, name), content, 'utf-8');
+}
 
 async function testDefaults() {
   console.log('Testing default config values...');
@@ -16,10 +37,27 @@ async function testDefaults() {
     config.agents.definitions.pm_workflow_writer.description.includes('陈琳'),
     'Writer definition should include Chen Lin',
   );
+  assert.ok(
+    config.agents.definitions.pm_workflow_zhuge.description.includes('顾问'),
+    'Zhuge definition should describe advisor role',
+  );
+  assert.ok(
+    !config.agents.definitions.pm_workflow_zhuge.description.includes('总指挥'),
+    'Zhuge definition should no longer describe commander as the primary coordinator',
+  );
+  assert.ok(
+    config.agents.definitions.pm_workflow_zhuge.prompt.includes('顾问'),
+    'Zhuge prompt should describe advisor role',
+  );
+  assert.ok(
+    !config.agents.definitions.pm_workflow_zhuge.prompt.includes('总指挥'),
+    'Zhuge prompt should no longer describe commander as the primary coordinator',
+  );
   console.log('✓ allow_execute_tools is true');
   console.log('✓ require_confirm_for_execute is false');
   console.log('✓ QA definition correctly mapped to Zhao Yun');
   console.log('✓ Writer definition correctly mapped to Chen Lin');
+  console.log('✓ Zhuge definition correctly mapped to advisor-only role');
 }
 
 async function testPrompts() {
@@ -27,6 +65,11 @@ async function testPrompts() {
   const zhuge = buildExecutablePrompt('commander', '测试任务');
   assert.ok(zhuge.includes('诸葛亮'), 'Commander prompt should include Zhuge Liang');
   assert.ok(zhuge.includes('【核心任务】'), 'Prompt should be structured');
+  assert.ok(zhuge.includes('顾问'), 'Commander prompt should describe advisor role');
+  assert.ok(
+    !zhuge.includes('总指挥'),
+    'Commander prompt should no longer describe commander as the primary coordinator',
+  );
   console.log('✓ Commander prompt correctly mapped to Zhuge Liang');
 
   const lvbu = buildExecutablePrompt('backend', '修复 Bug');
@@ -63,11 +106,46 @@ async function testDispatchRouting() {
   console.log('✓ Dispatch includes analysis and handoff packet');
 }
 
+async function testStageDefaultRouting() {
+  console.log('\nTesting stage default routing...');
+
+  const planReadyDispatch = await withTempProject((projectDir) => {
+    createDoc(projectDir, 'Product-Spec.md');
+    createDoc(projectDir, 'DEV-PLAN.md');
+  }, (projectDir) => buildDispatchPlan(projectDir));
+  assert.strictEqual(planReadyDispatch.stage, 'plan_ready', 'Fixture should resolve to plan_ready');
+  assert.strictEqual(
+    planReadyDispatch.recommendedAgent,
+    'pm',
+    'plan_ready should default to pm instead of commander',
+  );
+
+  const developmentDispatch = await withTempProject((projectDir) => {
+    createDoc(projectDir, 'Product-Spec.md');
+    createDoc(projectDir, 'DEV-PLAN.md');
+    mkdirSync(join(projectDir, 'src'), { recursive: true });
+  }, (projectDir) => buildDispatchPlan(projectDir));
+  assert.strictEqual(
+    developmentDispatch.stage,
+    'development',
+    'Fixture should resolve to development',
+  );
+  assert.strictEqual(
+    developmentDispatch.recommendedAgent,
+    'pm',
+    'development should default to pm instead of commander',
+  );
+
+  console.log('✓ plan_ready defaults to pm');
+  console.log('✓ development defaults to pm');
+}
+
 async function runTests() {
   try {
     await testDefaults();
     await testPrompts();
     await testDispatchRouting();
+    await testStageDefaultRouting();
     console.log('\nAll verification tests passed successfully!');
   } catch (error) {
     console.error('Test failed:', error);

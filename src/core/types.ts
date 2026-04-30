@@ -107,6 +107,9 @@ export interface EvaluationResult {
   gaps: string[];
   recommendedNextAgent?: DispatchAgent;
   recommendedNextAction?: DispatchAction;
+  canAutoContinue?: boolean;
+  autoContinueSafe?: boolean;
+  nextAutoAction?: DispatchAction;
 }
 
 export type DispatchPlan = {

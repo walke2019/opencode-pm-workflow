@@ -71,9 +71,9 @@ export function buildExecutablePrompt(
     case "commander":
     case "plan":
     case "build":
-      roleTitle = "【总指挥·诸葛亮】";
+      roleTitle = "【拆解顾问·诸葛亮】";
       roleContext =
-        "你现在是神机妙算的诸葛亮。请发挥你任务拆解与全局调度的专长，指派最合适的将领执行以下军令。";
+        "你现在是神机妙算的诸葛亮。请发挥你在任务拆解、风险识别与顾问式支持方面的专长，为 PM 提供清晰的分派建议与推进顺序。";
       break;
     case "pm":
       roleTitle = "【主协调·曹操】";

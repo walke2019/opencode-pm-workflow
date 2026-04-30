@@ -41,6 +41,14 @@ function mentionsVerification(text: string): boolean {
   return VERIFICATION_KEYWORDS.some((keyword) => text.includes(keyword));
 }
 
+function isBlockedText(text: string): boolean {
+  return (
+    text.includes("阻塞") ||
+    text.includes("blocked") ||
+    text.includes("等待确认")
+  );
+}
+
 function inferNextAgent(
   packet: HandoffPacket,
   exitCode: number,
@@ -66,6 +74,10 @@ function inferNextAction(
   exitCode: number,
   text: string,
 ): DispatchAction | undefined {
+  if (isBlockedText(text)) {
+    return "blocked";
+  }
+
   if (exitCode !== 0) {
     return "continue-development";
   }
@@ -79,6 +91,26 @@ function inferNextAction(
   }
 
   return undefined;
+}
+
+function canAutoContinue(
+  packet: HandoffPacket,
+  exitCode: number,
+  text: string,
+): boolean {
+  if (exitCode !== 0 || isBlockedText(text)) {
+    return false;
+  }
+
+  if (packet.targetAgent === "commander") {
+    return true;
+  }
+
+  if (packet.targetAgent === "backend" && !mentionsVerification(text)) {
+    return true;
+  }
+
+  return false;
 }
 
 export function evaluateDispatchResult(
@@ -100,6 +132,8 @@ export function evaluateDispatchResult(
         input.exitCode,
         text,
       ),
+      canAutoContinue: false,
+      autoContinueSafe: false,
     };
   }
 
@@ -112,6 +146,22 @@ export function evaluateDispatchResult(
       gaps: ["缺少可评估的执行结果内容"],
       recommendedNextAgent: input.packet.targetAgent,
       recommendedNextAction: "blocked",
+      canAutoContinue: false,
+      autoContinueSafe: false,
+    };
+  }
+
+  if (isBlockedText(text)) {
+    return {
+      status: "partial",
+      summary: "执行结果显示当前流程被阻塞，需等待外部条件满足。",
+      matchedDeliverables: [],
+      missingDeliverables: input.packet.deliverables,
+      gaps: ["存在明确阻塞信号"],
+      recommendedNextAgent: input.packet.targetAgent,
+      recommendedNextAction: "blocked",
+      canAutoContinue: false,
+      autoContinueSafe: false,
     };
   }
 
@@ -128,6 +178,9 @@ export function evaluateDispatchResult(
         input.exitCode,
         text,
       ),
+      canAutoContinue: canAutoContinue(input.packet, input.exitCode, text),
+      autoContinueSafe: canAutoContinue(input.packet, input.exitCode, text),
+      nextAutoAction: inferNextAction(input.packet, input.exitCode, text),
     };
   }
 
@@ -144,6 +197,9 @@ export function evaluateDispatchResult(
         input.exitCode,
         text,
       ),
+      canAutoContinue: canAutoContinue(input.packet, input.exitCode, text),
+      autoContinueSafe: canAutoContinue(input.packet, input.exitCode, text),
+      nextAutoAction: inferNextAction(input.packet, input.exitCode, text),
     };
   }
 
@@ -155,5 +211,7 @@ export function evaluateDispatchResult(
     gaps: [],
     recommendedNextAgent: inferNextAgent(input.packet, input.exitCode, text),
     recommendedNextAction: inferNextAction(input.packet, input.exitCode, text),
+    canAutoContinue: false,
+    autoContinueSafe: false,
   };
 }

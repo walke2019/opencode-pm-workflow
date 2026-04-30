@@ -23,6 +23,11 @@ function mentionsVerification(text) {
     }
     return VERIFICATION_KEYWORDS.some((keyword) => text.includes(keyword));
 }
+function isBlockedText(text) {
+    return (text.includes("阻塞") ||
+        text.includes("blocked") ||
+        text.includes("等待确认"));
+}
 function inferNextAgent(packet, exitCode, text) {
     if (exitCode !== 0) {
         return "pm";
@@ -36,6 +41,9 @@ function inferNextAgent(packet, exitCode, text) {
     return undefined;
 }
 function inferNextAction(packet, exitCode, text) {
+    if (isBlockedText(text)) {
+        return "blocked";
+    }
     if (exitCode !== 0) {
         return "continue-development";
     }
@@ -46,6 +54,18 @@ function inferNextAction(packet, exitCode, text) {
         return "continue-development";
     }
     return undefined;
+}
+function canAutoContinue(packet, exitCode, text) {
+    if (exitCode !== 0 || isBlockedText(text)) {
+        return false;
+    }
+    if (packet.targetAgent === "commander") {
+        return true;
+    }
+    if (packet.targetAgent === "backend" && !mentionsVerification(text)) {
+        return true;
+    }
+    return false;
 }
 export function evaluateDispatchResult(input) {
     const text = normalizeText(input);
@@ -59,6 +79,8 @@ export function evaluateDispatchResult(input) {
             gaps: ["命令返回非 0 exitCode"],
             recommendedNextAgent: inferNextAgent(input.packet, input.exitCode, text),
             recommendedNextAction: inferNextAction(input.packet, input.exitCode, text),
+            canAutoContinue: false,
+            autoContinueSafe: false,
         };
     }
     if (!hasResponse) {
@@ -70,6 +92,21 @@ export function evaluateDispatchResult(input) {
             gaps: ["缺少可评估的执行结果内容"],
             recommendedNextAgent: input.packet.targetAgent,
             recommendedNextAction: "blocked",
+            canAutoContinue: false,
+            autoContinueSafe: false,
+        };
+    }
+    if (isBlockedText(text)) {
+        return {
+            status: "partial",
+            summary: "执行结果显示当前流程被阻塞，需等待外部条件满足。",
+            matchedDeliverables: [],
+            missingDeliverables: input.packet.deliverables,
+            gaps: ["存在明确阻塞信号"],
+            recommendedNextAgent: input.packet.targetAgent,
+            recommendedNextAction: "blocked",
+            canAutoContinue: false,
+            autoContinueSafe: false,
         };
     }
     if (input.packet.targetAgent === "backend" && !mentionsVerification(text)) {
@@ -81,6 +118,9 @@ export function evaluateDispatchResult(input) {
             gaps: ["尚未提供验证命令或验证结果"],
             recommendedNextAgent: inferNextAgent(input.packet, input.exitCode, text),
             recommendedNextAction: inferNextAction(input.packet, input.exitCode, text),
+            canAutoContinue: canAutoContinue(input.packet, input.exitCode, text),
+            autoContinueSafe: canAutoContinue(input.packet, input.exitCode, text),
+            nextAutoAction: inferNextAction(input.packet, input.exitCode, text),
         };
     }
     if (input.packet.targetAgent === "commander") {
@@ -92,6 +132,9 @@ export function evaluateDispatchResult(input) {
             gaps: ["建议不能直接视为最终完成"],
             recommendedNextAgent: inferNextAgent(input.packet, input.exitCode, text),
             recommendedNextAction: inferNextAction(input.packet, input.exitCode, text),
+            canAutoContinue: canAutoContinue(input.packet, input.exitCode, text),
+            autoContinueSafe: canAutoContinue(input.packet, input.exitCode, text),
+            nextAutoAction: inferNextAction(input.packet, input.exitCode, text),
         };
     }
     return {
@@ -102,5 +145,7 @@ export function evaluateDispatchResult(input) {
         gaps: [],
         recommendedNextAgent: inferNextAgent(input.packet, input.exitCode, text),
         recommendedNextAction: inferNextAction(input.packet, input.exitCode, text),
+        canAutoContinue: false,
+        autoContinueSafe: false,
     };
 }
