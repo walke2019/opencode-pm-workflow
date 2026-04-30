@@ -1,4 +1,6 @@
-export { buildOpenCodeAgentConfig, defaultWorkflowConfig, ensureGlobalWorkflowConfig, getAutomationMode, getGlobalWorkflowConfigPath, normalizeWorkflowConfigOverrides, readGlobalWorkflowConfigOverrides, readWorkflowConfig, seedWorkflowConfig, setAutomationMode, setPermission, } from "./core/config.js";
+export { buildOpenCodeAgentConfig, defaultWorkflowConfig, ensureGlobalWorkflowConfig, getAutomationMode, getGlobalWorkflowConfigPath, normalizeWorkflowConfigOverrides, readGlobalWorkflowConfigOverrides, readWorkflowConfig, seedWorkflowConfig, setAutomationMode, setPermission, validateWorkflowConfigAgentModels, } from "./core/config.js";
+export { getGlobalOpenCodeConfigPath, isGlobalOpenCodeModelKey, listGlobalOpenCodeModelKeys, readGlobalOpenCodeModelInventory, } from "./core/model-inventory.js";
+export type { OpenCodeModelInventory, OpenCodeModelInventoryEntry, } from "./core/model-inventory.js";
 export type { WorkflowConfigOverrides } from "./core/config.js";
 export { DOC_FILENAMES, REVIEW_MARKER_FILENAME, ensureProjectStorageDirs, ensureStateDir, getConfigPath, getFeedbackReadRoots, getHistoryPath, getMigrationManifestPath, getProjectDocsDir, getProjectFeedbackDir, getProjectScopedDocPath, getStatePath, resolveDocReadPath, resolveDocWritePath, } from "./core/project.js";
 export { appendHistory, ensureHistoryBootstrap, getLastFailure, queryHistory, readHistory, } from "./core/history.js";
@@ -9,6 +11,8 @@ export { getMigrationReport, hashFileSha256, listFilesRecursively, migrateLegacy
 export { buildExecutionSummary, getExecutionReceiptById, getExecutionReceipts, getLastExecutionReceipt, recordExecutionReceipt, } from "./core/receipts.js";
 export { buildFallbackCommand, buildFallbackPlan, buildRecoverySummary, buildRetryPlan, recordDispatchExecution, recordFallbackExecution, } from "./core/recovery.js";
 export { buildExecutionPlan, buildDispatchCommand, buildDispatchPlan, } from "./orchestrator/plan.js";
+export { analyzeDispatchTask } from "./orchestrator/analyzer.js";
+export { buildHandoffPacket } from "./orchestrator/handoff.js";
 export { evaluateDispatchResult } from "./orchestrator/evaluator.js";
 export { buildSafetyReport } from "./orchestrator/safety.js";
 export { buildExecutablePrompt, getExecutableAgent, } from "./orchestrator/prompts.js";

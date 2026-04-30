@@ -26,8 +26,8 @@ function inferDomain(
   if (preferredAgent === "frontend") return "frontend";
   if (preferredAgent === "writer") return "writer";
   if (preferredAgent === "qa_engineer") return "qa_engineer";
-  if (preferredAgent === "pm" || preferredAgent === "commander")
-    return "orchestration";
+  if (preferredAgent === "commander") return "orchestration";
+  // pm 是主协调默认值，不应阻止后续基于任务内容分派给专业 subagent。
 
   const normalized = prompt.toLowerCase();
   const orchestrationMatched =
@@ -48,7 +48,13 @@ function inferDomain(
     normalized.includes("接口") ||
     normalized.includes("认证") ||
     normalized.includes("401") ||
-    normalized.includes("登录");
+    normalized.includes("登录") ||
+    normalized.includes("plugin") ||
+    normalized.includes("插件") ||
+    normalized.includes("opencode") ||
+    normalized.includes("workflow") ||
+    normalized.includes("工具") ||
+    normalized.includes("tool");
   const frontendMatched =
     normalized.includes("ui") ||
     normalized.includes("前端") ||
@@ -155,7 +161,7 @@ function inferRecommendedAgent(
   complexity: TaskComplexity,
   preferredAgent?: DispatchAgent | null,
 ): DispatchAgent {
-  if (preferredAgent) {
+  if (preferredAgent && preferredAgent !== "pm") {
     return preferredAgent;
   }
   return mapDomainToAgent(domain);
@@ -173,7 +179,7 @@ function inferExpectedNextAgents(
     return ["backend", "qa_engineer"];
   }
   if (recommendedAgent === "pm") {
-    return ["commander"];
+    return complexity === "simple" ? ["commander"] : ["commander", "qa_engineer"];
   }
   return [recommendedAgent];
 }

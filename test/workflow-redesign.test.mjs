@@ -29,6 +29,9 @@ async function testDefaults() {
   const config = defaultWorkflowConfig();
   assert.strictEqual(config.permissions.allow_execute_tools, true, 'Should allow tool execution by default');
   assert.strictEqual(config.confirm.require_confirm_for_execute, false, 'Should not require confirmation by default');
+  assert.strictEqual(config.agents.definitions.pm_workflow_caocao.model, 'cx/gpt-5.5');
+  assert.strictEqual(config.agents.definitions.pm_workflow_lvbu.model, 'cx/gpt-5.3-codex');
+  assert.strictEqual(config.agents.definitions.pm_workflow_frontend.model, 'antigravity/gemini-3-flash-preview');
   assert.ok(
     config.agents.definitions.pm_workflow_qa.description.includes('赵云'),
     'QA definition should include Zhao Yun',
@@ -53,6 +56,7 @@ async function testDefaults() {
     !config.agents.definitions.pm_workflow_zhuge.prompt.includes('总指挥'),
     'Zhuge prompt should no longer describe commander as the primary coordinator',
   );
+  console.log('✓ role-specific model defaults are configured');
   console.log('✓ allow_execute_tools is true');
   console.log('✓ require_confirm_for_execute is false');
   console.log('✓ QA definition correctly mapped to Zhao Yun');
@@ -98,12 +102,23 @@ async function testDispatchRouting() {
   );
   assert.ok(simpleWriterDispatch.analysis, 'Dispatch should include task analysis');
   assert.ok(simpleWriterDispatch.handoffPacket, 'Dispatch should include handoff packet');
+  assert.strictEqual(simpleWriterDispatch.recommendedAgent, 'writer');
   assert.ok(
     !simpleWriterDispatch.executablePrompt.includes('commander 作为主 agent'),
     'Executable prompt should not describe commander as the primary agent',
   );
   console.log('✓ Simple writer task does not default to commander');
   console.log('✓ Dispatch includes analysis and handoff packet');
+
+  const backendDispatch = buildDispatchCommand(
+    process.cwd(),
+    '实现 OpenCode plugin 工具调用和 workflow 路由，并补齐测试',
+  );
+  assert.strictEqual(backendDispatch.recommendedAgent, 'backend');
+  assert.ok(backendDispatch.analysis.expectedNextAgents.includes('qa_engineer'));
+  assert.ok(backendDispatch.executablePrompt.includes('Workflow 标准'));
+  assert.ok(backendDispatch.executablePrompt.includes('todo'));
+  console.log('✓ PM default dispatch routes implementation work to backend with QA follow-up');
 }
 
 async function testStageDefaultRouting() {

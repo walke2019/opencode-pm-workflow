@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import { dirname, join } from "path";
 import { getConfigPath, getHistoryPath, ensureStateDir } from "./project.js";
+import { readGlobalOpenCodeModelInventory } from "./model-inventory.js";
 const GLOBAL_CONFIG_FILENAME = "pm-workflow.config.json";
 export function getGlobalWorkflowConfigPath() {
     const configHome = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
@@ -44,9 +45,10 @@ const CLI_COMPATIBLE_SUBAGENTS = new Set([
 ]);
 const DEFAULT_WORKFLOW_AGENTS = {
     pm_workflow_caocao: {
+        model: "cx/gpt-5.5",
         mode: "primary",
-        description: "曹操 (Cao Cao)，pm-workflow 主协调官，负责全局统筹与风险把控。",
-        prompt: "你是曹操（Cao Cao），pm-workflow 的主协调官。你取其决断、统筹、识人用人和风险判断之长：先辨形势，再定目标、边界、验收标准与推进路径。你表达直接、务实、清晰，重视结果与验证；不使用贬损、羞辱或嘲讽式表达。",
+        description: "曹操 (Cao Cao)，pm-workflow 主协调官，负责决策、指挥、分派、收敛 todo 与验收结果。",
+        prompt: "你是曹操（Cao Cao），pm-workflow 的主协调官。你取其决断、统筹、识人用人和风险判断之长：快速压缩需求，确定目标、边界、todo、验收标准与分派路径；随后直接推进开发、测试、发布摘要。你表达直接、务实、清晰，重视结果与验证；不使用贬损、羞辱或嘲讽式表达。",
         permission: {
             edit: "ask",
             write: "ask",
@@ -54,6 +56,7 @@ const DEFAULT_WORKFLOW_AGENTS = {
         },
     },
     pm_workflow_zhuge: {
+        model: "kr/claude-sonnet-4.5",
         mode: "primary",
         description: "诸葛亮 (Zhuge Liang)，神机妙算的拆解顾问，擅长任务拆解、风险识别与顾问式支持。",
         prompt: "你是诸葛亮（Zhuge Liang），一位极具洞察力和全局观的拆解顾问。你擅长将复杂任务拆解为清晰的推进步骤，识别风险并为 PM 提供顾问式支持。你先澄清疑虑，再划定边界，最后给出合适的分派建议与推进顺序。你言语优雅、周密，但不取代 PM 的主协调职责。",
@@ -64,6 +67,7 @@ const DEFAULT_WORKFLOW_AGENTS = {
         },
     },
     pm_workflow_lvbu: {
+        model: "cx/gpt-5.3-codex",
         mode: "all",
         description: "吕布 (Lv Bu)，战力天花板的后端战将，负责攻克逻辑难点与架构性能。",
         prompt: "你是吕布（Lv Bu），一位勇猛无双的后端战将。你专注于攻克代码逻辑中的深水区，不论是 API、数据库还是高并发挑战。你追求极致的性能与力量。你说话狂放而自信，更看重代码的绝对掌控力。",
@@ -74,6 +78,7 @@ const DEFAULT_WORKFLOW_AGENTS = {
         },
     },
     pm_workflow_diaochan: {
+        model: "antigravity/gemini-3-flash-preview",
         mode: "all",
         description: "貂蝉 (Diao Chan)，倾国倾城的前端视觉官，负责 UI/UX 与美学体验。",
         prompt: "你是貂蝉（Diao Chan），一位心思细腻、审美卓越的前端视觉官。你负责界面的灵动交互与极致美感。你不仅关注功能实现，更在乎用户与界面的每一次心动邂逅。你表达柔美、敏锐，追求艺术与技术的完美平衡。",
@@ -84,6 +89,7 @@ const DEFAULT_WORKFLOW_AGENTS = {
         },
     },
     pm_workflow_qa: {
+        model: "kr/claude-sonnet-4.5",
         mode: "all",
         hidden: true,
         description: "赵云（Zhao Yun），pm-workflow QA/code-review agent，负责审查变更、控制回归风险并解除 review gate。",
@@ -95,6 +101,7 @@ const DEFAULT_WORKFLOW_AGENTS = {
         },
     },
     pm_workflow_writer: {
+        model: "kr/claude-haiku-4.5",
         mode: "all",
         hidden: true,
         description: "陈琳（Chen Lin），pm-workflow 文档与发布 agent，负责发布说明、总结和交付文档。",
@@ -106,6 +113,7 @@ const DEFAULT_WORKFLOW_AGENTS = {
         },
     },
     pm_workflow_frontend: {
+        model: "antigravity/gemini-3-flash-preview",
         mode: "all",
         hidden: true,
         description: "pm-workflow 前端/UI subagent，负责界面实现、交互、可访问性与视觉一致性。",
@@ -457,10 +465,36 @@ function buildDefaultWorkflowConfig(overrides) {
     const globalOverrides = readGlobalWorkflowConfigOverrides();
     return mergeWorkflowConfig(mergeWorkflowConfig(defaultWorkflowConfig(), globalOverrides), overrides);
 }
+function validateAgentModelsFromGlobalOpenCodeConfig(config) {
+    const inventory = readGlobalOpenCodeModelInventory();
+    const validModels = new Set(inventory.models.map((entry) => entry.model));
+    if (validModels.size === 0)
+        return config;
+    const definitions = {};
+    for (const [agentName, agent] of Object.entries(config.agents.definitions)) {
+        if (!agent)
+            continue;
+        definitions[agentName] = {
+            ...agent,
+            model: agent.model && validModels.has(agent.model) ? agent.model : undefined,
+            fallback_models: (agent.fallback_models || []).filter((model) => validModels.has(model)),
+        };
+    }
+    return {
+        ...config,
+        agents: {
+            ...config.agents,
+            definitions,
+        },
+    };
+}
+export function validateWorkflowConfigAgentModels(config) {
+    return validateAgentModelsFromGlobalOpenCodeConfig(config);
+}
 export function readWorkflowConfig(projectDir, overrides) {
     ensureStateDir(projectDir);
     const configPath = getConfigPath(projectDir);
-    const defaults = buildDefaultWorkflowConfig(overrides);
+    const defaults = validateAgentModelsFromGlobalOpenCodeConfig(buildDefaultWorkflowConfig(overrides));
     if (!existsSync(configPath)) {
         writeFileSync(configPath, JSON.stringify(defaults, null, 2));
         appendConfigHistory(projectDir, {
@@ -471,7 +505,7 @@ export function readWorkflowConfig(projectDir, overrides) {
     }
     try {
         const parsed = readJsonFile(configPath);
-        const merged = normalizeWorkflowConfigModes(mergeWorkflowConfig(defaults, parsed));
+        const merged = validateAgentModelsFromGlobalOpenCodeConfig(normalizeWorkflowConfigModes(mergeWorkflowConfig(defaults, parsed)));
         const migrationTypes = [];
         if (!parsed.permissions)
             migrationTypes.push("config.migrate_permissions_v1");

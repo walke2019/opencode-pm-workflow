@@ -281,17 +281,15 @@ export function buildDispatchCommand(
     blockedReasons: plan.blockedReasons,
     preferredAgent: plan.recommendedAgent,
   });
+  const targetAgent = analysis.recommendedAgent;
   const handoffPacket = buildHandoffPacket({
     prompt: quotedPrompt,
     analysis,
-    targetAgent: plan.recommendedAgent,
+    targetAgent,
   });
-  const executableAgent = getExecutableAgent(
-    plan.recommendedAgent,
-    config.agents.dispatch_map,
-  );
+  const executableAgent = getExecutableAgent(targetAgent, config.agents.dispatch_map);
   const executablePrompt = buildExecutablePrompt(
-    plan.recommendedAgent,
+    targetAgent,
     quotedPrompt,
     handoffPacket,
   );
@@ -303,6 +301,7 @@ export function buildDispatchCommand(
 
   return {
     ...plan,
+    recommendedAgent: targetAgent,
     analysis,
     executableAgent,
     executablePrompt,

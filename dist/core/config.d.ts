@@ -13,6 +13,7 @@ export declare function defaultWorkflowConfig(): WorkflowConfig;
 export declare function normalizeWorkflowConfigOverrides(input?: unknown): WorkflowConfigOverrides | undefined;
 export declare function readGlobalWorkflowConfigOverrides(): WorkflowConfigOverrides | undefined;
 export declare function ensureGlobalWorkflowConfig(input?: unknown): string;
+export declare function validateWorkflowConfigAgentModels(config: WorkflowConfig): WorkflowConfig;
 export declare function readWorkflowConfig(projectDir: string, overrides?: WorkflowConfigOverrides): WorkflowConfig;
 export declare function seedWorkflowConfig(projectDir: string, input?: unknown): WorkflowConfig;
 export declare function buildOpenCodeAgentConfig(config: WorkflowConfig): Record<string, Record<string, unknown>>;

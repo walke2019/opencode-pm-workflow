@@ -90,7 +90,10 @@ async function testDispatchCommandIncludesHandoffPacket() {
   );
 
   assert.ok(dispatch.handoffPacket);
+  assert.strictEqual(dispatch.recommendedAgent, 'backend');
   assert.ok(dispatch.executablePrompt.includes('【任务目标】'));
+  assert.ok(dispatch.executablePrompt.includes('todo'));
+  assert.ok(dispatch.executablePrompt.includes('Workflow 标准')); 
 
   const analysisLines = formatTaskAnalysisLines(dispatch.analysis);
   const handoffLines = formatHandoffPacketLines(dispatch.handoffPacket);

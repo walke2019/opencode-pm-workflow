@@ -10,7 +10,18 @@ export {
   seedWorkflowConfig,
   setAutomationMode,
   setPermission,
+  validateWorkflowConfigAgentModels,
 } from "./core/config.js";
+export {
+  getGlobalOpenCodeConfigPath,
+  isGlobalOpenCodeModelKey,
+  listGlobalOpenCodeModelKeys,
+  readGlobalOpenCodeModelInventory,
+} from "./core/model-inventory.js";
+export type {
+  OpenCodeModelInventory,
+  OpenCodeModelInventoryEntry,
+} from "./core/model-inventory.js";
 export type { WorkflowConfigOverrides } from "./core/config.js";
 export {
   DOC_FILENAMES,
@@ -85,6 +96,8 @@ export {
   buildDispatchCommand,
   buildDispatchPlan,
 } from "./orchestrator/plan.js";
+export { analyzeDispatchTask } from "./orchestrator/analyzer.js";
+export { buildHandoffPacket } from "./orchestrator/handoff.js";
 export { evaluateDispatchResult } from "./orchestrator/evaluator.js";
 export { buildSafetyReport } from "./orchestrator/safety.js";
 export {

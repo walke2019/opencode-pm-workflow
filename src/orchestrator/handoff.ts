@@ -23,10 +23,17 @@ function buildBasePacket(
     targetAgent,
     scope: ["只处理当前任务直接相关内容"],
     inputs: [input.prompt],
-    constraints: ["遵循现有项目结构", "不要擅自扩大范围"],
+    constraints: [
+      "遵循现有项目结构",
+      "不要擅自扩大范围",
+      "不要在需求层停留过久，优先推进实现与验证",
+    ],
     acceptanceCriteria: ["输出结果与任务目标直接对应", "输出必须可验证"],
-    deliverables: ["执行结果摘要"],
-    doneDefinition: ["明确说明完成项、未完成项与验证情况"],
+    deliverables: ["执行结果摘要", "todo 完成/blocked 状态"],
+    doneDefinition: [
+      "明确说明完成项、未完成项与验证情况",
+      "所有 todo 已完成，或标注 blocked 并说明原因",
+    ],
     returnFormat: [
       "summary: 做了什么",
       "verification: 如何验证",

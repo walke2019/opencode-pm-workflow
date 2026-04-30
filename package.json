@@ -33,6 +33,7 @@
   },
   "files": [
     "dist",
+    "skills",
     "scripts",
     "pm-workflow.schema.json",
     "pm-workflow.config.example.json",

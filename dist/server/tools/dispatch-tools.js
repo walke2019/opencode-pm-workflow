@@ -94,7 +94,7 @@ export function formatTaskAnalysisLines(analysis) {
             : "- task analysis coordination: pm 负责主协调"
         : analysis.recommendedAgent === "commander"
             ? "- task analysis coordination: commander 负责顾问式拆解支持"
-            : undefined;
+            : `- task analysis coordination: pm 负责主协调，${analysis.recommendedAgent} 作为专业 subagent 执行`;
     return [
         `- task analysis: domain=${analysis.domain} complexity=${analysis.complexity} mode=${analysis.executionMode}`,
         `- task analysis agent: recommended=${analysis.recommendedAgent} fallback=${analysis.fallbackAgents.join(",") || "none"}`,
