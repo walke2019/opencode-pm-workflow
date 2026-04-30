@@ -2,6 +2,8 @@ import { buildExecutionGate, buildGateSummary } from "../core/gates.js";
 import { readWorkflowConfig } from "../core/config.js";
 import { buildStateSummary } from "../core/state.js";
 import { buildDispatchCommandStrings, buildExecutablePrompt, getExecutableAgent, } from "./prompts.js";
+import { analyzeDispatchTask } from "./analyzer.js";
+import { buildHandoffPacket } from "./handoff.js";
 function buildExecutionPlanSteps(dispatch) {
     if (dispatch.recommendedAction === "blocked") {
         return [
@@ -247,15 +249,28 @@ export function buildDispatchCommand(projectDir, prompt) {
     const config = readWorkflowConfig(projectDir);
     const sessionID = plan.preferredSession;
     const quotedPrompt = prompt?.trim() || "继续当前阶段的推荐动作";
+    const analysis = analyzeDispatchTask({
+        prompt: quotedPrompt,
+        stage: plan.stage,
+        blockedReasons: plan.blockedReasons,
+        preferredAgent: plan.recommendedAgent,
+    });
+    const handoffPacket = buildHandoffPacket({
+        prompt: quotedPrompt,
+        analysis,
+        targetAgent: plan.recommendedAgent,
+    });
     const executableAgent = getExecutableAgent(plan.recommendedAgent, config.agents.dispatch_map);
-    const executablePrompt = buildExecutablePrompt(plan.recommendedAgent, quotedPrompt);
+    const executablePrompt = buildExecutablePrompt(plan.recommendedAgent, quotedPrompt, handoffPacket);
     const { command, commandArgs } = buildDispatchCommandStrings(sessionID, executableAgent, executablePrompt);
     return {
         ...plan,
+        analysis,
         executableAgent,
         executablePrompt,
         command,
         commandArgs,
+        handoffPacket,
     };
 }
 export function buildExecutionPlan(projectDir, prompt) {

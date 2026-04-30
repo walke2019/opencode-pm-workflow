@@ -11,6 +11,44 @@ export type AutomationCapability = "event_sync" | "prompt_inject" | "commit_gate
 export type DispatchAgent = "pm" | "plan" | "build" | "qa_engineer" | "writer" | "frontend" | "commander" | "backend";
 export type ExecutableAgent = string;
 export type DispatchAction = "collect-spec" | "create-design-brief" | "create-dev-plan" | "start-development" | "run-code-review" | "prepare-release" | "continue-development" | "blocked";
+export type TaskDomain = "pm" | "backend" | "frontend" | "writer" | "qa_engineer" | "orchestration";
+export type TaskComplexity = "simple" | "multi_step" | "composite";
+export type DispatchExecutionMode = "pm_direct" | "single_agent" | "serial_handoff" | "advisor_then_dispatch";
+export interface TaskAnalysis {
+    domain: TaskDomain;
+    complexity: TaskComplexity;
+    recommendedAgent: DispatchAgent;
+    fallbackAgents: DispatchAgent[];
+    executionMode: DispatchExecutionMode;
+    needsDecomposition: boolean;
+    rationale: string[];
+    risks: string[];
+    expectedNextAgents: DispatchAgent[];
+}
+export interface HandoffPacket {
+    goal: string;
+    why: string;
+    taskType: string;
+    targetAgent: DispatchAgent;
+    scope: string[];
+    inputs: string[];
+    constraints: string[];
+    acceptanceCriteria: string[];
+    deliverables: string[];
+    doneDefinition: string[];
+    returnFormat: string[];
+    nextStepHint?: string;
+}
+export type EvaluationStatus = "done" | "partial" | "misaligned" | "needs_verification";
+export interface EvaluationResult {
+    status: EvaluationStatus;
+    summary: string;
+    matchedDeliverables: string[];
+    missingDeliverables: string[];
+    gaps: string[];
+    recommendedNextAgent?: DispatchAgent;
+    recommendedNextAction?: DispatchAction;
+}
 export type DispatchPlan = {
     stage: WorkflowStage;
     stageLabel: string;
@@ -21,12 +59,14 @@ export type DispatchPlan = {
     blockedReasons: string[];
     preferredSession: string | null;
     nextStep: string;
+    analysis?: TaskAnalysis;
 };
 export type DispatchCommand = DispatchPlan & {
     executableAgent: ExecutableAgent;
     executablePrompt: string;
     command: string;
     commandArgs: string[];
+    handoffPacket?: HandoffPacket;
 };
 export type ExecutionMode = "local" | "single-subagent" | "parallel-subagents";
 export type ExecutionAggregationStrategy = "primary-wins" | "collect-all" | "first-success";

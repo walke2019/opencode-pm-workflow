@@ -9,8 +9,9 @@ export { getMigrationReport, hashFileSha256, listFilesRecursively, migrateLegacy
 export { buildExecutionSummary, getExecutionReceiptById, getExecutionReceipts, getLastExecutionReceipt, recordExecutionReceipt, } from "./core/receipts.js";
 export { buildFallbackCommand, buildFallbackPlan, buildRecoverySummary, buildRetryPlan, recordDispatchExecution, recordFallbackExecution, } from "./core/recovery.js";
 export { buildExecutionPlan, buildDispatchCommand, buildDispatchPlan, } from "./orchestrator/plan.js";
+export { evaluateDispatchResult } from "./orchestrator/evaluator.js";
 export { buildSafetyReport } from "./orchestrator/safety.js";
 export { buildExecutablePrompt, getExecutableAgent, } from "./orchestrator/prompts.js";
 export { isAutomationCapabilityEnabled } from "./core/automation.js";
 export type { WorkflowDocName } from "./core/project.js";
-export type { AutomationCapability, AutomationMode, DispatchCommand, DispatchAction, DispatchAgent, DispatchPlan, DocsStorageMode, ExecutionAggregationStrategy, ExecutionMode, ExecutionPlan, ExecutionPlanStep, ExecutableAgent, ExecutionReceipt, FallbackStatus, PermissionKey, PhaseStatus, ReleaseStatus, RetryStatus, ReviewStatus, TaskStatus, WorkflowConfig, WorkflowHistoryEvent, WorkflowStage, WorkflowState, } from "./core/types.js";
+export type { AutomationCapability, AutomationMode, DispatchCommand, DispatchAction, DispatchAgent, DispatchPlan, DocsStorageMode, HandoffPacket, ExecutionAggregationStrategy, ExecutionMode, ExecutionPlan, ExecutionPlanStep, ExecutableAgent, EvaluationResult, ExecutionReceipt, FallbackStatus, PermissionKey, PhaseStatus, ReleaseStatus, RetryStatus, ReviewStatus, TaskAnalysis, TaskStatus, WorkflowConfig, WorkflowHistoryEvent, WorkflowStage, WorkflowState, } from "./core/types.js";

@@ -1,5 +1,6 @@
 import assert from 'node:assert';
 import { defaultWorkflowConfig } from '../dist/core/config.js';
+import { buildDispatchCommand } from '../dist/orchestrator/plan.js';
 import { buildExecutablePrompt } from '../dist/orchestrator/prompts.js';
 
 async function testDefaults() {
@@ -42,8 +43,24 @@ async function testPrompts() {
 }
 
 async function testDispatchRouting() {
-  // 注意：这个测试依赖于 state.js 的实现，可能需要 mock
-  console.log('\nNote: Skipping complex dispatch routing test as it requires mock state.');
+  console.log('\nTesting dispatch routing regressions...');
+  const simpleWriterDispatch = buildDispatchCommand(
+    process.cwd(),
+    '帮我补 README 的安装说明',
+  );
+  assert.notStrictEqual(
+    simpleWriterDispatch.recommendedAgent,
+    'commander',
+    'Simple writer task should not default to commander',
+  );
+  assert.ok(simpleWriterDispatch.analysis, 'Dispatch should include task analysis');
+  assert.ok(simpleWriterDispatch.handoffPacket, 'Dispatch should include handoff packet');
+  assert.ok(
+    !simpleWriterDispatch.executablePrompt.includes('commander 作为主 agent'),
+    'Executable prompt should not describe commander as the primary agent',
+  );
+  console.log('✓ Simple writer task does not default to commander');
+  console.log('✓ Dispatch includes analysis and handoff packet');
 }
 
 async function runTests() {

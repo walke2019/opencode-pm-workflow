@@ -8,6 +8,7 @@ export { getMigrationReport, hashFileSha256, listFilesRecursively, migrateLegacy
 export { buildExecutionSummary, getExecutionReceiptById, getExecutionReceipts, getLastExecutionReceipt, recordExecutionReceipt, } from "./core/receipts.js";
 export { buildFallbackCommand, buildFallbackPlan, buildRecoverySummary, buildRetryPlan, recordDispatchExecution, recordFallbackExecution, } from "./core/recovery.js";
 export { buildExecutionPlan, buildDispatchCommand, buildDispatchPlan, } from "./orchestrator/plan.js";
+export { evaluateDispatchResult } from "./orchestrator/evaluator.js";
 export { buildSafetyReport } from "./orchestrator/safety.js";
 export { buildExecutablePrompt, getExecutableAgent, } from "./orchestrator/prompts.js";
 export { isAutomationCapabilityEnabled } from "./core/automation.js";

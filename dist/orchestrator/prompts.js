@@ -12,7 +12,35 @@ const DEFAULT_DISPATCH_AGENT_MAP = {
 export function getExecutableAgent(agent, dispatchMap = DEFAULT_DISPATCH_AGENT_MAP) {
     return dispatchMap[agent] || DEFAULT_DISPATCH_AGENT_MAP[agent] || agent;
 }
-export function buildExecutablePrompt(agent, prompt) {
+function renderListSection(title, items) {
+    if (items.length === 0) {
+        return "";
+    }
+    const content = items
+        .map((item, index) => `${index + 1}. ${item}`)
+        .join("\n");
+    return `${title}\n${content}`;
+}
+export function renderAgentHandoffPrompt(agent, packet) {
+    const sections = [
+        `【任务目标】\n${packet.goal}`,
+        `【任务背景】\n${packet.why}`,
+        `【任务类型】\n${packet.taskType}`,
+        renderListSection("【处理范围】", packet.scope),
+        renderListSection("【输入材料】", packet.inputs),
+        renderListSection("【约束条件】", packet.constraints),
+        renderListSection("【验收标准】", packet.acceptanceCriteria),
+        renderListSection("【交付物】", packet.deliverables),
+        renderListSection("【完成定义】", packet.doneDefinition),
+        renderListSection("【回传格式】", packet.returnFormat),
+    ].filter(Boolean);
+    if (packet.nextStepHint) {
+        sections.push(`【下一步建议】\n1. 优先同步给 ${packet.nextStepHint}`);
+    }
+    sections.push(`【执行角色】\n当前执行 agent: ${agent}`);
+    return sections.join("\n\n");
+}
+export function buildExecutablePrompt(agent, prompt, packet) {
     let roleContext = "";
     let roleTitle = "";
     switch (agent) {
@@ -52,12 +80,14 @@ export function buildExecutablePrompt(agent, prompt) {
             roleTitle = "【专业执行官】";
             roleContext = `你现在是一名专业的执行官，负责高效完成以下 pm-workflow 任务。`;
     }
+    const taskBody = packet
+        ? renderAgentHandoffPrompt(agent, packet)
+        : `【核心任务】\n${prompt}`;
     return `
 ${roleTitle}
 ${roleContext}
 
-【核心任务】
-${prompt}
+${taskBody}
 
 【执行要求】
 1. 严格遵循项目既有的代码规范与技术栈。
