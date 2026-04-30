@@ -1,3 +1,4 @@
 .graymatter/
 .pm-workflow/
+.worktrees/
 node_modules/
