@@ -2,7 +2,7 @@
 
 ## 目的
 
-本文档用于从实现视角说明 `pm-workflow` 当前版本的任务路由方式与自动续跑闭环，帮助维护者理解 `pm`、`commander`、专业 agent、`evaluator`、`dispatch-tools`、`runtime`、`gate / permission / confirm` 之间的职责边界。
+本文档用于从实现视角说明 `pm-workflow` 当前版本（`0.1.15`）的任务路由方式与自动续跑闭环，帮助维护者理解 `pm`、`commander`、专业 agent、`evaluator`、`dispatch-tools`、`runtime`、`gate / permission / confirm` 之间的职责边界。
 
 它不承担 README 总览图的职责，而是聚焦两个问题：
 
@@ -41,6 +41,14 @@ docs/runbooks/pm-workflow-usage-flow.md
 - `dispatch-tools`：拼装、执行并汇总调度链结果
 - `runtime`：构造下一跳 dispatch
 - `gate / permission / confirm`：阻止不安全推进
+
+### 1.1 `0.1.15` 的补充说明
+
+`0.1.15` 没有改写本文档中的主路由拓扑，但补充了 handoff 与结果评估层的约束：
+
+- handoff packet 改为更紧凑的 `mission / context / scope / acceptance / artifacts / responseFormat`
+- specialist 默认按 `summary / verification / risk` 结构回传
+- evaluator 对缺少结构化字段的输出更谨慎，不再轻易判定为完成
 
 ## 2. 实现视角流程图
 
@@ -227,5 +235,6 @@ PM 接收任务
 
 | 日期 | 变更 |
 |---|---|
+| 2026-05-08 | 更新到 0.1.15：补充 compact handoff packet、结构化回传与 evaluator 收紧说明；主路由图仍沿用 0.1.14 建立的调用语义。 |
 | 2026-05-07 | 更新到 0.1.14：补充 Invocation Resolver、Primary/Subagent 分流、Topology Summary，并将流程图统一为中文标签。 |
 | 2026-04-30 | 新增实现视角文档，固化 pm 主协调、commander advisor-only 与 auto-continue 安全闭环 Mermaid 定稿。 |

@@ -245,6 +245,26 @@ flowchart TD
 - Specialist 保持 subagent 角色，不会被错误地按 primary 路径调用
 - 调度语义统一，避免 fallback 到默认 agent
 
+## 4.3 `0.1.15` 的 Compact Handoff 与结构化回传
+
+在 `0.1.14` 已建立的 lane 与调用语义基础上，`0.1.15` 进一步收紧了 PM 向 specialist 的 handoff 方式。
+
+### handoff packet 当前结构
+
+- `mission`：任务目标，只保留一次核心意图
+- `context`：关键背景，避免重复整段原始 prompt
+- `scope`：明确应该做什么、不应该做什么
+- `artifacts`：提示相关对象，而不是默认注入完整长文本
+- `acceptance`：少量清晰的验收标准
+- `responseFormat`：统一要求 specialist 按 `summary / verification / risk` 回传
+
+### 这会带来什么变化
+
+- specialist 收到的 handoff prompt 更短、更聚焦
+- 大文件、完整日志、完整 diff 不再默认塞进 handoff prompt
+- evaluator 不再因为“有一些自然语言输出”就直接认为任务完成
+- 如果缺少 `summary / verification / risk` 结构，结果会更倾向被判为需要继续处理或补充信息
+
 ## 5. 每个阶段怎么用
 
 ### 阶段 A：需求收集（idea → spec）
@@ -709,5 +729,6 @@ pm-get-history
 
 | 日期 | 变更 |
 |---|---|
+| 2026-05-08 | 更新到 0.1.15：补充 compact handoff prompt 与 `summary / verification / risk` 结构化回传说明；保留 0.1.14 作为 lane 与调用语义的首次引入版本。 |
 | 2026-05-07 | 更新到 0.1.14：补充 Command Lane 入口、Primary/Subagent 调度语义、流程图全部改为中文标签。 |
 | 2026-04-25 | 新增本手册，补齐 pm-workflow 的使用说明、阶段流转、agent/tool/gate/state 关系与故障排查。 |
