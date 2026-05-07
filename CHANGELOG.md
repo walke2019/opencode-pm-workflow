@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.15
+
+- 将 handoff packet 压缩为 `mission / context / scope / acceptance / artifacts / responseFormat` 结构，减少重复 prompt 与无关长文本注入。
+- 更新 subagent handoff prompt 中文模板，并按 agent 职责裁剪上下文，统一回传 `summary / verification / risk` 结构化结果。
+- 收紧 evaluator 对成功结果的判定：缺少结构化字段时不再直接视为完成，降低“有输出但不可评估”被误判成功的风险。
+
 ## 0.1.14
 
 - 新增 `pm-quick`、`pm-medium`、`pm-full`、`pm-debug` 四条 Command Lane 入口，并将其注册到 TUI commands 与发布包 `commands/` 中。

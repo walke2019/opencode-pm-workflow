@@ -217,9 +217,9 @@ export function formatHandoffPacketLines(packet?: HandoffPacket): string[] {
 
   return [
     `- handoff packet: target=${packet.targetAgent} type=${packet.taskType}`,
-    `- handoff goal: ${packet.goal}`,
-    `- handoff scope: ${packet.scope.join("；") || "无"}`,
-    `- handoff acceptance: ${packet.acceptanceCriteria.join("；") || "无"}`,
+    `- handoff mission: ${packet.mission}`,
+    `- handoff scope: ${[...packet.scope.do, ...packet.scope.dont].join("；") || "无"}`,
+    `- handoff acceptance: ${packet.acceptance.join("；") || "无"}`,
     `- handoff deliverables: ${packet.deliverables.join("；") || "无"}`,
     `- handoff next step: ${packet.nextStepHint || "无"}`,
   ];

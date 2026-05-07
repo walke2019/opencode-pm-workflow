@@ -120,8 +120,20 @@ async function testHandoffPacket() {
   });
 
   assert.strictEqual(backendPacket.targetAgent, 'backend');
-  assert.ok(backendPacket.acceptanceCriteria.length > 0);
-  assert.ok(backendPacket.returnFormat.some((item) => item.includes('验证')));
+  assert.ok(backendPacket.mission.includes('修复认证接口 401'));
+  assert.ok(Array.isArray(backendPacket.context));
+  assert.ok(Array.isArray(backendPacket.scope.do));
+  assert.ok(Array.isArray(backendPacket.scope.dont));
+  assert.ok(Array.isArray(backendPacket.acceptance));
+  assert.ok(Array.isArray(backendPacket.artifacts));
+  assert.deepStrictEqual(backendPacket.responseFormat, [
+    'summary: 做了什么',
+    'verification: 如何验证 / 未验证原因',
+    'risk: 剩余风险或 blocked 原因',
+  ]);
+  assert.ok(backendPacket.acceptance.length <= 3);
+  assert.ok(backendPacket.context.length <= 4);
+  assert.ok(backendPacket.artifacts.length <= 6);
   assert.strictEqual(backendPacket.nextStepHint, 'backend');
 
   const structuredPrompt = buildExecutablePrompt(
@@ -131,9 +143,42 @@ async function testHandoffPacket() {
   );
 
   assert.ok(structuredPrompt.includes('【任务目标】'));
-  assert.ok(structuredPrompt.includes('【任务背景】'));
+  assert.ok(structuredPrompt.includes('【关键背景】'));
+  assert.ok(structuredPrompt.includes('【处理范围】'));
+  assert.ok(structuredPrompt.includes('【相关对象】'));
   assert.ok(structuredPrompt.includes('【验收标准】'));
   assert.ok(structuredPrompt.includes('【回传格式】'));
+  assert.ok(!structuredPrompt.includes('【输入材料】'));
+  assert.ok(!structuredPrompt.includes('【完成定义】'));
+}
+
+async function testCompactHandoffCompression() {
+  const prompt = [
+    '请修复设置页保存失败问题，并补充 UI 验证说明。',
+    '日志片段：Error: request timeout at settings-save.ts:42',
+    '代码片段：const payload = buildSettingsPayload(formState)',
+    '补充说明：不要扩展到其他页面，也不要做大规模重构。',
+  ].join('\n');
+
+  const packet = buildHandoffPacket({
+    prompt,
+    targetAgent: 'frontend',
+    analysis: analyzeDispatchTask({
+      prompt,
+      stage: 'development',
+      blockedReasons: [],
+    }),
+  });
+
+  assert.ok(packet.mission.includes('设置页'));
+  assert.ok(!packet.mission.includes('日志片段'));
+  assert.ok(packet.context.length <= 4);
+  assert.ok(packet.scope.do.length <= 3);
+  assert.ok(packet.scope.dont.length <= 3);
+  assert.ok(packet.acceptance.length <= 3);
+  assert.ok(packet.artifacts.length <= 6);
+  assert.ok(packet.artifacts.some((item) => item.includes('settings-save.ts')));
+  assert.ok(packet.scope.dont.some((item) => item.includes('不要扩展到其他页面')));
 }
 
 async function testDispatchCommandIncludesHandoffPacket() {
@@ -175,6 +220,25 @@ async function testDispatchCommandIncludesHandoffPacket() {
   assert.ok(handoffLines.some((line) => line.includes('handoff acceptance:')));
 }
 
+async function testAgentSpecificCompactContext() {
+  const prompt = '把 onboarding 流程的前端实现、说明文档和拆解方案一起补齐';
+  const analysis = analyzeDispatchTask({
+    prompt,
+    stage: 'plan_ready',
+    blockedReasons: [],
+  });
+
+  const frontendPacket = buildHandoffPacket({ prompt, targetAgent: 'frontend', analysis });
+  const qaPacket = buildHandoffPacket({ prompt, targetAgent: 'qa_engineer', analysis });
+  const writerPacket = buildHandoffPacket({ prompt, targetAgent: 'writer', analysis });
+  const commanderPacket = buildHandoffPacket({ prompt, targetAgent: 'commander', analysis });
+
+  assert.ok(frontendPacket.scope.do.some((item) => item.includes('页面') || item.includes('组件') || item.includes('交互')));
+  assert.ok(qaPacket.acceptance.some((item) => item.includes('验证') || item.includes('未覆盖')));
+  assert.ok(writerPacket.artifacts.some((item) => item.includes('文档') || item.includes('章节')));
+  assert.ok(commanderPacket.deliverables.some((item) => item.includes('任务拆解建议')));
+}
+
 async function testEvaluator() {
   const analysis = analyzeDispatchTask({
     prompt: '修复认证接口 401 并确认不影响现有登录流程',
@@ -190,7 +254,11 @@ async function testEvaluator() {
   const needsVerification = evaluateDispatchResult({
     packet,
     exitCode: 0,
-    stdout: '已修复 401，已更新认证逻辑，但尚未执行验证命令',
+    stdout: [
+      'summary: 已修复 401，已更新认证逻辑。',
+      'verification: 尚未执行验证命令。',
+      'risk: 当前暂无新增阻塞，但仍缺少验证证据。',
+    ].join('\n'),
     stderr: '',
   });
   assert.strictEqual(needsVerification.status, 'needs_verification');
@@ -202,11 +270,34 @@ async function testEvaluator() {
   const done = evaluateDispatchResult({
     packet,
     exitCode: 0,
-    stdout:
-      '已修复 401，并执行 npm run build 与 node test/workflow-redesign.test.mjs 验证通过',
+    stdout: [
+      'summary: 已修复 401。',
+      'verification: 已执行 npm run build 与 node test/workflow-redesign.test.mjs，验证通过。',
+      'risk: 暂无新增阻塞风险。',
+    ].join('\n'),
     stderr: '',
   });
   assert.strictEqual(done.status, 'done');
+
+  const naturalLanguageOnly = evaluateDispatchResult({
+    packet,
+    exitCode: 0,
+    stdout: '已经完成修复，看起来没有问题。',
+    stderr: '',
+  });
+  assert.notStrictEqual(naturalLanguageOnly.status, 'done');
+
+  const structuredDone = evaluateDispatchResult({
+    packet,
+    exitCode: 0,
+    stdout: [
+      'summary: 已修复 401 并更新认证逻辑。',
+      'verification: 已执行 npm run build 与 node test/workflow-redesign.test.mjs，结果通过。',
+      'risk: 暂无新增阻塞风险。',
+    ].join('\n'),
+    stderr: '',
+  });
+  assert.strictEqual(structuredDone.status, 'done');
 
   const commanderPacket = buildHandoffPacket({
     prompt: '拆解 onboarding 流程并给出后续分派建议',
@@ -220,7 +311,11 @@ async function testEvaluator() {
   const commanderResult = evaluateDispatchResult({
     packet: commanderPacket,
     exitCode: 0,
-    stdout: '已完成任务拆解，建议下一步由 PM 决定派发顺序',
+    stdout: [
+      'summary: 已完成任务拆解。',
+      'verification: 已检查任务依赖与分派顺序。',
+      'risk: 仍需 PM 做最终决策。',
+    ].join('\n'),
     stderr: '',
   });
   assert.strictEqual(commanderResult.status, 'partial');
@@ -437,7 +532,9 @@ async function runTests() {
     await testLoopDispatchFormatting();
     await testAnalyzerRouting();
     await testHandoffPacket();
+    await testCompactHandoffCompression();
     await testDispatchCommandIncludesHandoffPacket();
+    await testAgentSpecificCompactContext();
     await testEvaluator();
     console.log('dispatch quality loop public exports ready');
   } catch (error) {

@@ -89,17 +89,19 @@ export interface TaskAnalysis {
 }
 
 export interface HandoffPacket {
-  goal: string;
-  why: string;
+  mission: string;
+  context: string[];
   taskType: string;
   targetAgent: DispatchAgent;
-  scope: string[];
-  inputs: string[];
+  scope: {
+    do: string[];
+    dont: string[];
+  };
+  artifacts: string[];
   constraints: string[];
-  acceptanceCriteria: string[];
+  acceptance: string[];
   deliverables: string[];
-  doneDefinition: string[];
-  returnFormat: string[];
+  responseFormat: string[];
   nextStepHint?: string;
 }
 

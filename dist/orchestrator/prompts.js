@@ -35,18 +35,27 @@ function renderListSection(title, items) {
         .join("\n");
     return `${title}\n${content}`;
 }
+function renderScopeSection(scope) {
+    const lines = [];
+    if (scope.do.length > 0) {
+        lines.push(`应做：${scope.do.join("；")}`);
+    }
+    if (scope.dont.length > 0) {
+        lines.push(`不做：${scope.dont.join("；")}`);
+    }
+    return lines.length > 0 ? `【处理范围】\n${lines.join("\n")}` : "";
+}
 export function renderAgentHandoffPrompt(agent, packet) {
     const sections = [
-        `【任务目标】\n${packet.goal}`,
-        `【任务背景】\n${packet.why}`,
+        `【任务目标】\n${packet.mission}`,
+        renderListSection("【关键背景】", packet.context),
         `【任务类型】\n${packet.taskType}`,
-        renderListSection("【处理范围】", packet.scope),
-        renderListSection("【输入材料】", packet.inputs),
+        renderScopeSection(packet.scope),
+        renderListSection("【相关对象】", packet.artifacts),
         renderListSection("【约束条件】", packet.constraints),
-        renderListSection("【验收标准】", packet.acceptanceCriteria),
+        renderListSection("【验收标准】", packet.acceptance),
         renderListSection("【交付物】", packet.deliverables),
-        renderListSection("【完成定义】", packet.doneDefinition),
-        renderListSection("【回传格式】", packet.returnFormat),
+        renderListSection("【回传格式】", packet.responseFormat),
     ].filter(Boolean);
     if (packet.nextStepHint) {
         sections.push(`【下一步建议】\n1. 优先同步给 ${packet.nextStepHint}`);

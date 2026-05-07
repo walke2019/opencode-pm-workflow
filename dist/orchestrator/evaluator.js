@@ -14,6 +14,14 @@ const NEGATED_VERIFICATION_PHRASES = [
     "without verification",
     "not tested",
 ];
+const NEGATED_BLOCKED_PHRASES = [
+    "暂无阻塞",
+    "暂无新增阻塞",
+    "暂无新增阻塞风险",
+    "无阻塞",
+    "not blocked",
+    "no blocking risk",
+];
 function normalizeText(input) {
     return `${input.stdout}\n${input.stderr}`.toLowerCase();
 }
@@ -24,9 +32,20 @@ function mentionsVerification(text) {
     return VERIFICATION_KEYWORDS.some((keyword) => text.includes(keyword));
 }
 function isBlockedText(text) {
+    if (NEGATED_BLOCKED_PHRASES.some((phrase) => text.includes(phrase))) {
+        return false;
+    }
     return (text.includes("阻塞") ||
         text.includes("blocked") ||
         text.includes("等待确认"));
+}
+function hasStructuredSection(text, section) {
+    return text.includes(`${section}:`);
+}
+function hasStructuredResponse(text) {
+    return (hasStructuredSection(text, "summary") &&
+        hasStructuredSection(text, "verification") &&
+        hasStructuredSection(text, "risk"));
 }
 function inferNextAgent(packet, exitCode, text) {
     if (exitCode !== 0) {
@@ -105,6 +124,19 @@ export function evaluateDispatchResult(input) {
             gaps: ["存在明确阻塞信号"],
             recommendedNextAgent: input.packet.targetAgent,
             recommendedNextAction: "blocked",
+            canAutoContinue: false,
+            autoContinueSafe: false,
+        };
+    }
+    if (!hasStructuredResponse(text)) {
+        return {
+            status: "partial",
+            summary: "执行结果有文本，但未按要求返回 summary/verification/risk 结构。",
+            matchedDeliverables: [],
+            missingDeliverables: input.packet.deliverables,
+            gaps: ["缺少结构化回传字段：summary / verification / risk"],
+            recommendedNextAgent: input.packet.targetAgent,
+            recommendedNextAction: "continue-development",
             canAutoContinue: false,
             autoContinueSafe: false,
         };
