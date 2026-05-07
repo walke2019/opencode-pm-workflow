@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.16
+
+- 新增 Agent Definition Registry，按 `project/.opencode/agents` → `global ~/.config/opencode/agents` → legacy `agent` 目录 → 内部 fallback 的优先级解析 agent 定义。
+- 将 auto-continue runtime dispatch 接入 registry，按外部 agent frontmatter 的 `model / mode / description` 生成实际 executable agent 与 invocation 语义。
+- 为 dispatch 输出补充 `resolvedAgent` 诊断摘要，并新增 runtime/registry 级测试覆盖项目级优先、全局优先、字段级 fallback 与展示路径。
+
 ## 0.1.15
 
 - 将 handoff packet 压缩为 `mission / context / scope / acceptance / artifacts / responseFormat` 结构，减少重复 prompt 与无关长文本注入。
