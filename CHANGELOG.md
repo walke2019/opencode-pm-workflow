@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.14
+
+- 新增 `pm-quick`、`pm-medium`、`pm-full`、`pm-debug` 四条 Command Lane 入口，并将其注册到 TUI commands 与发布包 `commands/` 中。
+- 引入 lane-aware orchestration：补充 `PmLaneContext`、`TopologySummary`、`TodoPolicySummary`，让调度摘要、toast 与 loop 输出携带更明确的策略信息。
+- 修复 primary / subagent 调用语义：primary 继续走 `opencode run --agent`，subagent 改走 `opencode task`，避免专业 agent 被错误按 primary 路径调用并 fallback。
+- 更新 README、runbook、架构/迁移文档与流程图，统一补充 0.1.14 的 command lane、mode-aware dispatch 与 topology summary 说明。
+
 ## 0.1.13
 
 - 修复开发导向路由在 `collect-spec` / `create-dev-plan` gate 阶段过早切换到专业 agent 的问题，确保只有 `start-development` / `continue-development` 才根据 prompt 自动分派 backend/frontend/writer/QA。

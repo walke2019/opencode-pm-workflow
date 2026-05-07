@@ -1,6 +1,6 @@
 # pm-workflow 使用说明与任务流转手册
 
-## Purpose
+## 目的
 
 本文说明 `pm-workflow` 扩展的用途、接入方式、阶段流转规则，以及在 OpenCode 中如何用它推进一个任务从想法到发布。
 
@@ -159,29 +159,23 @@ DEV-PLAN 是否存在
 
 下面这张图用于帮助第一次接触项目的读者快速理解：任务进入系统后，始终先由 `pm` 统筹；`commander` 只在复杂场景下提供顾问建议；真正执行由专业 agent 完成；执行结果会经过评估，并在低风险条件下受控自动续跑。
 
-对应 SVG 成品：
-
-```text
-docs/pm-workflow-overview.svg
-```
-
 ```mermaid
 flowchart TD
-    A[用户提出任务] --> B[pm 主协调分析任务]
+    A[用户提出任务] --> B[PM 主协调分析任务]
 
     B --> C{是否需要复杂拆解建议}
-    C -- 是 --> D[commander 提供顾问建议<br/>advisor-only]
-    C -- 否 --> E[直接选择专业 agent]
+    C -- 是 --> D[Commander 提供顾问建议<br/>仅顾问角色]
+    C -- 否 --> E[直接选择专业 Agent]
     D --> E
 
-    E --> F[backend / frontend / writer / qa_engineer 执行]
-    F --> G[evaluator 评估结果]
+    E --> F[Backend / Frontend / Writer / QA 执行]
+    F --> G[Evaluator 评估结果]
 
-    G --> H{是否满足低风险自动续跑}
+    G --> H{是否满足低风险自动续跑条件}
     H -- 是 --> I[自动进入下一步分派]
     I --> B
 
-    H -- 否 --> J{是否 blocked / 高风险 / 信息不足}
+    H -- 否 --> J{是否阻塞/高风险/信息不足}
     J -- 是 --> K[停止并返回原因]
     J -- 否 --> L[等待下一次调度或人工继续]
 
@@ -196,6 +190,60 @@ flowchart TD
 4. `evaluator` 负责判断结果与下一步方向。
 5. 系统支持低风险条件下的自动续跑。
 6. 自动推进不会绕过 `gate / permission / confirm`，不安全时会停住并返回原因。
+
+## 4.1 Command Lane 入口
+
+从 `0.1.14` 开始，系统提供 4 条 lane 风格入口：
+
+- `pm-quick`：低风险、guided、轻 review
+- `pm-medium`：中等风险、assisted、标准 review（推荐默认）
+- `pm-full`：高风险、elevated、严格 review
+- `pm-debug`：debug 风险、assisted、标准 review
+
+这些 lane 只是 UX facade，所有真实判断仍由 `pm_workflow_caocao` + `pm-*` tools 完成。
+
+```mermaid
+flowchart LR
+    A[用户选择 Lane] --> B{Lane 类型}
+    B -->|quick| C[低风险策略]
+    B -->|medium| D[中等风险策略]
+    B -->|full| E[高风险策略]
+    B -->|debug| F[调试策略]
+    
+    C --> G[PM 主协调入口]
+    D --> G
+    E --> G
+    F --> G
+    
+    G --> H[统一 Runtime 执行]
+```
+
+## 4.2 Primary / Subagent 调度语义
+
+从 `0.1.14` 开始，系统区分 primary agent 和 subagent 的调度路径：
+
+- **Primary Agent**（如 `pm_workflow_caocao`）：通过 `opencode run --agent <name>` 执行
+- **Subagent**（如 `pm_workflow_frontend` / `pm_workflow_qa` / `pm_workflow_writer`）：通过 `opencode task ...` 执行
+
+```mermaid
+flowchart TD
+    A[PM 分析任务] --> B{Agent 类型}
+    B -->|Primary| C[opencode run --agent]
+    B -->|Subagent| D[opencode task ...]
+    
+    C --> E[直接执行]
+    D --> F[子任务执行]
+    
+    E --> G[返回结果]
+    F --> G
+    
+    G --> H[PM 汇总]
+```
+
+这确保了：
+- Lane command 永远先进入 `pm_workflow_caocao`
+- Specialist 保持 subagent 角色，不会被错误地按 primary 路径调用
+- 调度语义统一，避免 fallback 到默认 agent
 
 ## 5. 每个阶段怎么用
 
@@ -317,12 +365,12 @@ prepare-release
 
 ```mermaid
 flowchart TD
-    A[读取当前 Task 的 Spec / Plan / 设计参照] --> B[backend / frontend / writer 实现代码]
+    A[读取当前 Task 的 Spec / Plan / 设计参照] --> B[Backend / Frontend / Writer 实现代码]
     B --> C[对照功能与视觉做自检]
-    C --> D[qa_engineer 审查 Stage 1\nSpec Compliance]
-    D -- 不通过 --> E[补实现]
+    C --> D[QA 审查阶段 1<br/>Spec 符合性]
+    D -- 不通过 --> E[补充实现]
     E --> B
-    D -- 通过 --> F[qa_engineer 审查 Stage 2\nCode Quality]
+    D -- 通过 --> F[QA 审查阶段 2<br/>代码质量]
     F -- 不通过 --> G[修复问题]
     G --> B
     F -- 通过 --> H[标记 Task 完成]
@@ -349,10 +397,10 @@ state 决定当前阶段，gate 决定是否能前进，dispatch 决定下一步
 
 ```mermaid
 flowchart LR
-    S[state] --> D[dispatch plan]
-    G[gate] --> D
-    D --> A[agent]
-    A --> T[tool execution]
+    S[State 状态] --> D[Dispatch 调度计划]
+    G[Gate 门禁] --> D
+    D --> A[Agent 执行者]
+    A --> T[Tool 工具执行]
     T --> S
 ```
 
@@ -661,4 +709,5 @@ pm-get-history
 
 | 日期 | 变更 |
 |---|---|
+| 2026-05-07 | 更新到 0.1.14：补充 Command Lane 入口、Primary/Subagent 调度语义、流程图全部改为中文标签。 |
 | 2026-04-25 | 新增本手册，补齐 pm-workflow 的使用说明、阶段流转、agent/tool/gate/state 关系与故障排查。 |

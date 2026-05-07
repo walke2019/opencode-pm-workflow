@@ -10,7 +10,7 @@
 - 开发导向 agent 编排：PM 主协调，按任务特征分派 backend、frontend、QA、writer 等专业 agent。
 - Agent/模型初始化 Skill：基于全局 OpenCode provider model 列表配置 Claude Code 与 OpenCode agents。
 
-当前发布版本：`0.1.13`。
+当前发布版本：`0.1.14`。
 
 ## 安装
 
@@ -183,8 +183,14 @@ pm-workflow.config.example.json
 
 ## 文档
 
+### 使用文档
 - 使用手册：`docs/runbooks/pm-workflow-usage-flow.md`
+- 架构总览：`docs/dev/pm-workflow-architecture-overview.md`
+
+### 开发文档
 - 路由与自动续跑：`docs/dev/pm-workflow-routing-and-auto-continue.md`
+- Command Lane 映射：`docs/dev/command-lane-mapping.md`
+- Subagent 调度迁移：`docs/dev/subagent-dispatch-migration.md`
 - 流程图设计：`docs/specs/2026-04-30-pm-workflow-diagrams-design.md`
 - 发布检查：`docs/dev/pm-workflow-plugin-publish-checklist.md`
 

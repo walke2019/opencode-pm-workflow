@@ -1,6 +1,6 @@
 # pm-workflow 路由与自动续跑实现图
 
-## Purpose
+## 目的
 
 本文档用于从实现视角说明 `pm-workflow` 当前版本的任务路由方式与自动续跑闭环，帮助维护者理解 `pm`、`commander`、专业 agent、`evaluator`、`dispatch-tools`、`runtime`、`gate / permission / confirm` 之间的职责边界。
 
@@ -36,7 +36,7 @@ docs/runbooks/pm-workflow-usage-flow.md
 - `pm`：主协调入口，负责承接用户任务与组织下一步调度
 - `analyzer`：识别任务特征，判断是否需要 advisor 参与
 - `commander`：在复杂场景下提供顾问建议，再回到 `pm` 主路径
-- `backend / frontend / writer / qa_engineer`：执行实际任务
+- `后端 / 前端 / 文档 / QA 专业 agent`：执行实际任务
 - `evaluator`：根据执行结果推断下一步 agent、动作与 auto-continue 信号
 - `dispatch-tools`：拼装、执行并汇总调度链结果
 - `runtime`：构造下一跳 dispatch
@@ -53,50 +53,57 @@ docs/pm-workflow-routing-auto-continue.svg
 ```mermaid
 flowchart TD
     subgraph Roles["角色与组件分工"]
-        U[User / OpenCode]
-        PM[pm 主协调]
-        AN[analyzer]
-        CMD[commander<br/>advisor-only]
-        AG[backend / frontend / writer / qa_engineer]
-        EV[evaluator]
-        DT[dispatch-tools]
-        RT[runtime]
-        GT[gate / permission / confirm]
+        U[用户 / OpenCode 环境]
+        PM[PM 主协调]
+        AN[Analyzer 分析器]
+        CMD[Commander<br/>仅顾问角色]
+        AG[Backend / Frontend / Writer / QA]
+        EV[Evaluator 评估器]
+        DT[Dispatch Tools 调度工具]
+        RT[Runtime 运行时]
+        GT[Gate / Permission / Confirm]
+        IV[Invocation Resolver<br/>调用语义解析]
     end
 
     U --> PM
     PM --> AN
-    AN --> X{是否需要<br/>advisor_then_dispatch}
+    AN --> X{是否需要复杂拆解建议}
     X -- 是 --> CMD
     X -- 否 --> PM
     CMD --> PM
     PM --> DT
-    DT --> AG
+    DT --> IV
+    IV --> Y{Agent 类型}
+    Y -- Primary --> Z1[opencode run]
+    Y -- Subagent --> Z2[opencode task]
+    Z1 --> AG
+    Z2 --> AG
     AG --> EV
     EV --> DT
     DT --> RT
     RT --> GT
 
     subgraph Loop["执行与自动续跑闭环"]
-        A1[analyze task]
-        A2[build handoff packet]
-        A3[execute dispatch]
-        A4[evaluate result]
+        A1[分析任务]
+        A2[构建交接包]
+        A3[执行调度]
+        A4[评估结果]
 
-        A5[recommendedNextAgent]
-        A6[recommendedNextAction]
+        A5[推荐下一个 Agent]
+        A6[推荐下一个动作]
         A7[canAutoContinue / autoContinueSafe]
         A8[nextAutoAction]
+        A9[追加拓扑摘要]
 
         D1{允许自动续跑?}
-        D2{通过 gate / permission / confirm?}
-        D3{达到步数上限或遇到 stop reason?}
+        D2{通过 Gate / Permission / Confirm?}
+        D3{达到步数上限或遇到停止原因?}
 
-        N1[build next dispatch]
-        N2[execute auto-continue step]
-        N3[append auto-continue summary]
-        S1[stop and return reason]
-        S2[finish current loop]
+        N1[构建下一次调度]
+        N2[执行自动续跑步骤]
+        N3[追加自动续跑摘要]
+        S1[停止并返回原因]
+        S2[完成当前循环]
     end
 
     A1 --> A2 --> A3 --> A4
@@ -104,6 +111,7 @@ flowchart TD
     A4 --> A6
     A4 --> A7
     A4 --> A8
+    A4 --> A9
 
     A7 --> D1
     D1 -- 否 --> S1
@@ -121,7 +129,7 @@ flowchart TD
 主路径不是 `commander -> agent`，而是：
 
 ```text
-User / OpenCode -> pm -> analyzer -> pm -> dispatch-tools -> 专业 agent -> evaluator
+用户 / OpenCode 环境 -> pm -> analyzer -> pm -> dispatch-tools -> 专业 agent -> evaluator
 ```
 
 只有在 `analyzer` 判断需要复杂拆解建议时，`commander` 才会临时介入，并且介入后仍然回到 `pm` 主路径。
@@ -150,28 +158,28 @@ permission
 confirm
 ```
 
-只要任何一个条件不满足，就应该停在 `stop and return reason`，而不是继续推进。
+只要任何一个条件不满足，就应该停在“停止并返回原因”，而不是继续推进。
 
 ## Examples
 
 ### 例 1：复杂任务需要顾问建议
 
 ```text
-pm 接收任务
--> analyzer 判断需要 advisor_then_dispatch
--> commander 提供建议
--> 回到 pm
--> pm 继续分派给 backend / frontend / writer / qa_engineer
+PM 接收任务
+-> Analyzer 判断需要 advisor_then_dispatch
+-> Commander 提供建议
+-> 回到 PM
+-> PM 继续分派给 Backend / Frontend / Writer / QA
 ```
 
 ### 例 2：低风险结果触发自动续跑
 
 ```text
-专业 agent 完成执行
--> evaluator 判断 canAutoContinue = true
--> gate / permission / confirm 通过
--> runtime 构造下一跳 dispatch
--> dispatch-tools 执行 auto-continue step
+专业 Agent 完成执行
+-> Evaluator 判断 canAutoContinue = true
+-> Gate / Permission / Confirm 通过
+-> Runtime 构造下一跳 dispatch
+-> Dispatch Tools 执行 auto-continue step
 -> 汇总结果并决定是否继续或停住
 ```
 
@@ -212,11 +220,12 @@ pm 接收任务
 排查方向：
 
 - 是否把 `gate / permission / confirm` 放进自动续跑决策点
-- 是否缺少 `stop and return reason`
+- 是否缺少“停止并返回原因”节点
 - 是否让自动续跑箭头直接跳回执行节点而未经过判断
 
 ## Change Log
 
 | 日期 | 变更 |
 |---|---|
+| 2026-05-07 | 更新到 0.1.14：补充 Invocation Resolver、Primary/Subagent 分流、Topology Summary，并将流程图统一为中文标签。 |
 | 2026-04-30 | 新增实现视角文档，固化 pm 主协调、commander advisor-only 与 auto-continue 安全闭环 Mermaid 定稿。 |
