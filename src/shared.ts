@@ -13,6 +13,13 @@ export {
   validateWorkflowConfigAgentModels,
 } from "./core/config.js";
 export {
+  resolveLaneContext,
+  shouldCreateTodoForLane,
+  buildTodoPolicySummary,
+} from "./commands/lane-policy.js";
+export { inferTopologyFromAnalysis } from "./commands/topology.js";
+export { summarizeLaneDispatch } from "./commands/result.js";
+export {
   getGlobalOpenCodeConfigPath,
   isGlobalOpenCodeModelKey,
   listGlobalOpenCodeModelKeys,
@@ -103,15 +110,22 @@ export { buildSafetyReport } from "./orchestrator/safety.js";
 export {
   buildExecutablePrompt,
   getExecutableAgent,
+  resolveAgentInvocationSemantics,
 } from "./orchestrator/prompts.js";
 export { isAutomationCapabilityEnabled } from "./core/automation.js";
+export {
+  buildAutoContinueDispatch,
+  executeDispatchCommand,
+} from "./server/runtime.js";
 export type { WorkflowDocName } from "./core/project.js";
 export type {
   AutomationCapability,
+  AgentInvocationMode,
   AutomationMode,
   DispatchCommand,
   DispatchAction,
   DispatchAgent,
+  DispatchInvocationSemantics,
   DispatchPlan,
   DocsStorageMode,
   HandoffPacket,
@@ -135,3 +149,10 @@ export type {
   WorkflowStage,
   WorkflowState,
 } from "./core/types.js";
+export type {
+  ExecutionTopology,
+  PmCommandLane,
+  PmLaneContext,
+  TodoPolicySummary,
+  TopologySummary,
+} from "./commands/types.js";

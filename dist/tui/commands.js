@@ -1,6 +1,6 @@
-export function registerPmWorkflowCommands(api, helpers) {
-    const { showConfigToast, showDispatchToast, showDoctorToast, showDryRunDispatchToast, showDryRunLoopToast, showExecutePermissionToggleToast, showExecutionReceiptsToast, showExecutionPlanToast, showExecutionSummaryToast, showHistoryToast, showLastExecutionToast, showMigrationReportToast, showModeToast, showPermissionsToast, showProjectStageToast, showRecoverySummaryToast, showReviewGateToast, showSafetyReportToast, switchModeToast, } = helpers;
-    api.command.register(() => [
+export function listPmWorkflowCommandSpecs(helpers) {
+    const { showConfigToast, showDispatchToast, showDoctorToast, showDryRunDispatchToast, showDryRunLoopToast, showExecutePermissionToggleToast, showExecutionReceiptsToast, showExecutionPlanToast, showExecutionSummaryToast, showHistoryToast, showLastExecutionToast, showMigrationReportToast, showModeToast, showPermissionsToast, showProjectStageToast, showRecoverySummaryToast, showReviewGateToast, showSafetyReportToast, showLaneToast, switchModeToast, } = helpers;
+    return [
         {
             title: "pm-workflow 项目状态",
             value: "pm-workflow-status",
@@ -32,6 +32,38 @@ export function registerPmWorkflowCommands(api, helpers) {
             category: "pm-workflow",
             slash: { name: "pm-dispatch" },
             onSelect: () => showDispatchToast(6500),
+        },
+        {
+            title: "pm-workflow quick lane",
+            value: "pm-lane-quick",
+            description: "以 quick lane 预览低风险快速推进建议",
+            category: "pm-workflow",
+            slash: { name: "quick" },
+            onSelect: () => showLaneToast("quick", 6500),
+        },
+        {
+            title: "pm-workflow medium lane",
+            value: "pm-lane-medium",
+            description: "以 medium lane 预览标准实现建议",
+            category: "pm-workflow",
+            slash: { name: "medium" },
+            onSelect: () => showLaneToast("medium", 6500),
+        },
+        {
+            title: "pm-workflow full lane",
+            value: "pm-lane-full",
+            description: "以 full lane 预览高审慎完整执行建议",
+            category: "pm-workflow",
+            slash: { name: "full" },
+            onSelect: () => showLaneToast("full", 6500),
+        },
+        {
+            title: "pm-workflow debug lane",
+            value: "pm-lane-debug",
+            description: "以 debug lane 预览排障优先建议",
+            category: "pm-workflow",
+            slash: { name: "debug" },
+            onSelect: () => showLaneToast("debug", 6500),
         },
         {
             title: "pm-workflow doctor",
@@ -193,5 +225,8 @@ export function registerPmWorkflowCommands(api, helpers) {
             slash: { name: "pm-execution-summary" },
             onSelect: () => showExecutionSummaryToast(8000),
         },
-    ]);
+    ];
+}
+export function registerPmWorkflowCommands(api, helpers) {
+    api.command.register(() => listPmWorkflowCommandSpecs(helpers));
 }

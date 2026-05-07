@@ -1,7 +1,7 @@
 import { spawnSync } from "child_process";
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, } from "fs";
 import { join } from "path";
-import { REVIEW_MARKER_FILENAME, buildExecutablePrompt, buildDispatchPlan, buildStateSummary, getExecutableAgent, recordDispatchExecution, readWorkflowConfig, setLastAgent, } from "../shared.js";
+import { REVIEW_MARKER_FILENAME, buildExecutablePrompt, buildDispatchPlan, buildStateSummary, getExecutableAgent, recordDispatchExecution, readWorkflowConfig, resolveAgentInvocationSemantics, setLastAgent, } from "../shared.js";
 import { buildDispatchCommandStrings } from "../orchestrator/prompts.js";
 import { analyzeDispatchTask } from "../orchestrator/analyzer.js";
 import { buildHandoffPacket } from "../orchestrator/handoff.js";
@@ -112,8 +112,10 @@ export function buildAutoContinueDispatch(projectDir, prompt, evaluation) {
         targetAgent: evaluation.recommendedNextAgent,
     });
     const executableAgent = getExecutableAgent(evaluation.recommendedNextAgent, config.agents.dispatch_map);
+    const invocationMode = evaluation.recommendedNextAgent === "pm" ? "primary" : "subagent";
+    const invocation = resolveAgentInvocationSemantics(executableAgent, invocationMode);
     const executablePrompt = buildExecutablePrompt(evaluation.recommendedNextAgent, prompt, handoffPacket);
-    const { command, commandArgs } = buildDispatchCommandStrings(sessionID, executableAgent, executablePrompt);
+    const { command, commandArgs } = buildDispatchCommandStrings(sessionID, executableAgent, executablePrompt, invocation);
     return {
         ...plan,
         recommendedAgent: evaluation.recommendedNextAgent,
@@ -121,6 +123,7 @@ export function buildAutoContinueDispatch(projectDir, prompt, evaluation) {
         reason: `自动续跑下一步：${evaluation.recommendedNextAgent}/${evaluation.nextAutoAction}`,
         analysis,
         handoffPacket,
+        invocation,
         executableAgent,
         executablePrompt,
         command,

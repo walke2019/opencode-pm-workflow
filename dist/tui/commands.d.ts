@@ -19,7 +19,18 @@ type ToastHelpers = {
     showRecoverySummaryToast: (duration?: number) => void;
     showReviewGateToast: (duration?: number) => void;
     showSafetyReportToast: (duration?: number) => void;
+    showLaneToast: (lane: "quick" | "medium" | "full" | "debug", duration?: number) => void;
     switchModeToast: (nextMode: "off" | "observe" | "assist" | "strict", duration?: number) => void;
 };
+export declare function listPmWorkflowCommandSpecs(helpers: ToastHelpers): {
+    title: string;
+    value: string;
+    description: string;
+    category: string;
+    slash: {
+        name: string;
+    };
+    onSelect: () => void;
+}[];
 export declare function registerPmWorkflowCommands(api: TuiApi, helpers: ToastHelpers): void;
 export {};

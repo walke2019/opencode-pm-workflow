@@ -14,6 +14,8 @@ import {
   executeAutoContinueChain,
   formatEvaluationLines,
   formatHandoffPacketLines,
+  formatLaneDispatchLines,
+  formatLoopDispatchLines,
   formatLoopEvaluationLines,
   formatNextDispatchHintLines,
   formatTaskAnalysisLines,
@@ -38,6 +40,41 @@ async function testPublicLoopExports() {
   assert.strictEqual(typeof analyzeDispatchTask, 'function');
   assert.strictEqual(typeof buildHandoffPacket, 'function');
   assert.strictEqual(typeof evaluateDispatchResult, 'function');
+  assert.strictEqual(typeof formatLaneDispatchLines, 'function');
+}
+
+async function testLaneDispatchFormatting() {
+  const lines = await withPlanReadyProject(async (projectDir) => {
+    const dispatch = buildDispatchCommand(
+      projectDir,
+      '请完善设置页 UI、交互细节和响应式布局',
+      'medium',
+    );
+    return formatLaneDispatchLines(dispatch);
+  });
+
+  assert.ok(lines.some((line) => line.includes('lane: medium')));
+  assert.ok(lines.some((line) => line.includes('risk=moderate')));
+  assert.ok(lines.some((line) => line.includes('topology:')));
+  assert.ok(lines.some((line) => line.includes('todo policy:')));
+  assert.ok(lines.some((line) => line.includes('invocation: mode=subagent')));
+}
+
+async function testLoopDispatchFormatting() {
+  const lines = await withPlanReadyProject(async (projectDir) => {
+    const dispatch = buildDispatchCommand(
+      projectDir,
+      '请完善设置页 UI、交互细节和响应式布局',
+      'medium',
+    );
+    return formatLoopDispatchLines(dispatch);
+  });
+
+  assert.ok(lines.some((line) => line.includes('lane: medium')));
+  assert.ok(lines.some((line) => line.includes('topology:')));
+  assert.ok(lines.some((line) => line.includes('todo policy:')));
+  assert.ok(lines.some((line) => line.includes('invocation: mode=subagent')));
+  assert.ok(lines.every((line) => line.startsWith('  ')));
 }
 
 async function testAnalyzerRouting() {
@@ -396,6 +433,8 @@ async function testEvaluator() {
 async function runTests() {
   try {
     await testPublicLoopExports();
+    await testLaneDispatchFormatting();
+    await testLoopDispatchFormatting();
     await testAnalyzerRouting();
     await testHandoffPacket();
     await testDispatchCommandIncludesHandoffPacket();

@@ -112,6 +112,37 @@ pm-dry-run-dispatch
 pm-execute-dispatch confirm=YES
 ```
 
+## Command Lanes
+
+本包支持以下 lane 风格入口：
+
+- `pm-quick`
+- `pm-medium`
+- `pm-full`
+- `pm-debug`
+
+这些 command 只是 UX facade，不是第二套 runtime。所有真实判断仍由 `pm_workflow_caocao` + `pm-*` tools 完成。
+
+每条 lane 对应一套显式策略：
+
+- `quick`：低风险、guided、轻 review，适合快速预览推进建议。
+- `medium`：中等风险、assisted、标准 review，适合作为默认开发入口。
+- `full`：高风险、elevated、严格 review，适合完整执行与更强收敛。
+- `debug`：debug 风险、assisted、标准 review，适合 reproduce / isolate / fix / verify 场景。
+
+## mode-aware dispatch
+
+PM 仍是唯一 primary orchestrator。specialist agent 若为 subagent，将通过 subagent-safe 路径执行，而不是被错误地按 primary path 直跑。
+
+这意味着：
+
+- lane command 永远先进入 `pm_workflow_caocao`
+- `pm_workflow_frontend` / `pm_workflow_qa` / `pm_workflow_writer` 等 specialist 保持 subagent 角色
+- primary agent 走 `opencode run ...`
+- subagent 走 `opencode task ...`
+
+因此 command lane、dispatch、loop、toast 与 tool 输出现在都能共享统一的 lane / topology / todo / invocation 语义。
+
 ## Skill：agent-model-config
 
 包内包含：

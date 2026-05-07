@@ -273,6 +273,44 @@ export function formatLoopEvaluationLines(
   ];
 }
 
+export function formatLaneDispatchLines(
+  dispatch: ReturnType<typeof buildDispatchCommand>,
+): string[] {
+  const lines: string[] = [];
+
+  if (dispatch.laneContext) {
+    lines.push(
+      `- lane: ${dispatch.laneContext.lane} risk=${dispatch.laneContext.risk} automation=${dispatch.laneContext.automation} review=${dispatch.laneContext.reviewExpectation}`,
+    );
+  }
+
+  if (dispatch.topologySummary) {
+    lines.push(
+      `- topology: ${dispatch.topologySummary.topology} specialists=${dispatch.topologySummary.specialistCount} reason=${dispatch.topologySummary.reason}`,
+    );
+  }
+
+  if (dispatch.todoPolicy) {
+    lines.push(
+      `- todo policy: create=${dispatch.todoPolicy.shouldCreate ? "yes" : "no"} minSteps=${dispatch.todoPolicy.minimumStepCount} shape=${dispatch.todoPolicy.preferredShape}`,
+    );
+  }
+
+  if (dispatch.invocation) {
+    lines.push(
+      `- invocation: mode=${dispatch.invocation.mode} directRun=${dispatch.invocation.supportsDirectRun ? "yes" : "no"} taskPermission=${dispatch.invocation.requiresTaskPermission ? "yes" : "no"}`,
+    );
+  }
+
+  return lines;
+}
+
+export function formatLoopDispatchLines(
+  dispatch: ReturnType<typeof buildDispatchCommand>,
+): string[] {
+  return formatLaneDispatchLines(dispatch).map((line) => `  ${line.slice(2)}`);
+}
+
 function executeSingleDispatch(
   projectPath: string,
   dispatch: ReturnType<typeof buildDispatchCommand>,
@@ -340,6 +378,7 @@ export function createDispatchTools() {
           dispatch.blockedReasons.length
             ? `- 阻塞原因: ${dispatch.blockedReasons.join("；")}`
             : "- 阻塞原因: 无",
+          ...formatLaneDispatchLines(dispatch),
           ...formatTaskAnalysisLines(dispatch.analysis),
           ...formatHandoffPacketLines(dispatch.handoffPacket),
           `- 推荐命令: ${dispatch.command}`,
@@ -405,6 +444,7 @@ export function createDispatchTools() {
             : "- gate reasons: 无",
           `- retry: ${retry.retryable ? "retryable" : "not-retryable"} ${retry.attempts}/${retry.maxAttempts}`,
           `- fallback: ${fallback.allowed && fallback.toAgent ? `${fallback.fromAgent}->${fallback.toAgent}` : "not-available"}`,
+          ...formatLaneDispatchLines(dispatch),
           ...formatTaskAnalysisLines(dispatch.analysis),
           ...formatHandoffPacketLines(dispatch.handoffPacket),
           `- command（不会执行）: ${dispatch.command}`,
@@ -511,6 +551,7 @@ export function createDispatchTools() {
           `- 推荐动作: ${dispatch.recommendedAction}`,
           `- 执行命令: ${dispatch.command}`,
           `- exitCode: ${result.status ?? -1}`,
+          ...formatLaneDispatchLines(dispatch),
           ...formatTaskAnalysisLines(dispatch.analysis),
           ...formatHandoffPacketLines(dispatch.handoffPacket),
           ...formatEvaluationLines(evaluation),
@@ -579,6 +620,7 @@ export function createDispatchTools() {
           outputs.push(
             `- Step ${index + 1}: ${dispatch.recommendedAgent}/${dispatch.executableAgent} -> ${dispatch.recommendedAction}`,
           );
+          outputs.push(...formatLoopDispatchLines(dispatch));
           outputs.push(...formatLoopEvaluationLines());
           outputs.push(
             `  execution plan summary: mode=${executionPlan.mode} steps=${executionPlan.steps.length} primary=${executionPlan.primaryAction}`,
@@ -666,6 +708,7 @@ export function createDispatchTools() {
           outputs.push(
             `- Step ${index + 1}: ${dispatch.recommendedAgent} / ${dispatch.recommendedAction}`,
           );
+          outputs.push(...formatLoopDispatchLines(dispatch));
 
           if (!gate.allowed) {
             outputs.push(`  gate blocked: ${gate.reasons.join("；")}`);

@@ -1,4 +1,9 @@
-import type { DispatchAgent, HandoffPacket } from "../core/types.js";
+import type {
+  AgentInvocationMode,
+  DispatchAgent,
+  DispatchInvocationSemantics,
+  HandoffPacket,
+} from "../core/types.js";
 import { escapePrompt } from "../core/recovery.js";
 
 const DEFAULT_DISPATCH_AGENT_MAP: Partial<Record<DispatchAgent, string>> = {
@@ -19,6 +24,25 @@ export function getExecutableAgent(
   > = DEFAULT_DISPATCH_AGENT_MAP,
 ) {
   return dispatchMap[agent] || DEFAULT_DISPATCH_AGENT_MAP[agent] || agent;
+}
+
+export function resolveAgentInvocationSemantics(
+  _agentName: string,
+  mode: AgentInvocationMode,
+): DispatchInvocationSemantics {
+  if (mode === "subagent") {
+    return {
+      mode,
+      supportsDirectRun: false,
+      requiresTaskPermission: true,
+    };
+  }
+
+  return {
+    mode,
+    supportsDirectRun: true,
+    requiresTaskPermission: false,
+  };
 }
 
 function renderListSection(title: string, items: string[]) {
@@ -128,7 +152,30 @@ export function buildDispatchCommandStrings(
   sessionID: string | null | undefined,
   executableAgent: ReturnType<typeof getExecutableAgent>,
   executablePrompt: string,
+  invocation?: DispatchInvocationSemantics,
 ) {
+  if (invocation && !invocation.supportsDirectRun) {
+    const commandArgs = sessionID
+      ? [
+          "task",
+          "--session",
+          sessionID,
+          "--agent",
+          executableAgent,
+          executablePrompt,
+        ]
+      : ["task", "--agent", executableAgent, executablePrompt];
+
+    const command = sessionID
+      ? `opencode task --session ${sessionID} --agent ${executableAgent} \"${escapePrompt(executablePrompt)}\"`
+      : `opencode task --agent ${executableAgent} \"${escapePrompt(executablePrompt)}\"`;
+
+    return {
+      command,
+      commandArgs,
+    };
+  }
+
   const command = sessionID
     ? `opencode run --session ${sessionID} --agent ${executableAgent} "${escapePrompt(executablePrompt)}"`
     : `opencode run --agent ${executableAgent} "${escapePrompt(executablePrompt)}"`;

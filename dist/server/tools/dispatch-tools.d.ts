@@ -44,6 +44,8 @@ export declare function formatHandoffPacketLines(packet?: HandoffPacket): string
 export declare function formatEvaluationLines(evaluation?: EvaluationResult): string[];
 export declare function formatNextDispatchHintLines(evaluation?: EvaluationResult): string[];
 export declare function formatLoopEvaluationLines(evaluation?: EvaluationResult): string[];
+export declare function formatLaneDispatchLines(dispatch: ReturnType<typeof buildDispatchCommand>): string[];
+export declare function formatLoopDispatchLines(dispatch: ReturnType<typeof buildDispatchCommand>): string[];
 export declare function createDispatchTools(): {
     "pm-run-dispatch": {
         description: string;

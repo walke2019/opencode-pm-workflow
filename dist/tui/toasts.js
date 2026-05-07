@@ -1,4 +1,16 @@
 import { buildDispatchCommand, buildDispatchPlan, buildDoctorReport, buildExecutionPlan, buildExecutionSummary, buildExecutionGate, buildFallbackPlan, buildPermissionGate, buildRecoverySummary, buildRetryPlan, buildSafetyReport, buildStateSummary, getExecutionReceipts, getLastExecutionReceipt, getMigrationReport, queryHistory, readWorkflowConfig, setAutomationMode, setPermission, } from "../shared.js";
+export function formatLaneToast(input) {
+    const lane = input.laneContext?.lane || "medium";
+    const risk = input.laneContext?.risk || "unknown";
+    const automation = input.laneContext?.automation || "unknown";
+    const review = input.laneContext?.reviewExpectation || "unknown";
+    return {
+        variant: input.blocked ? "warning" : "info",
+        title: `pm-workflow ${lane} lane`,
+        message: `${lane} | risk=${risk} | automation=${automation} | review=${review} | ` +
+            `${input.recommendedAgent}/${input.recommendedAction}`,
+    };
+}
 function formatDispatchToast(dispatch) {
     const blockedSuffix = dispatch.blocked
         ? ` 当前受 gate 限制：${dispatch.blockedReasons[0] || "请先完成前置条件。"}`
@@ -84,6 +96,21 @@ export function createToastHelpers(api, projectDir) {
         const content = formatDispatchToast(dispatch);
         api.ui.toast({
             variant: dispatch.blocked ? "warning" : "info",
+            title: content.title,
+            message: content.message,
+            duration,
+        });
+    };
+    const showLaneToast = (lane, duration = 6500) => {
+        const dispatch = buildDispatchCommand(projectDir, undefined, lane);
+        const content = formatLaneToast({
+            laneContext: dispatch.laneContext,
+            recommendedAgent: dispatch.recommendedAgent,
+            recommendedAction: dispatch.recommendedAction,
+            blocked: dispatch.blocked,
+        });
+        api.ui.toast({
+            variant: content.variant,
             title: content.title,
             message: content.message,
             duration,
@@ -291,6 +318,7 @@ export function createToastHelpers(api, projectDir) {
         showExecutionPlanToast,
         showExecutionSummaryToast,
         showHistoryToast,
+        showLaneToast,
         showLastExecutionToast,
         showMigrationReportToast,
         showModeToast,

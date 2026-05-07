@@ -1,4 +1,7 @@
 export { buildOpenCodeAgentConfig, defaultWorkflowConfig, ensureGlobalWorkflowConfig, getAutomationMode, getGlobalWorkflowConfigPath, normalizeWorkflowConfigOverrides, readGlobalWorkflowConfigOverrides, readWorkflowConfig, seedWorkflowConfig, setAutomationMode, setPermission, validateWorkflowConfigAgentModels, } from "./core/config.js";
+export { resolveLaneContext, shouldCreateTodoForLane, buildTodoPolicySummary, } from "./commands/lane-policy.js";
+export { inferTopologyFromAnalysis } from "./commands/topology.js";
+export { summarizeLaneDispatch } from "./commands/result.js";
 export { getGlobalOpenCodeConfigPath, isGlobalOpenCodeModelKey, listGlobalOpenCodeModelKeys, readGlobalOpenCodeModelInventory, } from "./core/model-inventory.js";
 export { DOC_FILENAMES, REVIEW_MARKER_FILENAME, ensureProjectStorageDirs, ensureStateDir, getConfigPath, getFeedbackReadRoots, getHistoryPath, getMigrationManifestPath, getProjectDocsDir, getProjectFeedbackDir, getProjectScopedDocPath, getStatePath, resolveDocReadPath, resolveDocWritePath, } from "./core/project.js";
 export { appendHistory, ensureHistoryBootstrap, getLastFailure, queryHistory, readHistory, } from "./core/history.js";
@@ -13,5 +16,6 @@ export { analyzeDispatchTask } from "./orchestrator/analyzer.js";
 export { buildHandoffPacket } from "./orchestrator/handoff.js";
 export { evaluateDispatchResult } from "./orchestrator/evaluator.js";
 export { buildSafetyReport } from "./orchestrator/safety.js";
-export { buildExecutablePrompt, getExecutableAgent, } from "./orchestrator/prompts.js";
+export { buildExecutablePrompt, getExecutableAgent, resolveAgentInvocationSemantics, } from "./orchestrator/prompts.js";
 export { isAutomationCapabilityEnabled } from "./core/automation.js";
+export { buildAutoContinueDispatch, executeDispatchCommand, } from "./server/runtime.js";

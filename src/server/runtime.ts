@@ -17,6 +17,7 @@ import {
   getExecutableAgent,
   recordDispatchExecution,
   readWorkflowConfig,
+  resolveAgentInvocationSemantics,
   setLastAgent,
 } from "../shared.js";
 import type { DispatchCommand, EvaluationResult } from "../core/types.js";
@@ -195,6 +196,12 @@ export function buildAutoContinueDispatch(
     evaluation.recommendedNextAgent,
     config.agents.dispatch_map,
   );
+  const invocationMode =
+    evaluation.recommendedNextAgent === "pm" ? "primary" : "subagent";
+  const invocation = resolveAgentInvocationSemantics(
+    executableAgent,
+    invocationMode,
+  );
   const executablePrompt = buildExecutablePrompt(
     evaluation.recommendedNextAgent,
     prompt,
@@ -204,6 +211,7 @@ export function buildAutoContinueDispatch(
     sessionID,
     executableAgent,
     executablePrompt,
+    invocation,
   );
 
   return {
@@ -213,6 +221,7 @@ export function buildAutoContinueDispatch(
     reason: `自动续跑下一步：${evaluation.recommendedNextAgent}/${evaluation.nextAutoAction}`,
     analysis,
     handoffPacket,
+    invocation,
     executableAgent,
     executablePrompt,
     command,

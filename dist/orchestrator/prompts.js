@@ -12,6 +12,20 @@ const DEFAULT_DISPATCH_AGENT_MAP = {
 export function getExecutableAgent(agent, dispatchMap = DEFAULT_DISPATCH_AGENT_MAP) {
     return dispatchMap[agent] || DEFAULT_DISPATCH_AGENT_MAP[agent] || agent;
 }
+export function resolveAgentInvocationSemantics(_agentName, mode) {
+    if (mode === "subagent") {
+        return {
+            mode,
+            supportsDirectRun: false,
+            requiresTaskPermission: true,
+        };
+    }
+    return {
+        mode,
+        supportsDirectRun: true,
+        requiresTaskPermission: false,
+    };
+}
 function renderListSection(title, items) {
     if (items.length === 0) {
         return "";
@@ -97,7 +111,26 @@ ${taskBody}
 5. 过程务必清晰，结果务必可验证；涉及代码时给出验证命令。
 `.trim();
 }
-export function buildDispatchCommandStrings(sessionID, executableAgent, executablePrompt) {
+export function buildDispatchCommandStrings(sessionID, executableAgent, executablePrompt, invocation) {
+    if (invocation && !invocation.supportsDirectRun) {
+        const commandArgs = sessionID
+            ? [
+                "task",
+                "--session",
+                sessionID,
+                "--agent",
+                executableAgent,
+                executablePrompt,
+            ]
+            : ["task", "--agent", executableAgent, executablePrompt];
+        const command = sessionID
+            ? `opencode task --session ${sessionID} --agent ${executableAgent} \"${escapePrompt(executablePrompt)}\"`
+            : `opencode task --agent ${executableAgent} \"${escapePrompt(executablePrompt)}\"`;
+        return {
+            command,
+            commandArgs,
+        };
+    }
     const command = sessionID
         ? `opencode run --session ${sessionID} --agent ${executableAgent} "${escapePrompt(executablePrompt)}"`
         : `opencode run --agent ${executableAgent} "${escapePrompt(executablePrompt)}"`;

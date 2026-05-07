@@ -1,7 +1,9 @@
+import { resolveLaneContext } from "../commands/lane-policy.js";
+import { summarizeLaneDispatch } from "../commands/result.js";
 import { buildExecutionGate, buildGateSummary } from "../core/gates.js";
 import { readWorkflowConfig } from "../core/config.js";
 import { buildStateSummary } from "../core/state.js";
-import { buildDispatchCommandStrings, buildExecutablePrompt, getExecutableAgent, } from "./prompts.js";
+import { buildDispatchCommandStrings, buildExecutablePrompt, getExecutableAgent, resolveAgentInvocationSemantics, } from "./prompts.js";
 import { analyzeDispatchTask } from "./analyzer.js";
 import { buildHandoffPacket } from "./handoff.js";
 function shouldUsePromptSpecialist(action) {
@@ -247,9 +249,10 @@ export function buildDispatchPlan(projectDir) {
         nextStep: state.nextStep,
     };
 }
-export function buildDispatchCommand(projectDir, prompt) {
+export function buildDispatchCommand(projectDir, prompt, lane) {
     const plan = buildDispatchPlan(projectDir);
     const config = readWorkflowConfig(projectDir);
+    const laneContext = resolveLaneContext(lane);
     const sessionID = plan.preferredSession;
     const quotedPrompt = prompt?.trim() || "继续当前阶段的推荐动作";
     const analysis = analyzeDispatchTask({
@@ -267,12 +270,19 @@ export function buildDispatchCommand(projectDir, prompt) {
         targetAgent,
     });
     const executableAgent = getExecutableAgent(targetAgent, config.agents.dispatch_map);
+    const invocationMode = targetAgent === "pm" ? "primary" : "subagent";
+    const invocation = resolveAgentInvocationSemantics(executableAgent, invocationMode);
     const executablePrompt = buildExecutablePrompt(targetAgent, quotedPrompt, handoffPacket);
-    const { command, commandArgs } = buildDispatchCommandStrings(sessionID, executableAgent, executablePrompt);
+    const { command, commandArgs } = buildDispatchCommandStrings(sessionID, executableAgent, executablePrompt, invocation);
+    const summary = summarizeLaneDispatch({ analysis, lane: laneContext.lane });
     return {
         ...plan,
         recommendedAgent: targetAgent,
         analysis,
+        laneContext,
+        topologySummary: summary.topology,
+        todoPolicy: summary.todo,
+        invocation,
         executableAgent,
         executablePrompt,
         command,
@@ -280,8 +290,8 @@ export function buildDispatchCommand(projectDir, prompt) {
         handoffPacket,
     };
 }
-export function buildExecutionPlan(projectDir, prompt) {
-    const dispatch = buildDispatchCommand(projectDir, prompt);
+export function buildExecutionPlan(projectDir, prompt, lane) {
+    const dispatch = buildDispatchCommand(projectDir, prompt, lane);
     return {
         version: "v2",
         goal: prompt || dispatch.reason,

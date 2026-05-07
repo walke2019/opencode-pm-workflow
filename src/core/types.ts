@@ -66,6 +66,14 @@ export type DispatchExecutionMode =
   | "serial_handoff"
   | "advisor_then_dispatch";
 
+export type AgentInvocationMode = "primary" | "subagent" | "all";
+
+export type DispatchInvocationSemantics = {
+  mode: AgentInvocationMode;
+  supportsDirectRun: boolean;
+  requiresTaskPermission: boolean;
+};
+
 export interface TaskAnalysis {
   domain: TaskDomain;
   complexity: TaskComplexity;
@@ -76,6 +84,8 @@ export interface TaskAnalysis {
   rationale: string[];
   risks: string[];
   expectedNextAgents: DispatchAgent[];
+  suggestedStepCount: number;
+  specialistCount: number;
 }
 
 export interface HandoffPacket {
@@ -126,6 +136,10 @@ export type DispatchPlan = {
 };
 
 export type DispatchCommand = DispatchPlan & {
+  laneContext?: import("../commands/types.js").PmLaneContext;
+  topologySummary?: import("../commands/types.js").TopologySummary;
+  todoPolicy?: import("../commands/types.js").TodoPolicySummary;
+  invocation?: DispatchInvocationSemantics;
   executableAgent: ExecutableAgent;
   executablePrompt: string;
   command: string;

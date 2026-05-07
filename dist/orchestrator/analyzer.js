@@ -135,7 +135,9 @@ function inferExpectedNextAgents(domain, recommendedAgent, complexity) {
         return ["backend", "qa_engineer"];
     }
     if (recommendedAgent === "pm") {
-        return complexity === "simple" ? ["commander"] : ["commander", "qa_engineer"];
+        return complexity === "simple"
+            ? ["commander"]
+            : ["commander", "qa_engineer"];
     }
     return [recommendedAgent];
 }
@@ -165,5 +167,7 @@ export function analyzeDispatchTask(input) {
             ...blockedReasons.map((reason) => `当前存在阻塞：${reason}`),
         ],
         expectedNextAgents,
+        suggestedStepCount: complexity === "simple" ? 1 : complexity === "multi_step" ? 3 : 4,
+        specialistCount: new Set(expectedNextAgents.filter((agent) => agent !== "pm")).size,
     };
 }
