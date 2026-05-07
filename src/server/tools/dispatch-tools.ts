@@ -302,6 +302,12 @@ export function formatLaneDispatchLines(
     );
   }
 
+  if (dispatch.resolvedAgent) {
+    lines.push(
+      `- resolved agent: source=${dispatch.resolvedAgent.source} directory=${dispatch.resolvedAgent.directoryKind || "unknown"} fallback=${dispatch.resolvedAgent.usedFallback ? "yes" : "no"}`,
+    );
+  }
+
   return lines;
 }
 

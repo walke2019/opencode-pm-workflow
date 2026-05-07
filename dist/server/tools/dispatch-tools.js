@@ -175,6 +175,9 @@ export function formatLaneDispatchLines(dispatch) {
     if (dispatch.invocation) {
         lines.push(`- invocation: mode=${dispatch.invocation.mode} directRun=${dispatch.invocation.supportsDirectRun ? "yes" : "no"} taskPermission=${dispatch.invocation.requiresTaskPermission ? "yes" : "no"}`);
     }
+    if (dispatch.resolvedAgent) {
+        lines.push(`- resolved agent: source=${dispatch.resolvedAgent.source} directory=${dispatch.resolvedAgent.directoryKind || "unknown"} fallback=${dispatch.resolvedAgent.usedFallback ? "yes" : "no"}`);
+    }
     return lines;
 }
 export function formatLoopDispatchLines(dispatch) {

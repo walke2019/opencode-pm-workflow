@@ -2,6 +2,7 @@ export {
   buildOpenCodeAgentConfig,
   defaultWorkflowConfig,
   ensureGlobalWorkflowConfig,
+  getConfiguredExecutableAgent,
   getAutomationMode,
   getGlobalWorkflowConfigPath,
   normalizeWorkflowConfigOverrides,
@@ -25,6 +26,7 @@ export {
   listGlobalOpenCodeModelKeys,
   readGlobalOpenCodeModelInventory,
 } from "./core/model-inventory.js";
+export { resolveWorkflowAgentDefinition } from "./core/agent-registry.js";
 export type {
   OpenCodeModelInventory,
   OpenCodeModelInventoryEntry,
@@ -119,6 +121,8 @@ export {
 } from "./server/runtime.js";
 export type { WorkflowDocName } from "./core/project.js";
 export type {
+  AgentDefinitionSource,
+  AgentDirectoryKind,
   AutomationCapability,
   AgentInvocationMode,
   AutomationMode,
@@ -139,7 +143,9 @@ export type {
   FallbackStatus,
   PermissionKey,
   PhaseStatus,
+  ResolveWorkflowAgentInput,
   ReleaseStatus,
+  ResolvedAgentDefinition,
   RetryStatus,
   ReviewStatus,
   TaskAnalysis,

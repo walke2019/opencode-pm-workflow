@@ -1,7 +1,7 @@
 import { spawnSync } from "child_process";
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, } from "fs";
 import { join } from "path";
-import { REVIEW_MARKER_FILENAME, buildExecutablePrompt, buildDispatchPlan, buildStateSummary, getExecutableAgent, recordDispatchExecution, readWorkflowConfig, resolveAgentInvocationSemantics, setLastAgent, } from "../shared.js";
+import { REVIEW_MARKER_FILENAME, buildExecutablePrompt, buildDispatchPlan, buildStateSummary, recordDispatchExecution, resolveWorkflowAgentDefinition, resolveAgentInvocationSemantics, setLastAgent, } from "../shared.js";
 import { buildDispatchCommandStrings } from "../orchestrator/prompts.js";
 import { analyzeDispatchTask } from "../orchestrator/analyzer.js";
 import { buildHandoffPacket } from "../orchestrator/handoff.js";
@@ -98,7 +98,6 @@ export function buildAutoContinueDispatch(projectDir, prompt, evaluation) {
         return undefined;
     }
     const plan = buildDispatchPlan(projectDir);
-    const config = readWorkflowConfig(projectDir);
     const sessionID = plan.preferredSession;
     const analysis = analyzeDispatchTask({
         prompt,
@@ -111,8 +110,12 @@ export function buildAutoContinueDispatch(projectDir, prompt, evaluation) {
         analysis,
         targetAgent: evaluation.recommendedNextAgent,
     });
-    const executableAgent = getExecutableAgent(evaluation.recommendedNextAgent, config.agents.dispatch_map);
-    const invocationMode = evaluation.recommendedNextAgent === "pm" ? "primary" : "subagent";
+    const resolvedAgent = resolveWorkflowAgentDefinition({
+        projectDir,
+        semanticAgent: evaluation.recommendedNextAgent,
+    });
+    const executableAgent = resolvedAgent.id;
+    const invocationMode = resolvedAgent.mode === "primary" ? "primary" : "subagent";
     const invocation = resolveAgentInvocationSemantics(executableAgent, invocationMode);
     const executablePrompt = buildExecutablePrompt(evaluation.recommendedNextAgent, prompt, handoffPacket);
     const { command, commandArgs } = buildDispatchCommandStrings(sessionID, executableAgent, executablePrompt, invocation);
@@ -124,6 +127,7 @@ export function buildAutoContinueDispatch(projectDir, prompt, evaluation) {
         analysis,
         handoffPacket,
         invocation,
+        resolvedAgent,
         executableAgent,
         executablePrompt,
         command,

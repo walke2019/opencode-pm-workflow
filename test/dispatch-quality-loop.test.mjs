@@ -60,6 +60,34 @@ async function testLaneDispatchFormatting() {
   assert.ok(lines.some((line) => line.includes('invocation: mode=subagent')));
 }
 
+async function testResolvedAgentFormattingOnAutoContinueDispatch() {
+  const lines = await withPlanReadyProject(async (projectDir) => {
+    const agentsDir = join(projectDir, '.opencode', 'agents');
+    mkdirSync(agentsDir, { recursive: true });
+    writeFileSync(
+      join(agentsDir, 'qa_engineer.md'),
+      ['---', 'description: QA agent', 'mode: subagent', 'model: test/qa-model', '---', '# qa'].join('\n'),
+      'utf-8',
+    );
+    const dispatch = buildAutoContinueDispatch(projectDir, '请继续验证回归风险', {
+      status: 'needs_verification',
+      summary: '需要继续验证',
+      matchedDeliverables: [],
+      missingDeliverables: ['验证'],
+      gaps: ['仍需继续处理'],
+      recommendedNextAgent: 'qa_engineer',
+      recommendedNextAction: 'continue-development',
+      canAutoContinue: true,
+      autoContinueSafe: true,
+      nextAutoAction: 'continue-development',
+    });
+    assert.ok(dispatch, 'expected auto continue dispatch');
+    return formatLaneDispatchLines(dispatch);
+  });
+
+  assert.ok(lines.some((line) => line.includes('resolved agent: source=project')));
+}
+
 async function testLoopDispatchFormatting() {
   const lines = await withPlanReadyProject(async (projectDir) => {
     const dispatch = buildDispatchCommand(
@@ -529,6 +557,7 @@ async function runTests() {
   try {
     await testPublicLoopExports();
     await testLaneDispatchFormatting();
+    await testResolvedAgentFormattingOnAutoContinueDispatch();
     await testLoopDispatchFormatting();
     await testAnalyzerRouting();
     await testHandoffPacket();

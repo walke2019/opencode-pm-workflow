@@ -1,4 +1,4 @@
-import type { AutomationMode, PermissionKey, WorkflowConfig } from "./types.js";
+import type { AutomationMode, DispatchAgent, PermissionKey, WorkflowConfig } from "./types.js";
 export declare function getGlobalWorkflowConfigPath(): string;
 export type WorkflowConfigOverrides = {
     retry?: Partial<WorkflowConfig["retry"]>;
@@ -10,6 +10,7 @@ export type WorkflowConfigOverrides = {
     docs?: Partial<WorkflowConfig["docs"]>;
 };
 export declare function defaultWorkflowConfig(): WorkflowConfig;
+export declare function getConfiguredExecutableAgent(semanticAgent: DispatchAgent, config: WorkflowConfig): string;
 export declare function normalizeWorkflowConfigOverrides(input?: unknown): WorkflowConfigOverrides | undefined;
 export declare function readGlobalWorkflowConfigOverrides(): WorkflowConfigOverrides | undefined;
 export declare function ensureGlobalWorkflowConfig(input?: unknown): string;

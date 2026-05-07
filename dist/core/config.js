@@ -192,6 +192,9 @@ export function defaultWorkflowConfig() {
         },
     };
 }
+export function getConfiguredExecutableAgent(semanticAgent, config) {
+    return config.agents.dispatch_map[semanticAgent] || semanticAgent;
+}
 function mergeWorkflowConfig(base, overrides = {}) {
     const agentDefinitions = {
         ...base.agents.definitions,

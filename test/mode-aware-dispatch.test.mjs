@@ -19,6 +19,42 @@ function createDoc(projectDir, name, content = '# fixture\n') {
   writeFileSync(join(projectDir, name), content, 'utf8');
 }
 
+function createAgentDefinition(dir, id, frontmatter) {
+  mkdirSync(dir, { recursive: true });
+  const body = Object.entries(frontmatter)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join('\n');
+  writeFileSync(
+    join(dir, `${id}.md`),
+    `---\n${body}\n---\n# ${id}\n`,
+    'utf8',
+  );
+}
+
+function createWorkflowConfig(projectDir, config) {
+  mkdirSync(join(projectDir, '.pm-workflow'), { recursive: true });
+  writeFileSync(
+    join(projectDir, '.pm-workflow', 'config.json'),
+    JSON.stringify(config, null, 2),
+    'utf8',
+  );
+}
+
+function buildEvaluation(agent = 'qa_engineer') {
+  return {
+    status: 'needs_verification',
+    summary: '需要继续处理',
+    matchedDeliverables: [],
+    missingDeliverables: ['验证'],
+    gaps: ['仍需继续处理'],
+    recommendedNextAgent: agent,
+    recommendedNextAction: 'continue-development',
+    canAutoContinue: true,
+    autoContinueSafe: true,
+    nextAutoAction: 'continue-development',
+  };
+}
+
 async function testInvocationSemantics() {
   assert.strictEqual(typeof buildDispatchCommand, 'function');
   assert.strictEqual(typeof executeDispatchCommand, 'function');
@@ -95,6 +131,76 @@ async function testAutoContinueDispatchUsesInvocationSemantics() {
   );
 }
 
+async function testAutoContinuePrefersExternalFrontmatterAndExposesDiagnostics() {
+  const originalHome = process.env.HOME;
+  withTempProject((projectDir) => {
+    const configHome = join(projectDir, 'config-home');
+    const globalAgentsDir = join(configHome, '.config', 'opencode', 'agents');
+    createWorkflowConfig(projectDir, {
+      retry: { max_attempts: 1, retryable_actions: [] },
+      fallback: { max_attempts: 1, enabled_actions: [], agent_map: {} },
+      agents: {
+        enabled: true,
+        default_mode: 'all',
+        dispatch_map: { qa_engineer: 'qa_engineer' },
+        definitions: {
+          qa_engineer: {
+            description: 'INTERNAL DESCRIPTION SHOULD NOT WIN',
+            mode: 'primary',
+            model: 'internal/model-should-not-win',
+          },
+        },
+      },
+      permissions: {
+        allow_execute_tools: true,
+        allow_repair_tools: true,
+        allow_release_actions: true,
+      },
+      confirm: { require_confirm_for_execute: false },
+      automation: { mode: 'assist' },
+      docs: {
+        storage_mode: 'legacy',
+        read_legacy: true,
+        write_legacy: true,
+      },
+    });
+    createAgentDefinition(globalAgentsDir, 'qa_engineer', {
+      description: 'QA 测试工程师：测试策略、自动化测试、回归与缺陷报告。',
+      mode: 'subagent',
+      model: 'bestool-route-kr/kr/claude-haiku-4.5',
+    });
+    process.env.HOME = configHome;
+
+    const dispatch = buildAutoContinueDispatch(
+      projectDir,
+      '验证 QA 测试方案',
+      buildEvaluation(),
+    );
+
+    assert.ok(dispatch, 'auto continue dispatch should be created');
+    assert.strictEqual(dispatch?.executableAgent, 'qa_engineer');
+    assert.strictEqual(dispatch?.invocation?.mode, 'subagent');
+    assert.ok(
+      !dispatch?.command.includes('opencode run --agent'),
+      'resolved subagent should not use direct run --agent command',
+    );
+    assert.deepStrictEqual(dispatch?.resolvedAgent, {
+      id: 'qa_engineer',
+      mode: 'subagent',
+      model: 'bestool-route-kr/kr/claude-haiku-4.5',
+      description: 'QA 测试工程师：测试策略、自动化测试、回归与缺陷报告。',
+      source: 'global',
+      directoryKind: 'agents',
+      filePath: join(globalAgentsDir, 'qa_engineer.md'),
+      shadowedGlobal: true,
+      usedFallback: false,
+      fallbackReason: undefined,
+    });
+  }, () => undefined);
+  process.env.HOME = originalHome;
+}
+
 await testInvocationSemantics();
 await testDispatchIncludesInvocationSemantics();
 await testAutoContinueDispatchUsesInvocationSemantics();
+await testAutoContinuePrefersExternalFrontmatterAndExposesDiagnostics();

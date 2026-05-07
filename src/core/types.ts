@@ -40,6 +40,33 @@ export type DispatchAgent =
   | "backend";
 export type ExecutableAgent = string;
 
+export type AgentDefinitionSource = "project" | "global" | "fallback";
+
+export type AgentDirectoryKind = "agents" | "agent" | "fallback";
+
+export interface ResolvedAgentDefinition {
+  id: string;
+  model?: string;
+  mode?: string;
+  description?: string;
+  source: AgentDefinitionSource;
+  directoryKind?: AgentDirectoryKind;
+  filePath?: string;
+  shadowedGlobal: boolean;
+  usedFallback: boolean;
+  fallbackReason?:
+    | "missing-agent"
+    | "missing-description"
+    | "missing-model"
+    | "missing-mode"
+    | "parse-failed";
+}
+
+export interface ResolveWorkflowAgentInput {
+  projectDir: string;
+  semanticAgent: DispatchAgent;
+}
+
 export type DispatchAction =
   | "collect-spec"
   | "create-design-brief"
@@ -142,6 +169,7 @@ export type DispatchCommand = DispatchPlan & {
   topologySummary?: import("../commands/types.js").TopologySummary;
   todoPolicy?: import("../commands/types.js").TodoPolicySummary;
   invocation?: DispatchInvocationSemantics;
+  resolvedAgent?: ResolvedAgentDefinition;
   executableAgent: ExecutableAgent;
   executablePrompt: string;
   command: string;

@@ -6,6 +6,7 @@ import {
   defaultWorkflowConfig,
   listGlobalOpenCodeModelKeys,
   readGlobalOpenCodeModelInventory,
+  resolveWorkflowAgentDefinition,
   validateWorkflowConfigAgentModels,
 } from '../dist/index.js';
 
@@ -39,6 +40,19 @@ writeFileSync(
   }),
   'utf-8',
 );
+mkdirSync(join(opencodeDir, 'agents'), { recursive: true });
+writeFileSync(
+  join(opencodeDir, 'agents', 'qa_engineer.md'),
+  [
+    '---',
+    'description: QA engineer from sandboxed frontmatter',
+    'mode: all',
+    'model: kr/claude-sonnet-4.5',
+    '---',
+    'QA engineer body',
+  ].join('\n'),
+  'utf-8',
+);
 
 try {
   process.env.XDG_CONFIG_HOME = configHome;
@@ -56,6 +70,14 @@ try {
     'antigravity/gemini-3-flash-preview',
   );
   assert.strictEqual(config.agents.definitions.pm_workflow_writer.model, 'kr/claude-haiku-4.5');
+
+  const resolvedQa = resolveWorkflowAgentDefinition({
+    projectDir,
+    semanticAgent: 'qa_engineer',
+  });
+  assert.strictEqual(resolvedQa.model, 'kr/claude-sonnet-4.5');
+  assert.strictEqual(resolvedQa.mode, 'all');
+  assert.strictEqual(resolvedQa.description, 'QA engineer from sandboxed frontmatter');
 
   console.log('global OpenCode model inventory tests passed');
 } finally {

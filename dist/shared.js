@@ -1,8 +1,9 @@
-export { buildOpenCodeAgentConfig, defaultWorkflowConfig, ensureGlobalWorkflowConfig, getAutomationMode, getGlobalWorkflowConfigPath, normalizeWorkflowConfigOverrides, readGlobalWorkflowConfigOverrides, readWorkflowConfig, seedWorkflowConfig, setAutomationMode, setPermission, validateWorkflowConfigAgentModels, } from "./core/config.js";
+export { buildOpenCodeAgentConfig, defaultWorkflowConfig, ensureGlobalWorkflowConfig, getConfiguredExecutableAgent, getAutomationMode, getGlobalWorkflowConfigPath, normalizeWorkflowConfigOverrides, readGlobalWorkflowConfigOverrides, readWorkflowConfig, seedWorkflowConfig, setAutomationMode, setPermission, validateWorkflowConfigAgentModels, } from "./core/config.js";
 export { resolveLaneContext, shouldCreateTodoForLane, buildTodoPolicySummary, } from "./commands/lane-policy.js";
 export { inferTopologyFromAnalysis } from "./commands/topology.js";
 export { summarizeLaneDispatch } from "./commands/result.js";
 export { getGlobalOpenCodeConfigPath, isGlobalOpenCodeModelKey, listGlobalOpenCodeModelKeys, readGlobalOpenCodeModelInventory, } from "./core/model-inventory.js";
+export { resolveWorkflowAgentDefinition } from "./core/agent-registry.js";
 export { DOC_FILENAMES, REVIEW_MARKER_FILENAME, ensureProjectStorageDirs, ensureStateDir, getConfigPath, getFeedbackReadRoots, getHistoryPath, getMigrationManifestPath, getProjectDocsDir, getProjectFeedbackDir, getProjectScopedDocPath, getStatePath, resolveDocReadPath, resolveDocWritePath, } from "./core/project.js";
 export { appendHistory, ensureHistoryBootstrap, getLastFailure, queryHistory, readHistory, } from "./core/history.js";
 export { buildDoctorReport, repairDoctorState } from "./core/doctor.js";

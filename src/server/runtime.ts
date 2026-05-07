@@ -14,9 +14,8 @@ import {
   buildExecutablePrompt,
   buildDispatchPlan,
   buildStateSummary,
-  getExecutableAgent,
   recordDispatchExecution,
-  readWorkflowConfig,
+  resolveWorkflowAgentDefinition,
   resolveAgentInvocationSemantics,
   setLastAgent,
 } from "../shared.js";
@@ -179,7 +178,6 @@ export function buildAutoContinueDispatch(
   }
 
   const plan = buildDispatchPlan(projectDir);
-  const config = readWorkflowConfig(projectDir);
   const sessionID = plan.preferredSession;
   const analysis = analyzeDispatchTask({
     prompt,
@@ -192,12 +190,12 @@ export function buildAutoContinueDispatch(
     analysis,
     targetAgent: evaluation.recommendedNextAgent,
   });
-  const executableAgent = getExecutableAgent(
-    evaluation.recommendedNextAgent,
-    config.agents.dispatch_map,
-  );
-  const invocationMode =
-    evaluation.recommendedNextAgent === "pm" ? "primary" : "subagent";
+  const resolvedAgent = resolveWorkflowAgentDefinition({
+    projectDir,
+    semanticAgent: evaluation.recommendedNextAgent,
+  });
+  const executableAgent = resolvedAgent.id;
+  const invocationMode = resolvedAgent.mode === "primary" ? "primary" : "subagent";
   const invocation = resolveAgentInvocationSemantics(
     executableAgent,
     invocationMode,
@@ -222,6 +220,7 @@ export function buildAutoContinueDispatch(
     analysis,
     handoffPacket,
     invocation,
+    resolvedAgent,
     executableAgent,
     executablePrompt,
     command,

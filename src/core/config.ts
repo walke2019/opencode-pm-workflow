@@ -242,6 +242,13 @@ export function defaultWorkflowConfig(): WorkflowConfig {
   };
 }
 
+export function getConfiguredExecutableAgent(
+  semanticAgent: DispatchAgent,
+  config: WorkflowConfig,
+): string {
+  return config.agents.dispatch_map[semanticAgent] || semanticAgent;
+}
+
 function mergeWorkflowConfig(
   base: WorkflowConfig,
   overrides: WorkflowConfigOverrides = {},

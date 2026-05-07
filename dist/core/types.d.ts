@@ -10,6 +10,24 @@ export type DocsStorageMode = "legacy" | "project_scoped";
 export type AutomationCapability = "event_sync" | "prompt_inject" | "commit_gate" | "review_marker";
 export type DispatchAgent = "pm" | "plan" | "build" | "qa_engineer" | "writer" | "frontend" | "commander" | "backend";
 export type ExecutableAgent = string;
+export type AgentDefinitionSource = "project" | "global" | "fallback";
+export type AgentDirectoryKind = "agents" | "agent" | "fallback";
+export interface ResolvedAgentDefinition {
+    id: string;
+    model?: string;
+    mode?: string;
+    description?: string;
+    source: AgentDefinitionSource;
+    directoryKind?: AgentDirectoryKind;
+    filePath?: string;
+    shadowedGlobal: boolean;
+    usedFallback: boolean;
+    fallbackReason?: "missing-agent" | "missing-description" | "missing-model" | "missing-mode" | "parse-failed";
+}
+export interface ResolveWorkflowAgentInput {
+    projectDir: string;
+    semanticAgent: DispatchAgent;
+}
 export type DispatchAction = "collect-spec" | "create-design-brief" | "create-dev-plan" | "start-development" | "run-code-review" | "prepare-release" | "continue-development" | "blocked";
 export type TaskDomain = "pm" | "backend" | "frontend" | "writer" | "qa_engineer" | "orchestration";
 export type TaskComplexity = "simple" | "multi_step" | "composite";
@@ -79,6 +97,7 @@ export type DispatchCommand = DispatchPlan & {
     topologySummary?: import("../commands/types.js").TopologySummary;
     todoPolicy?: import("../commands/types.js").TodoPolicySummary;
     invocation?: DispatchInvocationSemantics;
+    resolvedAgent?: ResolvedAgentDefinition;
     executableAgent: ExecutableAgent;
     executablePrompt: string;
     command: string;

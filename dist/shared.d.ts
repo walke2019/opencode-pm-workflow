@@ -1,8 +1,9 @@
-export { buildOpenCodeAgentConfig, defaultWorkflowConfig, ensureGlobalWorkflowConfig, getAutomationMode, getGlobalWorkflowConfigPath, normalizeWorkflowConfigOverrides, readGlobalWorkflowConfigOverrides, readWorkflowConfig, seedWorkflowConfig, setAutomationMode, setPermission, validateWorkflowConfigAgentModels, } from "./core/config.js";
+export { buildOpenCodeAgentConfig, defaultWorkflowConfig, ensureGlobalWorkflowConfig, getConfiguredExecutableAgent, getAutomationMode, getGlobalWorkflowConfigPath, normalizeWorkflowConfigOverrides, readGlobalWorkflowConfigOverrides, readWorkflowConfig, seedWorkflowConfig, setAutomationMode, setPermission, validateWorkflowConfigAgentModels, } from "./core/config.js";
 export { resolveLaneContext, shouldCreateTodoForLane, buildTodoPolicySummary, } from "./commands/lane-policy.js";
 export { inferTopologyFromAnalysis } from "./commands/topology.js";
 export { summarizeLaneDispatch } from "./commands/result.js";
 export { getGlobalOpenCodeConfigPath, isGlobalOpenCodeModelKey, listGlobalOpenCodeModelKeys, readGlobalOpenCodeModelInventory, } from "./core/model-inventory.js";
+export { resolveWorkflowAgentDefinition } from "./core/agent-registry.js";
 export type { OpenCodeModelInventory, OpenCodeModelInventoryEntry, } from "./core/model-inventory.js";
 export type { WorkflowConfigOverrides } from "./core/config.js";
 export { DOC_FILENAMES, REVIEW_MARKER_FILENAME, ensureProjectStorageDirs, ensureStateDir, getConfigPath, getFeedbackReadRoots, getHistoryPath, getMigrationManifestPath, getProjectDocsDir, getProjectFeedbackDir, getProjectScopedDocPath, getStatePath, resolveDocReadPath, resolveDocWritePath, } from "./core/project.js";
@@ -22,5 +23,5 @@ export { buildExecutablePrompt, getExecutableAgent, resolveAgentInvocationSemant
 export { isAutomationCapabilityEnabled } from "./core/automation.js";
 export { buildAutoContinueDispatch, executeDispatchCommand, } from "./server/runtime.js";
 export type { WorkflowDocName } from "./core/project.js";
-export type { AutomationCapability, AgentInvocationMode, AutomationMode, DispatchCommand, DispatchAction, DispatchAgent, DispatchInvocationSemantics, DispatchPlan, DocsStorageMode, HandoffPacket, ExecutionAggregationStrategy, ExecutionMode, ExecutionPlan, ExecutionPlanStep, ExecutableAgent, EvaluationResult, ExecutionReceipt, FallbackStatus, PermissionKey, PhaseStatus, ReleaseStatus, RetryStatus, ReviewStatus, TaskAnalysis, TaskStatus, WorkflowConfig, WorkflowHistoryEvent, WorkflowStage, WorkflowState, } from "./core/types.js";
+export type { AgentDefinitionSource, AgentDirectoryKind, AutomationCapability, AgentInvocationMode, AutomationMode, DispatchCommand, DispatchAction, DispatchAgent, DispatchInvocationSemantics, DispatchPlan, DocsStorageMode, HandoffPacket, ExecutionAggregationStrategy, ExecutionMode, ExecutionPlan, ExecutionPlanStep, ExecutableAgent, EvaluationResult, ExecutionReceipt, FallbackStatus, PermissionKey, PhaseStatus, ResolveWorkflowAgentInput, ReleaseStatus, ResolvedAgentDefinition, RetryStatus, ReviewStatus, TaskAnalysis, TaskStatus, WorkflowConfig, WorkflowHistoryEvent, WorkflowStage, WorkflowState, } from "./core/types.js";
 export type { ExecutionTopology, PmCommandLane, PmLaneContext, TodoPolicySummary, TopologySummary, } from "./commands/types.js";
