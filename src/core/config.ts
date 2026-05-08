@@ -119,7 +119,7 @@ const DEFAULT_WORKFLOW_AGENTS: Partial<Record<string, WorkflowAgentConfig>> = {
     },
   },
   pm_backend: {
-    mode: "all",
+    mode: "subagent",
     description: "后端执行，负责 API、数据库、服务、性能。",
     prompt:
       "你是 pm-workflow 的后端 agent。专注于 API、数据库、服务逻辑与性能优化。追求代码质量与架构清晰。",
@@ -130,7 +130,7 @@ const DEFAULT_WORKFLOW_AGENTS: Partial<Record<string, WorkflowAgentConfig>> = {
     },
   },
   pm_frontend: {
-    mode: "all",
+    mode: "subagent",
     description: "前端执行，负责 UI、交互、组件、响应式。",
     prompt:
       "你是 pm-workflow 的前端 agent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。",
@@ -141,7 +141,7 @@ const DEFAULT_WORKFLOW_AGENTS: Partial<Record<string, WorkflowAgentConfig>> = {
     },
   },
   pm_reviewer: {
-    mode: "all",
+    mode: "subagent",
     hidden: true,
     description:
       "审查与文档，负责测试、回归、代码审查、文档与发布。",
@@ -154,7 +154,7 @@ const DEFAULT_WORKFLOW_AGENTS: Partial<Record<string, WorkflowAgentConfig>> = {
     },
   },
   pm_researcher: {
-    mode: "all",
+    mode: "subagent",
     hidden: true,
     description:
       "调研，负责资料检索、官方方案调研、事实比对。",
