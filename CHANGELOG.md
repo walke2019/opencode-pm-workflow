@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.18
+
+- 文档收敛：将 30+ 篇分散文档（dev/runbooks/specs/superpowers）合并为 5 篇主文档（README + 01-技术架构 + 02-业务功能 + 03-使用运维 + 04-待办演进）。
+- 所有 Mermaid 流程图统一并入主文档正文，不再散落维护。
+- 新增 `AGENTS.md` 开发指南，固化"变更后必须同步现有文档、禁止新建文档"与"每次变更必须更新 CHANGELOG"规则。
+- 每篇主文档底部增加 Change Log 表格，便于追踪文档版本与代码版本对应关系。
+- 删除历史 spec/plan/migration/audit/draft 类文档 29 篇，仅保留当前 documentation consolidation 的 spec/plan 作为最小历史集合。
+
 ## 0.1.17
 
 - 新增 `researcher` 一等语义角色，补齐默认类型、dispatch/fallback 映射、内置 agent 定义与专属执行 prompt。

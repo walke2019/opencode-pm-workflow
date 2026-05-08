@@ -81,3 +81,10 @@ npm publish --access public
 ```bash
 npm view @walke/opencode-pm-workflow version
 ```
+
+## Change Log
+
+| 日期 | 版本 | 变更 |
+| --- | --- | --- |
+| 2026-05-09 | 0.1.18 | 文档收敛：将 30+ 篇分散文档合并为 5 篇主文档，删除历史 spec/plan/migration 文档，统一流程图到主文档正文 |
+| 2026-05-08 | 0.1.17 | 新增 researcher 路由、Agent Definition Registry、compact handoff、mode-aware dispatch |
