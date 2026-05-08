@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2
+
+- 更新 `commands/*.md`（4 条 lane 命令）的 agent 从 `pm_workflow_caocao` 改为 `pm_lead`。
+- 更新 `pm-workflow.config.example.json` 示例配置，全面使用新 agent 名称。
+- 更新 `pm-workflow.schema.json` schema，补充新旧名称的 definitions properties。
+- 更新 `AGENTS.md` 中主 agent 定位描述。
+
 ## 0.2.1
 
 - 修复子 agent mode 定义：将 `pm_backend`/`pm_frontend`/`pm_reviewer`/`pm_researcher` 的 mode 从 `"all"` 改为 `"subagent"`，语义更清晰，避免未来误用。
