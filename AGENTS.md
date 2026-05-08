@@ -4,6 +4,40 @@
 
 **每次变更后必须同步更新现有文档，禁止新建文档。**
 
+## OpenCode 规范遵循
+
+### 强制要求
+
+**每次变更前，必须先阅读并了解最新版本 OpenCode 开源仓库的更新内容。**
+
+所有任务必须先与 OpenCode 仓库确认，确保：
+
+1. **遵循 OpenCode 的扩展插件开发机制**
+2. **遵循 OpenCode 的 API 规范与接口标准**
+3. **不自行发明与 OpenCode 冲突的机制**
+4. **不跑偏到非官方支持的开发模式**
+
+### 开发前必查内容
+
+- OpenCode 官方文档最新版本的插件开发指南
+- OpenCode 官方仓库的 hooks、tools、agents 接口定义
+- OpenCode 官方发布的 breaking changes 与新特性
+- OpenCode 官方推荐的插件结构与导出方式
+
+### 禁止事项
+
+- ❌ 不查 OpenCode 最新文档就直接写代码
+- ❌ 自行发明与 OpenCode 官方机制冲突的实现
+- ❌ 忽略 OpenCode 的 breaking changes 继续用旧 API
+- ❌ 脱离 OpenCode 插件体系独立开发
+
+### 正确做法
+
+- ✅ 先查 OpenCode 官方文档/仓库确认接口规范
+- ✅ 按 OpenCode 官方推荐的插件结构开发
+- ✅ 遇到不确定的能力，先验证 OpenCode 是否支持
+- ✅ 跟随 OpenCode 版本更新同步调整本插件
+
 ## 架构认知
 
 ### 系统分层
