@@ -114,7 +114,22 @@
             "$ref": "#/$defs/agent"
           },
           "properties": {
-            "pm_workflow_caocao": {
+            "pm_lead": {
+              "$ref": "#/$defs/agent"
+            },
+            "pm_advisor": {
+              "$ref": "#/$defs/agent"
+            },
+            "pm_backend": {
+              "$ref": "#/$defs/agent"
+            },
+            "pm_frontend": {
+              "$ref": "#/$defs/agent"
+            },
+            "pm_reviewer": {
+              "$ref": "#/$defs/agent"
+            },
+            "pm_researcher": {
               "$ref": "#/$defs/agent"
             },
             "plan": {
@@ -123,22 +138,22 @@
             "build": {
               "$ref": "#/$defs/agent"
             },
-            "pm_workflow_qa": {
+            "qa_engineer": {
               "$ref": "#/$defs/agent"
             },
-            "pm_workflow_writer": {
+            "writer": {
               "$ref": "#/$defs/agent"
             },
-            "pm_workflow_frontend": {
+            "commander": {
               "$ref": "#/$defs/agent"
             },
-            "pm_workflow_zhuge": {
+            "backend": {
               "$ref": "#/$defs/agent"
             },
-            "pm_workflow_lvbu": {
+            "frontend": {
               "$ref": "#/$defs/agent"
             },
-            "pm_workflow_diaochan": {
+            "researcher": {
               "$ref": "#/$defs/agent"
             }
           }

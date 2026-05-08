@@ -15,55 +15,49 @@
     "enabled": true,
     "default_mode": "subagent",
     "dispatch_map": {
-      "pm": "pm_workflow_caocao",
-      "plan": "pm_workflow_zhuge",
-      "build": "pm_workflow_zhuge",
-      "commander": "pm_workflow_zhuge",
-      "backend": "pm_workflow_lvbu",
-      "frontend": "pm_workflow_frontend",
-      "qa_engineer": "pm_workflow_qa",
-      "writer": "pm_workflow_writer"
+      "pm": "pm_lead",
+      "plan": "pm_advisor",
+      "build": "pm_advisor",
+      "commander": "pm_advisor",
+      "backend": "pm_backend",
+      "frontend": "pm_frontend",
+      "qa_engineer": "pm_reviewer",
+      "writer": "pm_reviewer",
+      "researcher": "pm_researcher"
     },
     "definitions": {
-      "pm_workflow_caocao": {
-        "model": "cx/gpt-5.5",
+      "pm_lead": {
         "mode": "primary",
         "temperature": 0.2,
-        "description": "Cao Cao, pm-workflow primary coordinator",
-        "prompt": "你是曹操（Cao Cao），pm-workflow 的主协调 agent。快速压缩需求，确定目标、边界、todo、验收标准与分派路径；随后推进开发、测试与发布摘要。"
+        "description": "pm-workflow primary coordinator"
       },
-      "pm_workflow_zhuge": {
-        "model": "kr/claude-sonnet-4.5",
-        "mode": "all",
+      "pm_advisor": {
+        "mode": "primary",
         "temperature": 0.2,
-        "description": "Zhuge Liang, advisor-only decomposition agent"
+        "description": "Advisor-only decomposition agent"
       },
-      "pm_workflow_lvbu": {
-        "model": "cx/gpt-5.3-codex",
-        "mode": "all",
+      "pm_backend": {
+        "mode": "subagent",
         "temperature": 0.2,
-        "description": "Lv Bu, backend/plugin/API implementation agent"
+        "description": "Backend/plugin/API implementation agent"
       },
-      "pm_workflow_frontend": {
-        "model": "antigravity/gemini-3-flash-preview",
-        "mode": "all",
+      "pm_frontend": {
+        "mode": "subagent",
         "hidden": true,
         "temperature": 0.25,
         "description": "Frontend/UI implementation agent"
       },
-      "pm_workflow_qa": {
-        "model": "kr/claude-sonnet-4.5",
-        "mode": "all",
+      "pm_reviewer": {
+        "mode": "subagent",
         "hidden": true,
         "temperature": 0.1,
-        "description": "QA/code-review verification agent"
+        "description": "QA/code-review and documentation agent"
       },
-      "pm_workflow_writer": {
-        "model": "kr/claude-haiku-4.5",
-        "mode": "all",
+      "pm_researcher": {
+        "mode": "subagent",
         "hidden": true,
         "temperature": 0.3,
-        "description": "Documentation and release notes agent"
+        "description": "Research/official docs lookup agent"
       }
     }
   },
@@ -94,12 +88,13 @@
       "continue-development"
     ],
     "agent_map": {
-      "plan": "pm_workflow_zhuge",
-      "build": "pm_workflow_zhuge",
-      "backend": "pm_workflow_lvbu",
-      "frontend": "pm_workflow_frontend",
-      "qa_engineer": "pm_workflow_qa",
-      "writer": "pm_workflow_writer"
+      "plan": "pm_advisor",
+      "build": "pm_advisor",
+      "backend": "pm_backend",
+      "frontend": "pm_frontend",
+      "qa_engineer": "pm_reviewer",
+      "writer": "pm_reviewer",
+      "researcher": "pm_researcher"
     }
   }
 }

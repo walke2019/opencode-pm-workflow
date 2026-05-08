@@ -1,6 +1,6 @@
 ---
 description: High-risk PM workflow lane with stronger review and automation posture
-agent: pm_workflow_caocao
+agent: pm_lead
 subtask: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 description: Medium-risk PM workflow lane with structured dispatch summaries
-agent: pm_workflow_caocao
+agent: pm_lead
 subtask: true
 ---
 
