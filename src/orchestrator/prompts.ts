@@ -7,15 +7,15 @@ import type {
 import { escapePrompt } from "../core/recovery.js";
 
 const DEFAULT_DISPATCH_AGENT_MAP: Partial<Record<DispatchAgent, string>> = {
-  plan: "commander",
-  build: "commander",
-  pm: "pm",
-  qa_engineer: "qa_engineer",
-  writer: "writer",
-  frontend: "frontend",
-  commander: "commander",
-  backend: "backend",
-  researcher: "researcher",
+  plan: "pm_advisor",
+  build: "pm_backend",
+  pm: "pm_lead",
+  qa_engineer: "pm_reviewer",
+  writer: "pm_reviewer",
+  frontend: "pm_frontend",
+  commander: "pm_advisor",
+  backend: "pm_backend",
+  researcher: "pm_researcher",
 };
 
 export function getExecutableAgent(
@@ -73,7 +73,14 @@ function renderScopeSection(scope: HandoffPacket["scope"]) {
 }
 
 export function renderAgentHandoffPrompt(
-  agent: DispatchAgent,
+  agent:
+    | DispatchAgent
+    | "pm_advisor"
+    | "pm_lead"
+    | "pm_backend"
+    | "pm_frontend"
+    | "pm_reviewer"
+    | "pm_researcher",
   packet: HandoffPacket,
 ) {
   const sections = [
@@ -98,7 +105,14 @@ export function renderAgentHandoffPrompt(
 }
 
 export function buildExecutablePrompt(
-  agent: DispatchAgent,
+  agent:
+    | DispatchAgent
+    | "pm_advisor"
+    | "pm_lead"
+    | "pm_backend"
+    | "pm_frontend"
+    | "pm_reviewer"
+    | "pm_researcher",
   prompt: string,
   packet?: HandoffPacket,
 ) {
@@ -106,42 +120,43 @@ export function buildExecutablePrompt(
   let roleTitle = "";
 
   switch (agent) {
-    case "commander":
+    case "pm_advisor":
     case "plan":
     case "build":
-      roleTitle = "【拆解顾问·诸葛亮】";
+      roleTitle = "【拆解顾问】";
       roleContext =
-        "你现在是神机妙算的诸葛亮。请发挥你在任务拆解、风险识别与顾问式支持方面的专长，为 PM 提供清晰的分派建议与推进顺序。";
+        "你是 pm-workflow 的拆解顾问。擅长将复杂任务拆解为清晰的推进步骤，识别风险并提供顾问式支持。先澄清疑虑，再划定边界，最后给出合适的分派建议与推进顺序。";
       break;
+    case "pm_lead":
     case "pm":
-      roleTitle = "【主协调·曹操】";
+      roleTitle = "【主协调官】";
       roleContext =
-        "你现在是雄才大略的曹操。请以敏锐的洞察力辨明形势，快速压缩需求，确定目标、边界、todo、验收标准与专业 subagent 分派路径。";
+        "你是 pm-workflow 的主协调官。负责快速压缩需求，确定目标、边界、todo、验收标准与分派路径；随后直接推进开发、测试、发布摘要。你表达直接、务实、清晰，重视结果与验证。";
       break;
+    case "pm_backend":
     case "backend":
-      roleTitle = "【后端战将·吕布】";
+      roleTitle = "【后端执行】";
       roleContext =
-        "你现在是战力惊人的吕布。请发挥你攻坚克难的本领，拿下所有 API 与逻辑难点，确保架构稳如泰山。";
+        "你是 pm-workflow 的后端 agent。专注于 API、数据库、服务逻辑与性能优化。追求代码质量与架构清晰。";
       break;
+    case "pm_frontend":
     case "frontend":
-      roleTitle = "【前端视觉官·貂蝉】";
+      roleTitle = "【前端执行】";
       roleContext =
-        "你现在是审美卓越的貂蝉。请用你细腻的心思雕琢界面，实现极致的交互体验与美学平衡。";
+        "你是 pm-workflow 的前端 agent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。";
       break;
+    case "pm_reviewer":
     case "qa_engineer":
-      roleTitle = "【常胜校验官·赵云】";
-      roleContext =
-        "你现在是赵云（Zhao Yun），一位稳健、可靠、纪律严明的校验官。请细致审查各项变更，优先识别 bug、回归风险、安全隐患与遗漏测试，确保交付像子龙出阵一样干净利落、可进可退。";
-      break;
     case "writer":
-      roleTitle = "【檄文执笔官·陈琳】";
+      roleTitle = "【审查与文档】";
       roleContext =
-        "你现在是陈琳（Chen Lin），一位文辞敏捷、条理分明的执笔官。请负责整理发布说明、变更摘要、交付文档与对外说明，确保文字准确、结构清楚、重点鲜明。";
+        "你是 pm-workflow 的 reviewer agent。优先检查 bug、回归风险、安全问题和缺失测试；同时负责整理发布说明、变更摘要与用户可读文档。";
       break;
+    case "pm_researcher":
     case "researcher":
       roleTitle = "【资料调研官】";
       roleContext =
-        "你现在是一名资料调研官。请围绕问题快速收集资料、调研官方方案、比对可选路径，并在必要时继续搜索权威来源，输出可验证的结论与参考依据。你不直接承担实现工作，也不替代开发、修复或交付执行；除非任务明确要求你亲自实现，否则应以调研结论、风险提示和建议路径支持后续执行。";
+        "你是 pm-workflow 的 researcher agent。负责资料检索、官方方案调研、事实核查、备选路径比较与参考依据整理。不直接承担实现工作。";
       break;
     default:
       roleTitle = "【专业执行官】";
@@ -153,7 +168,7 @@ export function buildExecutablePrompt(
     : `【核心任务】\n${prompt}`;
 
   const executionRequirements =
-    agent === "researcher"
+    agent === "pm_researcher" || agent === "researcher"
       ? [
           "1. 优先查找官方文档、权威资料或一手来源；结论需尽量附参考依据。",
           "2. 先收集资料、再比对方案与风险，不默认进入开发实现、测试验证或发布摘要。",
