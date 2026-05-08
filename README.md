@@ -1,16 +1,33 @@
 # @walke/opencode-pm-workflow
 
-`@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从“长期停留在需求层”推进到可验证的开发执行闭环。
-
-它提供：
-
-- OpenCode server 插件：状态同步、agent 注入、调度工具、执行工具、诊断工具。
-- OpenCode TUI 插件：阶段提示、状态/权限/执行入口。
-- PM 工作流核心：state / gate / dispatch / execution plan / evaluation / auto-continue。
-- 开发导向 agent 编排：PM 主协调，按任务特征分派 backend、frontend、QA、writer 等专业 agent。
-- Agent/模型初始化 Skill：基于全局 OpenCode provider model 列表配置 Claude Code 与 OpenCode agents。
+`@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
 当前发布版本：`0.1.17`。
+
+## 项目定位
+
+`pm-workflow` 不只是一个提示词 Skill，而是一个 OpenCode 扩展运行时。它提供：
+
+- **状态与阶段机**：自动判断项目当前所处阶段（idea/spec/plan/dev/review/release）
+- **Gate 系统**：约束不安全推进，确保必要的 spec/plan/review 不被跳过
+- **智能调度**：按任务特征自动分派到合适的专业 agent
+- **执行编排**：PM 主协调，handoff 压缩，结果评估，受控自动续跑
+- **诊断与工具**：状态查询、健康检查、执行回执、权限管理
+
+## 核心工作流原则
+
+`pm-workflow` 采用**"稳定任务域 + 外部 agent 定义绑定"**的双层模型：
+
+- `pm_workflow_caocao` 是统一主协调入口
+- command lanes 是 UX facade，不是第二套 runtime
+- Analyzer 负责语义判断，Registry 负责 agent 定义绑定，Runtime 负责执行编排
+- 新增 agent 不等于新增语义角色
+
+核心流转：
+
+```text
+需求压缩 → 开发实现 → 测试验证 → 发布摘要
+```
 
 ## 安装
 
@@ -18,15 +35,9 @@
 npm install @walke/opencode-pm-workflow
 ```
 
-如果要先确认 npm 包内容：
-
-```bash
-npm pack @walke/opencode-pm-workflow --dry-run
-```
-
 ## OpenCode 接入
 
-在 OpenCode 项目的插件入口中引用 server / TUI 包入口。具体项目可以继续保留已有兼容壳，但最终应转发到本包：
+在 OpenCode 项目的插件入口中引用 server / TUI 包入口：
 
 ```ts
 // plugins/pm-workflow-plugin.ts
@@ -38,178 +49,23 @@ export { default } from "@walke/opencode-pm-workflow/server";
 export { default } from "@walke/opencode-pm-workflow/tui";
 ```
 
-然后在 OpenCode 配置中加载对应插件入口。
-
 > 注意：不要同时加载源码入口、dist 入口和兼容壳，避免插件重复注册。
 
-## 工作流定位
+## 当前文档结构
 
-`pm-workflow` 不只是一个提示词 Skill，而是一个 OpenCode 扩展运行时：
+本项目的现行文档已收敛为以下 4 篇主文档：
 
-1. `state` 判断项目当前阶段。
-2. `gate` 判断当前动作是否允许。
-3. `dispatch` 选择下一步 action 与 agent。
-4. `handoff` 把任务整理为可执行交接包。
-5. 专业 agent 执行。
-6. `evaluator` 判断结果是否完成、是否需要验证、是否可自动续跑。
-7. `permission / confirm / gate` 再次约束自动推进。
-
-核心原则：
-
-```text
-需求压缩 → 开发实现 → 测试验证 → 发布摘要
-```
-
-Todo 是过程终结标准：每个 todo 必须完成，或标注 blocked 并说明原因。
-
-## Agent 角色
-
-默认注入的 OpenCode workflow agents：
-
-| 角色 | OpenCode agent | 模型设置方式 | 职责 |
-| --- | --- | --- | --- |
-| PM 主协调 | `pm_workflow_caocao` | 从全局 OpenCode 模型清单中对话确认 | 需求压缩、决策、分派、验收收敛 |
-| 拆解顾问 | `pm_workflow_zhuge` | 从全局 OpenCode 模型清单中对话确认 | 复杂任务拆解与风险建议，不取代 PM |
-| 后端执行 | `pm_workflow_lvbu` | 从全局 OpenCode 模型清单中对话确认 | API、插件、服务、状态机、后端逻辑 |
-| 前端执行 | `pm_workflow_diaochan` / `pm_workflow_frontend` | 从全局 OpenCode 模型清单中对话确认 | UI、交互、组件、可访问性 |
-| 调研执行 | `pm_workflow_researcher` | 从全局 OpenCode 模型清单中对话确认 | 资料搜索、调研、官方文档查询、方案对比、外部事实核验 |
-| QA / Review | `pm_workflow_qa` | 从全局 OpenCode 模型清单中对话确认 | 测试、回归、代码审查、风险控制 |
-| 文档 / Release | `pm_workflow_writer` | 从全局 OpenCode 模型清单中对话确认 | README、发布说明、交付摘要 |
-
-模型 ID 不应在 README 中假设所有用户一致。实际配置时，应从用户自己的全局 OpenCode 配置 `~/.config/opencode/opencode.json` 读取 `provider.*.models`，列出可用 model key，再通过对话确认每个角色使用哪个模型；不要臆造模型，也不要把 provider key 额外拼进模型 ID。
-
-补充说明：researcher 默认只负责资料搜索、调研、官方文档查询、方案对比、外部事实核验；默认不替代 frontend / backend 实现、不替代 writer 文档编写，也不默认替代 QA 执行验证。
-
-## 调度规则
-
-PM 是唯一主协调入口，但不会把所有工作都堆在需求层。
-
-- `collect-spec`：仍由 PM 做需求压缩，不能因为 prompt 命中 backend 关键词就跳过 spec gate。
-- `create-dev-plan`：仍由 plan/commander 路径生成开发计划。
-- `start-development` / `continue-development`：进入开发动作后，才按 prompt 自动路由到 backend、frontend、writer、QA。
-- `run-code-review`：由 QA/review 路径处理。
-- `prepare-release`：由 writer/release 路径处理。
-
-这保证了两个目标同时成立：
-
-1. 不在需求层长时间堆积。
-2. 不绕过必要的 workflow gate。
-
-## 常用工具
-
-插件注册的工具包括：
-
-- 状态：`pm-get-state`、`pm-check-project-state`、`pm-get-next-step`
-- Gate：`pm-check-gates`、`pm-check-review-gate`
-- 调度：`pm-get-dispatch-plan`、`pm-dry-run-dispatch`、`pm-run-dispatch`
-- 执行：`pm-execute-dispatch`、`pm-run-loop`
-- 回执：`pm-get-last-execution`、`pm-get-execution-receipt`、`pm-get-execution-summary`
-- 配置：`pm-get-config`、`pm-check-permissions`、`pm-set-permission`、`pm-set-mode`
-- 诊断：`pm-doctor`、`pm-doctor-repair`、`pm-safety-report`
-
-建议先 dry-run，再执行：
-
-```text
-pm-check-gates
-pm-dry-run-dispatch
-pm-execute-dispatch confirm=YES
-```
-
-## Command Lanes
-
-本包支持以下 lane 风格入口：
-
-- `pm-quick`
-- `pm-medium`
-- `pm-full`
-- `pm-debug`
-
-这些 command 只是 UX facade，不是第二套 runtime。所有真实判断仍由 `pm_workflow_caocao` + `pm-*` tools 完成。
-
-每条 lane 对应一套显式策略：
-
-- `quick`：低风险、guided、轻 review，适合快速预览推进建议。
-- `medium`：中等风险、assisted、标准 review，适合作为默认开发入口。
-- `full`：高风险、elevated、严格 review，适合完整执行与更强收敛。
-- `debug`：debug 风险、assisted、标准 review，适合 reproduce / isolate / fix / verify 场景。
-
-## mode-aware dispatch
-
-PM 仍是唯一 primary orchestrator。specialist agent 若为 subagent，将通过 subagent-safe 路径执行，而不是被错误地按 primary path 直跑。
-
-这意味着：
-
-- lane command 永远先进入 `pm_workflow_caocao`
-- `pm_workflow_frontend` / `pm_workflow_qa` / `pm_workflow_writer` 等 specialist 保持 subagent 角色
-- primary agent 走 `opencode run ...`
-- subagent 走 `opencode task ...`
-
-因此 command lane、dispatch、loop、toast 与 tool 输出现在都能共享统一的 lane / topology / todo / invocation 语义。
-
-## Skill：agent-model-config
-
-包内包含：
-
-```text
-skills/agent-model-config/SKILL.md
-```
-
-用途：新项目启动时，自动识别项目类型并生成/更新 Claude Code 与 OpenCode agent/model 配置。
-
-硬性规则：
-
-- 模型清单只从当前用户的全局 OpenCode 配置读取，默认路径为 `~/.config/opencode/opencode.json`。
-- 只从 `provider.*.models` 提取可用的 model key。
-- 不同用户的模型 ID 不一样，Skill 应先列出可用模型，再通过对话确认 PM、后端、前端、QA、文档等角色分别使用哪个 model key。
-- 写入 Claude Code / OpenCode agent 配置时只写确认后的 model key，不臆造模型，也不额外拼接 provider key。
-- 自动识别 `opencode-extension`、`opencode`、`claude-code`、`mixed`、`plain`。
-
-## 配置
-
-项目配置位于：
-
-```text
-.pm-workflow/config.json
-```
-
-全局默认配置位于：
-
-```text
-~/.config/opencode/pm-workflow.config.json
-```
-
-示例配置见：
-
-```text
-pm-workflow.config.example.json
-```
-
-## 文档
-
-### 使用文档
-- 使用手册：`docs/runbooks/pm-workflow-usage-flow.md`
-- 架构总览：`docs/dev/pm-workflow-architecture-overview.md`
-
-### 开发文档
-- 路由与自动续跑：`docs/dev/pm-workflow-routing-and-auto-continue.md`
-- Command Lane 映射：`docs/dev/command-lane-mapping.md`
-- Subagent 调度迁移：`docs/dev/subagent-dispatch-migration.md`
-- 流程图设计：`docs/specs/2026-04-30-pm-workflow-diagrams-design.md`
-- 发布检查：`docs/dev/pm-workflow-plugin-publish-checklist.md`
+| 文档 | 内容 |
+| --- | --- |
+| [`docs/01-技术架构.md`](docs/01-技术架构.md) | 核心任务域、分层职责、调度语义、agent 定义来源、架构图 |
+| [`docs/02-业务功能与任务流转.md`](docs/02-业务功能与任务流转.md) | 阶段模型、dispatch、lane 业务语义、auto-continue、业务流程图 |
+| [`docs/03-使用与运维手册.md`](docs/03-使用与运维手册.md) | 安装接入、配置、常用工具、诊断、发布、FAQ |
+| [`docs/04-待办与演进清单.md`](docs/04-待办与演进清单.md) | 当前状态、已完成能力、边界约束、后续演进方向 |
 
 ## 发布前验证
 
 ```bash
 npm run verify-release
-```
-
-等价于：
-
-```bash
-npm run typecheck
-npm run build
-npm run smoke
-npm run pack-dry-run
 ```
 
 ## 发布
