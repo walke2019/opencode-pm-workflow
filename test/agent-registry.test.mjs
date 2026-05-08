@@ -122,7 +122,7 @@ function testFrontmatterFieldsAreNotOverriddenByFallbackDefinition() {
     JSON.stringify({
       agents: {
         dispatch_map: {
-          frontend: 'pm_workflow_diaochan',
+          frontend: 'pm_frontend',
         },
       },
     }),
@@ -146,7 +146,7 @@ function testFrontmatterFieldsAreNotOverriddenByFallbackDefinition() {
     semanticAgent: 'frontend',
   });
 
-  assert.strictEqual(resolved.id, 'pm_workflow_diaochan');
+  assert.strictEqual(resolved.id, 'pm_frontend');
   assert.strictEqual(resolved.model, 'custom-frontend-model');
   assert.strictEqual(resolved.description, 'Frontend from frontmatter');
   assert.strictEqual(resolved.mode, 'subagent');
@@ -164,7 +164,7 @@ function testFallbackOnlyFillsMissingFields() {
     JSON.stringify({
       agents: {
         dispatch_map: {
-          frontend: 'pm_workflow_diaochan',
+          frontend: 'pm_frontend',
         },
       },
     }),
@@ -187,7 +187,7 @@ function testFallbackOnlyFillsMissingFields() {
     semanticAgent: 'frontend',
   });
 
-  assert.strictEqual(resolved.id, 'pm_workflow_diaochan');
+  assert.strictEqual(resolved.id, 'pm_frontend');
   assert.strictEqual(resolved.model, 'custom-frontend-model');
   assert.strictEqual(resolved.description, 'Frontend from frontmatter');
   assert.strictEqual(resolved.mode, 'all');
@@ -207,7 +207,7 @@ function testMissingAgentUsesExecutableFallbackId() {
     JSON.stringify({
       agents: {
         dispatch_map: {
-          frontend: 'pm_workflow_diaochan',
+          frontend: 'pm_frontend',
         },
       },
     }),
@@ -223,7 +223,7 @@ function testMissingAgentUsesExecutableFallbackId() {
       semanticAgent: 'frontend',
     });
 
-    assert.strictEqual(resolved.id, 'pm_workflow_diaochan');
+    assert.strictEqual(resolved.id, 'pm_frontend');
     assert.strictEqual(resolved.source, 'fallback');
     assert.strictEqual(resolved.usedFallback, true);
     assert.strictEqual(resolved.fallbackReason, 'missing-agent');
@@ -249,7 +249,7 @@ function testMissingDescriptionUsesFallbackReason() {
     JSON.stringify({
       agents: {
         dispatch_map: {
-          frontend: 'pm_workflow_diaochan',
+          frontend: 'pm_frontend',
         },
       },
     }),
@@ -276,10 +276,10 @@ function testMissingDescriptionUsesFallbackReason() {
       semanticAgent: 'frontend',
     });
 
-    assert.strictEqual(resolved.id, 'pm_workflow_diaochan');
+    assert.strictEqual(resolved.id, 'pm_frontend');
     assert.strictEqual(resolved.model, 'custom-frontend-model');
     assert.strictEqual(resolved.mode, 'subagent');
-    assert.strictEqual(resolved.description, '貂蝉 (Diao Chan)，倾国倾城的前端视觉官，负责 UI/UX 与美学体验。');
+    assert.strictEqual(resolved.description, '你是 pm-workflow 的前端 agent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。');
     assert.strictEqual(resolved.usedFallback, true);
     assert.strictEqual(resolved.fallbackReason, 'missing-description');
   } finally {

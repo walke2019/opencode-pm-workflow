@@ -63,13 +63,10 @@ try {
   assert.ok(!listGlobalOpenCodeModelKeys().includes('bestool-route-cx/cx/gpt-5.5'));
 
   const config = validateWorkflowConfigAgentModels(defaultWorkflowConfig());
-  assert.strictEqual(config.agents.definitions.pm_workflow_caocao.model, 'cx/gpt-5.5');
-  assert.strictEqual(config.agents.definitions.pm_workflow_lvbu.model, 'cx/gpt-5.3-codex');
-  assert.strictEqual(
-    config.agents.definitions.pm_workflow_diaochan.model,
-    'antigravity/gemini-3-flash-preview',
-  );
-  assert.strictEqual(config.agents.definitions.pm_workflow_writer.model, 'kr/claude-haiku-4.5');
+  assert.strictEqual(config.agents.definitions.pm_lead.model, undefined);
+  assert.strictEqual(config.agents.definitions.pm_backend.model, undefined);
+  assert.strictEqual(config.agents.definitions.pm_frontend.model, undefined);
+  assert.strictEqual(config.agents.definitions.pm_reviewer.model, undefined);
 
   const resolvedQa = resolveWorkflowAgentDefinition({
     projectDir,

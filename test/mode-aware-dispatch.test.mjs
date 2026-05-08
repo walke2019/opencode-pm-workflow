@@ -59,14 +59,14 @@ async function testInvocationSemantics() {
   assert.strictEqual(typeof buildDispatchCommand, 'function');
   assert.strictEqual(typeof executeDispatchCommand, 'function');
 
-  const pm = resolveAgentInvocationSemantics('pm_workflow_caocao', 'primary');
+  const pm = resolveAgentInvocationSemantics('pm_lead', 'primary');
   assert.deepStrictEqual(pm, {
     mode: 'primary',
     supportsDirectRun: true,
     requiresTaskPermission: false,
   });
 
-  const specialist = resolveAgentInvocationSemantics('pm_workflow_frontend', 'subagent');
+  const specialist = resolveAgentInvocationSemantics('pm_frontend', 'subagent');
   assert.strictEqual(specialist.mode, 'subagent');
   assert.strictEqual(specialist.supportsDirectRun, false);
   assert.strictEqual(specialist.requiresTaskPermission, true);
@@ -89,7 +89,7 @@ async function testDispatchIncludesInvocationSemantics() {
   }, (projectDir) =>
     buildDispatchCommand(projectDir, '请完善设置页 UI、交互细节和响应式布局'),
   );
-  assert.strictEqual(specialistDispatch.recommendedAgent, 'frontend');
+  assert.strictEqual(specialistDispatch.recommendedAgent, 'pm_frontend');
   assert.deepStrictEqual(specialistDispatch.invocation, {
     mode: 'subagent',
     supportsDirectRun: false,
@@ -112,7 +112,7 @@ async function testAutoContinueDispatchUsesInvocationSemantics() {
       matchedDeliverables: [],
       missingDeliverables: ['交互验证'],
       gaps: ['仍需前端继续处理'],
-      recommendedNextAgent: 'frontend',
+      recommendedNextAgent: 'pm_frontend',
       recommendedNextAction: 'continue-development',
       canAutoContinue: true,
       autoContinueSafe: true,

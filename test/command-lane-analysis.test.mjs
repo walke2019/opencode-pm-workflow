@@ -125,7 +125,7 @@ async function testLaneCommandsExposeShortSlashAliases() {
 async function testLaneToastFormatting() {
   const medium = formatLaneToast({
     laneContext: resolveLaneContext('medium'),
-    recommendedAgent: 'frontend',
+    recommendedAgent: 'pm_frontend',
     recommendedAction: 'continue-development',
     blocked: false,
   });
@@ -135,11 +135,11 @@ async function testLaneToastFormatting() {
   assert.ok(medium.message.includes('moderate'));
   assert.ok(medium.message.includes('assisted'));
   assert.ok(medium.message.includes('standard'));
-  assert.ok(medium.message.includes('frontend/continue-development'));
+  assert.ok(medium.message.includes('pm_frontend/continue-development'));
 
   const debug = formatLaneToast({
     laneContext: resolveLaneContext('debug'),
-    recommendedAgent: 'pm',
+    recommendedAgent: 'pm_lead',
     recommendedAction: 'blocked',
     blocked: true,
   });

@@ -185,13 +185,15 @@ export function formatTaskAnalysisLines(analysis?: TaskAnalysis): string[] {
   }
 
   const coordinationLine =
-    analysis.recommendedAgent === "pm"
-      ? analysis.expectedNextAgents.includes("commander")
-        ? "- task analysis coordination: pm 负责主协调，commander 作为顾问支持"
-        : "- task analysis coordination: pm 负责主协调"
-      : analysis.recommendedAgent === "commander"
-        ? "- task analysis coordination: commander 负责顾问式拆解支持"
-        : `- task analysis coordination: pm 负责主协调，${analysis.recommendedAgent} 作为专业 subagent 执行`;
+    analysis.recommendedAgent === "pm" || analysis.recommendedAgent === "pm_lead"
+      ? analysis.expectedNextAgents.includes("commander") ||
+        analysis.expectedNextAgents.includes("pm_advisor")
+        ? "- task analysis coordination: pm_lead 负责主协调，pm_advisor 作为顾问支持"
+        : "- task analysis coordination: pm_lead 负责主协调"
+      : analysis.recommendedAgent === "commander" ||
+          analysis.recommendedAgent === "pm_advisor"
+        ? "- task analysis coordination: pm_advisor 负责顾问式拆解支持"
+        : `- task analysis coordination: pm_lead 负责主协调，${analysis.recommendedAgent} 作为专业 subagent 执行`;
 
   return [
     `- task analysis: domain=${analysis.domain} complexity=${analysis.complexity} mode=${analysis.executionMode}`,

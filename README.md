@@ -14,11 +14,22 @@
 - **执行编排**：PM 主协调，handoff 压缩，结果评估，受控自动续跑
 - **诊断与工具**：状态查询、健康检查、执行回执、权限管理
 
+## Command Lanes
+
+插件提供 4 条 Command Lane 入口，用于不同审慎级别的调度预览：
+
+| Lane | 用途 |
+| --- | --- |
+| `pm-quick` | 低风险快速推进 |
+| `pm-medium` | 标准实现建议 |
+| `pm-full` | 高审慎完整执行 |
+| `pm-debug` | 排障优先建议 |
+
 ## 核心工作流原则
 
 `pm-workflow` 采用**"稳定任务域 + 外部 agent 定义绑定"**的双层模型：
 
-- `pm_workflow_caocao` 是统一主协调入口
+- `pm_lead` 是统一主协调入口
 - command lanes 是 UX facade，不是第二套 runtime
 - Analyzer 负责语义判断，Registry 负责 agent 定义绑定，Runtime 负责执行编排
 - 新增 agent 不等于新增语义角色

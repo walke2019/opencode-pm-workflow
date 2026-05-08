@@ -28,8 +28,7 @@ function inferDomain(
   if (preferredAgent === "pm_reviewer" || preferredAgent === "qa_engineer") return "qa_engineer";
   if (preferredAgent === "pm_researcher" || preferredAgent === "researcher") return "researcher";
   if (preferredAgent === "pm_advisor" || preferredAgent === "commander") return "orchestration";
-  if (preferredAgent === "pm_lead" || preferredAgent === "pm") return "pm";
-  // pm 是主协调默认值，不应阻止后续基于任务内容分派给专业 subagent。
+  // pm/pm_lead 是主协调默认值，不应阻止后续基于任务内容分派给专业 subagent。
 
   const normalized = prompt.toLowerCase();
   const researcherMatched =
