@@ -211,12 +211,12 @@ npm view @walke/opencode-pm-workflow version
 | --- | --- | --- | --- |
 | `pm_lead` | 从全局配置读取 | primary | 主协调官：决策、指挥、分派、收敛 |
 | `pm_advisor` | 从全局配置读取 | primary | 拆解顾问：任务拆解、风险识别 |
-| `pm_backend` | 从全局配置读取 | all | 后端执行：API、数据库、性能 |
-| `pm_frontend` | 从全局配置读取 | all | 前端执行：UI/UX、交互、组件 |
-| `pm_reviewer` | 从全局配置读取 | all (hidden) | 审查与文档：QA、回归、发布说明 |
-| `pm_researcher` | 从全局配置读取 | all (hidden) | 调研：检索、官方方案、事实核查 |
+| `pm_backend` | 从全局配置读取 | subagent | 后端执行：API、数据库、性能 |
+| `pm_frontend` | 从全局配置读取 | subagent | 前端执行：UI/UX、交互、组件 |
+| `pm_reviewer` | 从全局配置读取 | subagent (hidden) | 审查与文档：QA、回归、发布说明 |
+| `pm_researcher` | 从全局配置读取 | subagent (hidden) | 调研：检索、官方方案、事实核查 |
 
-> 注：0.2.0 起移除硬编码模型 ID，改为从全局 OpenCode 配置读取。旧名称（pm_workflow_caocao 等）自动映射到新名称，保留 2 个版本兼容期。
+> 注：0.2.0 起移除硬编码模型 ID，改为从全局 OpenCode 配置读取。0.2.1 起子 agent mode 统一为 `subagent`。旧名称（pm_workflow_caocao 等）自动映射到新名称，保留 2 个版本兼容期。
 
 ### 常用 npm 脚本
 
