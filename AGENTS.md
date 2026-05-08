@@ -22,6 +22,73 @@
 
 **新增 agent ≠ 新增语义角色**。新 agent 先进入 Registry，只有满足高频/稳定/边界清晰/自动分派收益显著才考虑进入核心。
 
+### 关键设计决策
+
+- `pm_workflow_caocao` 是唯一 primary orchestrator
+- command lanes 是 UX facade，不是第二套 runtime
+- specialist agent 若为 subagent，必须走 subagent-safe 路径
+- 项目级 `.opencode/agents/*.md` 优先于全局 `~/.config/opencode/agents/*.md`
+- 复合任务通过主 agent 编排解决，不通过新增角色解决
+
+## 开发流程
+
+### 1. 改代码
+- 小步修改，频繁提交
+- 测试先行（TDD）
+- 遵循现有代码风格与模块边界
+
+### 2. 跑验证
+```bash
+PATH="/opt/homebrew/bin:$PATH" npm run build && PATH="/opt/homebrew/bin:$PATH" npm test
+```
+
+### 3. 同步文档
+- 改哪层就更新对应文档
+- 更新 CHANGELOG.md
+- 更新文档底部 Change Log
+
+### 4. 提交并推送
+```bash
+git add .
+git commit -m "feat/fix/docs: 简明描述"
+git push origin main
+```
+
+### 5. npm 发版
+每次变更（含文档更新）完成后，必须发布新版本：
+
+```bash
+# 1. 升版本号（patch/minor/major）
+npm version patch --no-git-tag-version
+
+# 2. 发布前验证
+PATH="/opt/homebrew/bin:$PATH" npm run verify-release
+
+# 3. 发布到 npm
+npm publish --access public
+
+# 4. 确认发布成功
+npm view @walke/opencode-pm-workflow version
+```
+
+## 代码规范
+
+### TypeScript
+- 严格模式，禁止 `any`
+- 接口命名以 `I` 开头（如 `IWorkflowState`）
+- 导出函数/类必须有 JSDoc 注释
+
+### 测试
+- 测试文件放在 `test/` 目录
+- 文件名以 `.test.mjs` 结尾
+- 新增功能必须有对应测试
+- 修复 bug 必须有回归测试
+
+### 提交信息
+- 格式：`type: 简明描述`
+- type 可选：`feat` / `fix` / `docs` / `refactor` / `test` / `chore`
+- 描述用中文，简明扼要
+
 ## 文档同步规则
 
 ### 现行文档仅 5 篇
@@ -52,7 +119,7 @@
 - ❌ 新建 spec/plan/migration/audit 类文档
 - ❌ 文档与代码不同步
 
-## 版本记录规则
+## 版本记录
 
 ### CHANGELOG.md
 
@@ -77,28 +144,6 @@
 | YYYY-MM-DD | X.Y.Z | 变更说明 |
 ```
 
-## 开发流程
-
-### 1. 改代码
-- 小步修改，频繁提交
-- 测试先行（TDD）
-
-### 2. 跑验证
-```bash
-PATH="/opt/homebrew/bin:$PATH" npm run build && PATH="/opt/homebrew/bin:$PATH" npm test
-```
-
-### 3. 同步文档
-- 改哪层就更新对应文档
-- 更新 CHANGELOG.md
-- 更新文档底部 Change Log
-
-### 4. 提交
-```bash
-git add .
-git commit -m "feat/fix/docs: 简明描述"
-```
-
 ## 提交检查清单
 
 - [ ] 代码变更完成
@@ -107,3 +152,5 @@ git commit -m "feat/fix/docs: 简明描述"
 - [ ] CHANGELOG.md 已更新
 - [ ] 未新建文档（仅修改现有 5 篇）
 - [ ] 流程图与正文一致
+- [ ] 已提交并推送到 git 仓库
+- [ ] 已完成 npm 发版
