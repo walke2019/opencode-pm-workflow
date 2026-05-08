@@ -22,12 +22,13 @@ function inferDomain(
   prompt: string,
   preferredAgent?: DispatchAgent | null,
 ): TaskDomain {
-  if (preferredAgent === "backend") return "backend";
-  if (preferredAgent === "frontend") return "frontend";
+  if (preferredAgent === "pm_backend" || preferredAgent === "backend") return "backend";
+  if (preferredAgent === "pm_frontend" || preferredAgent === "frontend") return "frontend";
   if (preferredAgent === "writer") return "writer";
-  if (preferredAgent === "qa_engineer") return "qa_engineer";
-  if (preferredAgent === "researcher") return "researcher";
-  if (preferredAgent === "commander") return "orchestration";
+  if (preferredAgent === "pm_reviewer" || preferredAgent === "qa_engineer") return "qa_engineer";
+  if (preferredAgent === "pm_researcher" || preferredAgent === "researcher") return "researcher";
+  if (preferredAgent === "pm_advisor" || preferredAgent === "commander") return "orchestration";
+  if (preferredAgent === "pm_lead" || preferredAgent === "pm") return "pm";
   // pm 是主协调默认值，不应阻止后续基于任务内容分派给专业 subagent。
 
   const normalized = prompt.toLowerCase();
@@ -153,20 +154,20 @@ function inferComplexity(prompt: string): TaskComplexity {
 function mapDomainToAgent(domain: TaskDomain): DispatchAgent {
   switch (domain) {
     case "backend":
-      return "backend";
+      return "pm_backend";
     case "frontend":
-      return "frontend";
+      return "pm_frontend";
     case "writer":
-      return "writer";
+      return "pm_reviewer";
     case "qa_engineer":
-      return "qa_engineer";
+      return "pm_reviewer";
     case "researcher":
-      return "researcher";
+      return "pm_researcher";
     case "pm":
-      return "pm";
+      return "pm_lead";
     case "orchestration":
     default:
-      return "pm";
+      return "pm_lead";
   }
 }
 
@@ -198,7 +199,7 @@ function inferRecommendedAgent(
   complexity: TaskComplexity,
   preferredAgent?: DispatchAgent | null,
 ): DispatchAgent {
-  if (preferredAgent && preferredAgent !== "pm") {
+  if (preferredAgent && preferredAgent !== "pm" && preferredAgent !== "pm_lead") {
     return preferredAgent;
   }
   return mapDomainToAgent(domain);
@@ -209,19 +210,19 @@ function inferExpectedNextAgents(
   recommendedAgent: DispatchAgent,
   complexity: TaskComplexity,
 ): DispatchAgent[] {
-  if (recommendedAgent === "commander") {
-    return ["pm", "frontend", "writer"];
+  if (recommendedAgent === "pm_advisor" || recommendedAgent === "commander") {
+    return ["pm_lead", "pm_frontend", "pm_reviewer"];
   }
   if (domain === "researcher") {
-    return ["researcher"];
+    return ["pm_researcher"];
   }
   if (domain === "backend" && complexity !== "simple") {
-    return ["backend", "qa_engineer"];
+    return ["pm_backend", "pm_reviewer"];
   }
-  if (recommendedAgent === "pm") {
+  if (recommendedAgent === "pm_lead" || recommendedAgent === "pm") {
     return complexity === "simple"
-      ? ["commander"]
-      : ["commander", "qa_engineer"];
+      ? ["pm_advisor"]
+      : ["pm_advisor", "pm_reviewer"];
   }
   return [recommendedAgent];
 }
@@ -248,7 +249,7 @@ export function analyzeDispatchTask(
     domain,
     complexity,
     recommendedAgent,
-    fallbackAgents: recommendedAgent === "pm" ? ["commander"] : ["pm"],
+    fallbackAgents: recommendedAgent === "pm_lead" || recommendedAgent === "pm" ? ["pm_advisor"] : ["pm_lead"],
     executionMode,
     needsDecomposition: complexity !== "simple",
     rationale: [
@@ -266,7 +267,7 @@ export function analyzeDispatchTask(
     suggestedStepCount:
       complexity === "simple" ? 1 : complexity === "multi_step" ? 3 : 4,
     specialistCount: new Set(
-      expectedNextAgents.filter((agent) => agent !== "pm"),
+      expectedNextAgents.filter((agent) => agent !== "pm" && agent !== "pm_lead"),
     ).size,
   };
 }
