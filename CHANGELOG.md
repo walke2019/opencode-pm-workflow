@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- 修复子 agent mode 定义：将 `pm_backend`/`pm_frontend`/`pm_reviewer`/`pm_researcher` 的 mode 从 `"all"` 改为 `"subagent"`，语义更清晰，避免未来误用。
+
 ## 0.2.0
 
 - **Agent 命名简化**：弃用三国角色名（pm_workflow_caocao/zhuge/lvbu/diaochan/qa/writer），统一为通用短名称（pm_lead/pm_advisor/pm_backend/pm_frontend/pm_reviewer/pm_researcher）。
