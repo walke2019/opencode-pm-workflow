@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.17
+
+- 新增 `researcher` 一等语义角色，补齐默认类型、dispatch/fallback 映射、内置 agent 定义与专属执行 prompt。
+- 为调研/资料搜索类请求增加 `researcher` 中等触发路由，避免“调研 + 后端关键词”场景被误分派到 `backend`，同时保持实现、文档与 QA 任务边界不被抢占。
+- README 补充 `researcher` 角色职责说明，并新增 researcher routing implementation plan 文档以便后续追踪实现过程。
+
 ## 0.1.16
 
 - 新增 Agent Definition Registry，按 `project/.opencode/agents` → `global ~/.config/opencode/agents` → legacy `agent` 目录 → 内部 fallback 的优先级解析 agent 定义。

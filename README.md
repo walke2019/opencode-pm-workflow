@@ -10,7 +10,7 @@
 - 开发导向 agent 编排：PM 主协调，按任务特征分派 backend、frontend、QA、writer 等专业 agent。
 - Agent/模型初始化 Skill：基于全局 OpenCode provider model 列表配置 Claude Code 与 OpenCode agents。
 
-当前发布版本：`0.1.16`。
+当前发布版本：`0.1.17`。
 
 ## 安装
 
