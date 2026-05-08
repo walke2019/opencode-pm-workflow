@@ -11,7 +11,7 @@
 
 ## 0.2.2
 
-- 更新 `commands/*.md`（4 条 lane 命令）的 agent 从 `pm_workflow_caocao` 改为 `pm_lead`。
+- 更新 `commands/*.md`（4 条 lane 命令）的入口 agent 为新的主协调命名。
 - 更新 `pm-workflow.config.example.json` 示例配置，全面使用新 agent 名称。
 - 更新 `pm-workflow.schema.json` schema，补充新旧名称的 definitions properties。
 - 更新 `AGENTS.md` 中主 agent 定位描述。
@@ -22,7 +22,7 @@
 
 ## 0.2.0
 
-- **Agent 命名简化**：弃用三国角色名（pm_workflow_caocao/zhuge/lvbu/diaochan/qa/writer），统一为通用短名称（pm_lead/pm_advisor/pm_backend/pm_frontend/pm_reviewer/pm_researcher）。
+- **Agent 命名简化**：弃用旧 namespaced 角色名，统一为通用短名称（pm_lead/pm_advisor/pm_backend/pm_frontend/pm_reviewer/pm_researcher）。
 - **角色合并**：QA + Writer 合并为 `pm_reviewer`（审查与文档），前端双角色合并为 `pm_frontend`。
 - **移除硬编码模型 ID**：所有内置 agent 定义不再携带具体模型 ID，改为从全局 OpenCode 配置读取。
 - **向后兼容**：新增 `LEGACY_AGENT_MAP` 自动映射机制，旧名称自动转换为新名称，保留 2 个版本兼容期。
@@ -79,7 +79,7 @@
 ## 0.1.9
 
 - 新增对 workflow agent `mode: "all"` 的配置支持，兼容可同时作为 primary 与 subagent 的 OpenCode agent 模式
-- 对 `pm_workflow_qa`、`pm_workflow_writer`、`pm_workflow_frontend` 增加 legacy `subagent -> all` 归一化兼容，避免现有全局/项目配置继续把它们锁死为 subagent
+- 对旧 subagent 配置增加 `subagent -> all` 归一化兼容，避免现有全局/项目配置继续把它们锁死为 subagent
 - 修复当前 CLI `opencode run --agent ...` 直调链路下，上述 workflow agents 被错误识别为 subagent 并 fallback 到默认 `build` agent 的问题
 
 ## 0.1.8
@@ -88,8 +88,8 @@
 
 ## 0.1.7
 
-- 将默认 agent 模式收紧为 `subagent`，并显式声明 `pm_workflow_caocao` 为唯一 primary workflow agent
-- 新增 `pm_workflow_frontend` 前端/UI subagent，默认 `hidden: true`
+- 将默认 agent 模式收紧为 `subagent`，并显式声明新的主协调 agent 为唯一 primary workflow agent
+- 新增前端/UI subagent，默认 `hidden: true`
 - QA、writer、frontend 默认都作为隐藏 subagent 注入，避免被 OpenCode 当成常用主 agent
 - 配置 schema 与示例新增 `hidden` 和 `frontend` dispatch 支持
 
@@ -102,16 +102,16 @@
 
 - 新增全局配置文件支持：`~/.config/opencode/pm-workflow.config.json`
 - 插件加载时会自动创建全局配置文件，并按“默认值 -> 全局配置 -> 插件 options -> 项目配置”的顺序合并
-- 项目旧配置中 `pm_workflow_pm` 会自动迁移到 `pm_workflow_caocao`
+- 项目旧配置中的旧主协调命名会自动迁移到新的主协调命名
 
 ## 0.1.4
 
-- 将默认主协调 agent 改为 `pm_workflow_caocao`，以曹操（Cao Cao）作为 pm-workflow primary coordinator 人设
-- 更新默认 `agents.dispatch_map`、配置示例与 schema，使内部 `pm` 角色映射到 `pm_workflow_caocao`
+- 将默认主协调 agent 改为新的 namespaced 主协调命名，并收敛 primary coordinator 角色设定
+- 更新默认 `agents.dispatch_map`、配置示例与 schema，使内部 `pm` 角色映射到新的主协调 agent
 
 ## 0.1.3
 
-- 将默认 workflow agents 改为 `pm_workflow_pm`、`pm_workflow_qa`、`pm_workflow_writer`，避免覆盖用户已有的 `pm` / `qa_engineer` / `writer` agent
+- 将默认 workflow agents 改为 namespaced 形式，避免覆盖用户已有的 `pm` / `qa_engineer` / `writer` agent
 - 新增 `agents.dispatch_map`，内部调度仍可使用 `pm`、`qa_engineer`、`writer` 语义角色，并映射到实际 OpenCode agent 名称
 - 修正配置 schema 与示例，支持自定义 namespaced agent 与 fallback model
 
