@@ -62,6 +62,53 @@ async function testDefaults() {
   console.log('✓ QA definition correctly mapped to Zhao Yun');
   console.log('✓ Writer definition correctly mapped to Chen Lin');
   console.log('✓ Zhuge definition correctly mapped to advisor-only role');
+
+  assert.strictEqual(
+    config.fallback.agent_map.researcher,
+    'researcher',
+    'Fallback agent map should support researcher',
+  );
+  assert.strictEqual(
+    config.agents.dispatch_map.researcher,
+    'researcher',
+    'Dispatch map should support researcher',
+  );
+  assert.ok(
+    config.agents.definitions.researcher,
+    'Built-in researcher definition should exist for executable researcher defaults',
+  );
+  assert.ok(
+    config.agents.definitions.researcher.description.includes('调研') ||
+      config.agents.definitions.researcher.description.includes('搜索') ||
+      config.agents.definitions.researcher.description.includes('资料'),
+    'Researcher definition should describe research/search behavior',
+  );
+  assert.ok(
+    config.agents.definitions.researcher.prompt.includes('不直接承担实现工作') ||
+      config.agents.definitions.researcher.prompt.includes('不替代开发'),
+    'Researcher definition prompt should state non-implementation by default',
+  );
+  const researcherPrompt = buildExecutablePrompt('researcher', '帮我调研一下官方鉴权方案');
+  assert.ok(researcherPrompt.includes('资料'), 'Researcher prompt should mention 资料');
+  assert.ok(
+    researcherPrompt.includes('调研') || researcherPrompt.includes('搜索'),
+    'Researcher prompt should mention 调研 or 搜索',
+  );
+  assert.ok(
+    researcherPrompt.includes('不直接承担实现工作') || researcherPrompt.includes('不替代开发'),
+    'Researcher prompt should state it does not directly replace implementation work',
+  );
+  assert.ok(
+    !researcherPrompt.includes('先压缩需求，再进入开发实现、测试验证和发布摘要'),
+    'Researcher prompt should not include generic implementation-oriented execution requirements',
+  );
+  assert.ok(
+    researcherPrompt.includes('先收集资料') ||
+      researcherPrompt.includes('先调研') ||
+      researcherPrompt.includes('输出可验证的结论'),
+    'Researcher prompt should use role-appropriate research execution requirements',
+  );
+  console.log('✓ Researcher defaults and prompt are configured');
 }
 
 async function testPrompts() {
@@ -143,6 +190,54 @@ async function testDispatchRouting() {
     'Spec gate should keep collect-spec on PM instead of routing to backend',
   );
   console.log('✓ Spec gate keeps requirements compression on PM before development routing');
+
+  const researcherDispatch = await withTempProject((projectDir) => {
+    createDoc(projectDir, 'Product-Spec.md');
+    createDoc(projectDir, 'DEV-PLAN.md');
+  }, (projectDir) =>
+    buildDispatchCommand(
+      projectDir,
+      '帮我调研一下 React Native 埋点方案，并对比几种实现路线',
+    ),
+  );
+  assert.strictEqual(researcherDispatch.recommendedAgent, 'researcher');
+  assert.strictEqual(researcherDispatch.analysis?.domain, 'researcher');
+  assert.strictEqual(researcherDispatch.analysis?.executionMode, 'serial_handoff');
+
+  const researcherBackendCollisionDispatch = await withTempProject((projectDir) => {
+    createDoc(projectDir, 'Product-Spec.md');
+    createDoc(projectDir, 'DEV-PLAN.md');
+  }, (projectDir) =>
+    buildDispatchCommand(
+      projectDir,
+      '帮我调研一下官方鉴权方案，并对比几种中间件实现路线',
+    ),
+  );
+  assert.strictEqual(researcherBackendCollisionDispatch.recommendedAgent, 'researcher');
+  assert.strictEqual(researcherBackendCollisionDispatch.analysis?.domain, 'researcher');
+
+  const backendRoutingDispatch = await withTempProject((projectDir) => {
+    createDoc(projectDir, 'Product-Spec.md');
+    createDoc(projectDir, 'DEV-PLAN.md');
+  }, (projectDir) =>
+    buildDispatchCommand(
+      projectDir,
+      '帮我实现一个鉴权中间件，并补测试',
+    ),
+  );
+  assert.strictEqual(backendRoutingDispatch.recommendedAgent, 'backend');
+
+  const writerRoutingDispatch = await withTempProject((projectDir) => {
+    createDoc(projectDir, 'Product-Spec.md');
+    createDoc(projectDir, 'DEV-PLAN.md');
+  }, (projectDir) =>
+    buildDispatchCommand(
+      projectDir,
+      '把这段说明整理成文档，并更新 README',
+    ),
+  );
+  assert.strictEqual(writerRoutingDispatch.recommendedAgent, 'writer');
+  console.log('✓ Researcher medium-trigger routing prefers researcher over backend/writer fallbacks');
 }
 
 async function testStageDefaultRouting() {

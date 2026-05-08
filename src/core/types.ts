@@ -37,7 +37,8 @@ export type DispatchAgent =
   | "writer"
   | "frontend"
   | "commander"
-  | "backend";
+  | "backend"
+  | "researcher";
 export type ExecutableAgent = string;
 
 export type AgentDefinitionSource = "project" | "global" | "fallback";
@@ -83,6 +84,7 @@ export type TaskDomain =
   | "frontend"
   | "writer"
   | "qa_engineer"
+  | "researcher"
   | "orchestration";
 
 export type TaskComplexity = "simple" | "multi_step" | "composite";

@@ -72,10 +72,13 @@ Todo 是过程终结标准：每个 todo 必须完成，或标注 blocked 并说
 | 拆解顾问 | `pm_workflow_zhuge` | 从全局 OpenCode 模型清单中对话确认 | 复杂任务拆解与风险建议，不取代 PM |
 | 后端执行 | `pm_workflow_lvbu` | 从全局 OpenCode 模型清单中对话确认 | API、插件、服务、状态机、后端逻辑 |
 | 前端执行 | `pm_workflow_diaochan` / `pm_workflow_frontend` | 从全局 OpenCode 模型清单中对话确认 | UI、交互、组件、可访问性 |
+| 调研执行 | `pm_workflow_researcher` | 从全局 OpenCode 模型清单中对话确认 | 资料搜索、调研、官方文档查询、方案对比、外部事实核验 |
 | QA / Review | `pm_workflow_qa` | 从全局 OpenCode 模型清单中对话确认 | 测试、回归、代码审查、风险控制 |
 | 文档 / Release | `pm_workflow_writer` | 从全局 OpenCode 模型清单中对话确认 | README、发布说明、交付摘要 |
 
 模型 ID 不应在 README 中假设所有用户一致。实际配置时，应从用户自己的全局 OpenCode 配置 `~/.config/opencode/opencode.json` 读取 `provider.*.models`，列出可用 model key，再通过对话确认每个角色使用哪个模型；不要臆造模型，也不要把 provider key 额外拼进模型 ID。
+
+补充说明：researcher 默认只负责资料搜索、调研、官方文档查询、方案对比、外部事实核验；默认不替代 frontend / backend 实现、不替代 writer 文档编写，也不默认替代 QA 执行验证。
 
 ## 调度规则
 

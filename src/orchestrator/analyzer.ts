@@ -26,10 +26,31 @@ function inferDomain(
   if (preferredAgent === "frontend") return "frontend";
   if (preferredAgent === "writer") return "writer";
   if (preferredAgent === "qa_engineer") return "qa_engineer";
+  if (preferredAgent === "researcher") return "researcher";
   if (preferredAgent === "commander") return "orchestration";
   // pm 是主协调默认值，不应阻止后续基于任务内容分派给专业 subagent。
 
   const normalized = prompt.toLowerCase();
+  const researcherMatched =
+    normalized.includes("调研") ||
+    normalized.includes("搜索") ||
+    normalized.includes("查资料") ||
+    normalized.includes("查文档") ||
+    normalized.includes("官方文档") ||
+    normalized.includes("官方推荐") ||
+    normalized.includes("对比方案") ||
+    normalized.includes("对比一下") ||
+    normalized.includes("搜集资料") ||
+    normalized.includes("收集资料") ||
+    normalized.includes("业内怎么做") ||
+    normalized.includes("有哪些方案") ||
+    ((normalized.includes("查一下") || normalized.includes("看看")) &&
+      (normalized.includes("方案") ||
+        normalized.includes("文档") ||
+        normalized.includes("资料") ||
+        normalized.includes("官方") ||
+        normalized.includes("实现路线") ||
+        normalized.includes("埋点")));
   const orchestrationMatched =
     (normalized.includes("前端") &&
       (normalized.includes("文档") ||
@@ -39,7 +60,8 @@ function inferDomain(
     normalized.includes("一起补齐") ||
     normalized.includes("一并补齐") ||
     (normalized.includes("实现") &&
-      (normalized.includes("文档") || normalized.includes("方案")));
+      (normalized.includes("文档") || normalized.includes("方案")) &&
+      !researcherMatched);
   const backendMatched =
     normalized.includes("api") ||
     normalized.includes("backend") ||
@@ -47,6 +69,8 @@ function inferDomain(
     normalized.includes("服务") ||
     normalized.includes("接口") ||
     normalized.includes("认证") ||
+    normalized.includes("鉴权") ||
+    normalized.includes("中间件") ||
     normalized.includes("401") ||
     normalized.includes("登录") ||
     normalized.includes("plugin") ||
@@ -61,7 +85,11 @@ function inferDomain(
     normalized.includes("页面") ||
     normalized.includes("组件");
   const writerMatched =
-    normalized.includes("文档") ||
+    normalized.includes("整理成文档") ||
+    normalized.includes("整理为文档") ||
+    normalized.includes("编写文档") ||
+    normalized.includes("更新 readme") ||
+    normalized.includes("更新readme") ||
     normalized.includes("release") ||
     normalized.includes("说明") ||
     normalized.includes("readme");
@@ -72,6 +100,10 @@ function inferDomain(
 
   if (orchestrationMatched) {
     return "orchestration";
+  }
+
+  if (researcherMatched) {
+    return "researcher";
   }
 
   if (backendMatched) {
@@ -128,6 +160,8 @@ function mapDomainToAgent(domain: TaskDomain): DispatchAgent {
       return "writer";
     case "qa_engineer":
       return "qa_engineer";
+    case "researcher":
+      return "researcher";
     case "pm":
       return "pm";
     case "orchestration":
@@ -143,6 +177,9 @@ function inferExecutionMode(
 ): DispatchExecutionMode {
   if (complexity === "composite") {
     return "advisor_then_dispatch";
+  }
+  if (domain === "researcher") {
+    return "serial_handoff";
   }
   if (complexity === "simple") {
     return domain === "orchestration" ? "pm_direct" : "single_agent";
@@ -174,6 +211,9 @@ function inferExpectedNextAgents(
 ): DispatchAgent[] {
   if (recommendedAgent === "commander") {
     return ["pm", "frontend", "writer"];
+  }
+  if (domain === "researcher") {
+    return ["researcher"];
   }
   if (domain === "backend" && complexity !== "simple") {
     return ["backend", "qa_engineer"];

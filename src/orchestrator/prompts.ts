@@ -15,6 +15,7 @@ const DEFAULT_DISPATCH_AGENT_MAP: Partial<Record<DispatchAgent, string>> = {
   frontend: "frontend",
   commander: "commander",
   backend: "backend",
+  researcher: "researcher",
 };
 
 export function getExecutableAgent(
@@ -137,6 +138,11 @@ export function buildExecutablePrompt(
       roleContext =
         "你现在是陈琳（Chen Lin），一位文辞敏捷、条理分明的执笔官。请负责整理发布说明、变更摘要、交付文档与对外说明，确保文字准确、结构清楚、重点鲜明。";
       break;
+    case "researcher":
+      roleTitle = "【资料调研官】";
+      roleContext =
+        "你现在是一名资料调研官。请围绕问题快速收集资料、调研官方方案、比对可选路径，并在必要时继续搜索权威来源，输出可验证的结论与参考依据。你不直接承担实现工作，也不替代开发、修复或交付执行；除非任务明确要求你亲自实现，否则应以调研结论、风险提示和建议路径支持后续执行。";
+      break;
     default:
       roleTitle = "【专业执行官】";
       roleContext = `你现在是一名专业的执行官，负责高效完成以下 pm-workflow 任务。`;
@@ -146,6 +152,23 @@ export function buildExecutablePrompt(
     ? renderAgentHandoffPrompt(agent, packet)
     : `【核心任务】\n${prompt}`;
 
+  const executionRequirements =
+    agent === "researcher"
+      ? [
+          "1. 优先查找官方文档、权威资料或一手来源；结论需尽量附参考依据。",
+          "2. 先收集资料、再比对方案与风险，不默认进入开发实现、测试验证或发布摘要。",
+          "3. 如信息不足，明确列出缺口、假设与建议的下一步搜索/验证方向。",
+          "4. Todo 终结标准：每个 todo 必须完成，或标注 blocked 并说明原因。",
+          "5. 过程务必清晰，结果务必可验证；输出应便于后续 agent 接手执行。",
+        ].join("\n")
+      : [
+          "1. 严格遵循 OpenCode 插件/扩展规范、项目既有代码规范与技术栈。",
+          "2. 不在需求层停留过久；先压缩需求，再进入开发实现、测试验证和发布摘要。",
+          "3. Workflow 标准：需求压缩 → 开发实现 → 测试验证 → 发布摘要。",
+          "4. Todo 终结标准：每个 todo 必须完成，或标注 blocked 并说明原因。",
+          "5. 过程务必清晰，结果务必可验证；涉及代码时给出验证命令。",
+        ].join("\n");
+
   return `
 ${roleTitle}
 ${roleContext}
@@ -153,11 +176,7 @@ ${roleContext}
 ${taskBody}
 
 【执行要求】
-1. 严格遵循 OpenCode 插件/扩展规范、项目既有代码规范与技术栈。
-2. 不在需求层停留过久；先压缩需求，再进入开发实现、测试验证和发布摘要。
-3. Workflow 标准：需求压缩 → 开发实现 → 测试验证 → 发布摘要。
-4. Todo 终结标准：每个 todo 必须完成，或标注 blocked 并说明原因。
-5. 过程务必清晰，结果务必可验证；涉及代码时给出验证命令。
+${executionRequirements}
 `.trim();
 }
 

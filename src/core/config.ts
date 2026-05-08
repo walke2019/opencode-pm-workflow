@@ -64,6 +64,7 @@ const WORKFLOW_AGENT_ORDER: DispatchAgent[] = [
   "writer",
   "frontend",
   "backend",
+  "researcher",
 ];
 
 const LEGACY_SEMANTIC_AGENT_NAMES = ["pm", "qa_engineer", "writer"] as const;
@@ -172,6 +173,20 @@ const DEFAULT_WORKFLOW_AGENTS: Partial<Record<string, WorkflowAgentConfig>> = {
       bash: "ask",
     },
   },
+  researcher: {
+    model: "kr/claude-haiku-4.5",
+    mode: "all",
+    hidden: true,
+    description:
+      "pm-workflow 资料调研 agent，负责资料检索、官方方案调研、事实比对与参考依据整理。",
+    prompt:
+      "你是 pm-workflow 的 researcher agent。负责资料检索、官方方案调研、事实核查、备选路径比较与参考依据整理。你不直接承担实现工作，也不替代开发、修复或发布执行；除非任务明确要求，否则以调研结论、风险提示和建议路径支持后续 agent。",
+    permission: {
+      edit: "ask",
+      write: "ask",
+      bash: "ask",
+    },
+  },
 };
 
 export function defaultWorkflowConfig(): WorkflowConfig {
@@ -206,6 +221,7 @@ export function defaultWorkflowConfig(): WorkflowConfig {
         commander: "pm_workflow_zhuge",
         backend: "pm_workflow_lvbu",
         frontend: "pm_workflow_diaochan",
+        researcher: "researcher",
       },
     },
     agents: {
@@ -220,6 +236,7 @@ export function defaultWorkflowConfig(): WorkflowConfig {
         frontend: "frontend",
         commander: "commander",
         backend: "backend",
+        researcher: "researcher",
       },
       definitions: DEFAULT_WORKFLOW_AGENTS,
     },
