@@ -1,9 +1,5 @@
 # AGENTS.md - pm-workflow 开发指南
 
-## 核心原则
-
-**每次变更后必须同步更新现有文档，禁止新建文档。**
-
 ## OpenCode 规范遵循
 
 ### 强制要求
@@ -80,6 +76,7 @@ PATH="/opt/homebrew/bin:$PATH" npm run build && PATH="/opt/homebrew/bin:$PATH" n
 - 改哪层就更新对应文档
 - 更新 CHANGELOG.md
 - 更新文档底部 Change Log
+- **现行文档仅 5 篇，禁止新建**
 
 ### 4. 提交并推送
 ```bash
