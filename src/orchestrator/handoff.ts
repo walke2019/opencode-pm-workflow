@@ -88,7 +88,7 @@ function buildBasePacket(
 
 function applyAgentSpecificContext(packet: HandoffPacket): HandoffPacket {
   switch (packet.targetAgent) {
-    case "frontend":
+    case "pm_frontend":
       packet.scope.do = limitItems(
         [...packet.scope.do, "只处理相关页面、组件与交互边界"],
         3,
@@ -103,7 +103,7 @@ function applyAgentSpecificContext(packet: HandoffPacket): HandoffPacket {
         3,
       );
       break;
-    case "qa_engineer":
+    case "pm_reviewer":
       packet.scope.do = limitItems(
         [...packet.scope.do, "聚焦验证范围、未覆盖项与回归风险"],
         3,
@@ -114,18 +114,7 @@ function applyAgentSpecificContext(packet: HandoffPacket): HandoffPacket {
       );
       packet.deliverables = ["测试结论", "风险列表", "是否通过建议"];
       break;
-    case "writer":
-      packet.scope.do = limitItems(
-        [...packet.scope.do, "聚焦目标读者、章节结构与一致性"],
-        3,
-      );
-      packet.artifacts = limitItems(
-        [...packet.artifacts, "相关文档：README / CHANGELOG / 发布说明"],
-        6,
-      );
-      packet.deliverables = ["文档变更摘要", "目标读者说明", "章节清单"];
-      break;
-    case "commander":
+    case "pm_advisor":
       packet.scope.do = limitItems(
         [...packet.scope.do, "只做任务拆解、角色顺序与风险排序建议"],
         3,
@@ -140,7 +129,7 @@ function applyAgentSpecificContext(packet: HandoffPacket): HandoffPacket {
         3,
       );
       break;
-    case "backend":
+    case "pm_backend":
       packet.acceptance = limitItems(
         [...packet.acceptance, "说明接口或逻辑影响范围"],
         3,

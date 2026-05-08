@@ -131,30 +131,6 @@
             },
             "pm_researcher": {
               "$ref": "#/$defs/agent"
-            },
-            "plan": {
-              "$ref": "#/$defs/agent"
-            },
-            "build": {
-              "$ref": "#/$defs/agent"
-            },
-            "qa_engineer": {
-              "$ref": "#/$defs/agent"
-            },
-            "writer": {
-              "$ref": "#/$defs/agent"
-            },
-            "commander": {
-              "$ref": "#/$defs/agent"
-            },
-            "backend": {
-              "$ref": "#/$defs/agent"
-            },
-            "frontend": {
-              "$ref": "#/$defs/agent"
-            },
-            "researcher": {
-              "$ref": "#/$defs/agent"
             }
           }
         }

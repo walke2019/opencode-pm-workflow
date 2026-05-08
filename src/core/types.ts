@@ -30,23 +30,12 @@ export type AutomationCapability =
   | "review_marker";
 
 export type DispatchAgent =
-  // 新通用名称
   | "pm_lead"
   | "pm_advisor"
   | "pm_backend"
   | "pm_frontend"
   | "pm_reviewer"
-  | "pm_researcher"
-  // 旧名称（向后兼容）
-  | "pm"
-  | "plan"
-  | "build"
-  | "qa_engineer"
-  | "writer"
-  | "frontend"
-  | "commander"
-  | "backend"
-  | "researcher";
+  | "pm_researcher";
 export type ExecutableAgent = string;
 
 export type AgentDefinitionSource = "project" | "global" | "fallback";

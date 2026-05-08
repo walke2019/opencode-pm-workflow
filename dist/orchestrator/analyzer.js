@@ -2,18 +2,37 @@ function hasAnyKeyword(text, keywords) {
     return keywords.some((keyword) => text.includes(keyword));
 }
 function inferDomain(prompt, preferredAgent) {
-    if (preferredAgent === "backend")
+    if (preferredAgent === "pm_backend")
         return "backend";
-    if (preferredAgent === "frontend")
+    if (preferredAgent === "pm_frontend")
         return "frontend";
-    if (preferredAgent === "writer")
+    if (preferredAgent === "pm_reviewer")
         return "writer";
-    if (preferredAgent === "qa_engineer")
-        return "qa_engineer";
-    if (preferredAgent === "commander")
+    if (preferredAgent === "pm_researcher")
+        return "researcher";
+    if (preferredAgent === "pm_advisor")
         return "orchestration";
-    // pm 是主协调默认值，不应阻止后续基于任务内容分派给专业 subagent。
+    // pm_lead 是主协调默认值，不应阻止后续基于任务内容分派给专业 subagent。
     const normalized = prompt.toLowerCase();
+    const researcherMatched = normalized.includes("调研") ||
+        normalized.includes("搜索") ||
+        normalized.includes("查资料") ||
+        normalized.includes("查文档") ||
+        normalized.includes("官方文档") ||
+        normalized.includes("官方推荐") ||
+        normalized.includes("对比方案") ||
+        normalized.includes("对比一下") ||
+        normalized.includes("搜集资料") ||
+        normalized.includes("收集资料") ||
+        normalized.includes("业内怎么做") ||
+        normalized.includes("有哪些方案") ||
+        ((normalized.includes("查一下") || normalized.includes("看看")) &&
+            (normalized.includes("方案") ||
+                normalized.includes("文档") ||
+                normalized.includes("资料") ||
+                normalized.includes("官方") ||
+                normalized.includes("实现路线") ||
+                normalized.includes("埋点")));
     const orchestrationMatched = (normalized.includes("前端") &&
         (normalized.includes("文档") ||
             normalized.includes("说明") ||
@@ -22,13 +41,16 @@ function inferDomain(prompt, preferredAgent) {
         normalized.includes("一起补齐") ||
         normalized.includes("一并补齐") ||
         (normalized.includes("实现") &&
-            (normalized.includes("文档") || normalized.includes("方案")));
+            (normalized.includes("文档") || normalized.includes("方案")) &&
+            !researcherMatched);
     const backendMatched = normalized.includes("api") ||
         normalized.includes("backend") ||
         normalized.includes("数据库") ||
         normalized.includes("服务") ||
         normalized.includes("接口") ||
         normalized.includes("认证") ||
+        normalized.includes("鉴权") ||
+        normalized.includes("中间件") ||
         normalized.includes("401") ||
         normalized.includes("登录") ||
         normalized.includes("plugin") ||
@@ -41,7 +63,11 @@ function inferDomain(prompt, preferredAgent) {
         normalized.includes("前端") ||
         normalized.includes("页面") ||
         normalized.includes("组件");
-    const writerMatched = normalized.includes("文档") ||
+    const writerMatched = normalized.includes("整理成文档") ||
+        normalized.includes("整理为文档") ||
+        normalized.includes("编写文档") ||
+        normalized.includes("更新 readme") ||
+        normalized.includes("更新readme") ||
         normalized.includes("release") ||
         normalized.includes("说明") ||
         normalized.includes("readme");
@@ -50,6 +76,9 @@ function inferDomain(prompt, preferredAgent) {
         normalized.includes("验证");
     if (orchestrationMatched) {
         return "orchestration";
+    }
+    if (researcherMatched) {
+        return "researcher";
     }
     if (backendMatched) {
         return "backend";
@@ -92,23 +121,28 @@ function inferComplexity(prompt) {
 function mapDomainToAgent(domain) {
     switch (domain) {
         case "backend":
-            return "backend";
+            return "pm_backend";
         case "frontend":
-            return "frontend";
+            return "pm_frontend";
         case "writer":
-            return "writer";
+            return "pm_reviewer";
         case "qa_engineer":
-            return "qa_engineer";
+            return "pm_reviewer";
+        case "researcher":
+            return "pm_researcher";
         case "pm":
-            return "pm";
+            return "pm_lead";
         case "orchestration":
         default:
-            return "pm";
+            return "pm_lead";
     }
 }
 function inferExecutionMode(domain, complexity, stage) {
     if (complexity === "composite") {
         return "advisor_then_dispatch";
+    }
+    if (domain === "researcher") {
+        return "serial_handoff";
     }
     if (complexity === "simple") {
         return domain === "orchestration" ? "pm_direct" : "single_agent";
@@ -122,22 +156,25 @@ function inferExecutionMode(domain, complexity, stage) {
     return domain === "orchestration" ? "pm_direct" : "single_agent";
 }
 function inferRecommendedAgent(domain, complexity, preferredAgent) {
-    if (preferredAgent && preferredAgent !== "pm") {
+    if (preferredAgent && preferredAgent !== "pm_lead") {
         return preferredAgent;
     }
     return mapDomainToAgent(domain);
 }
 function inferExpectedNextAgents(domain, recommendedAgent, complexity) {
-    if (recommendedAgent === "commander") {
-        return ["pm", "frontend", "writer"];
+    if (recommendedAgent === "pm_advisor") {
+        return ["pm_lead", "pm_frontend", "pm_reviewer"];
+    }
+    if (domain === "researcher") {
+        return ["pm_researcher"];
     }
     if (domain === "backend" && complexity !== "simple") {
-        return ["backend", "qa_engineer"];
+        return ["pm_backend", "pm_reviewer"];
     }
-    if (recommendedAgent === "pm") {
+    if (recommendedAgent === "pm_lead") {
         return complexity === "simple"
-            ? ["commander"]
-            : ["commander", "qa_engineer"];
+            ? ["pm_advisor"]
+            : ["pm_advisor", "pm_reviewer"];
     }
     return [recommendedAgent];
 }
@@ -152,7 +189,7 @@ export function analyzeDispatchTask(input) {
         domain,
         complexity,
         recommendedAgent,
-        fallbackAgents: recommendedAgent === "pm" ? ["commander"] : ["pm"],
+        fallbackAgents: recommendedAgent === "pm_lead" ? ["pm_advisor"] : ["pm_lead"],
         executionMode,
         needsDecomposition: complexity !== "simple",
         rationale: [
@@ -168,6 +205,6 @@ export function analyzeDispatchTask(input) {
         ],
         expectedNextAgents,
         suggestedStepCount: complexity === "simple" ? 1 : complexity === "multi_step" ? 3 : 4,
-        specialistCount: new Set(expectedNextAgents.filter((agent) => agent !== "pm")).size,
+        specialistCount: new Set(expectedNextAgents.filter((agent) => agent !== "pm_lead")).size,
     };
 }

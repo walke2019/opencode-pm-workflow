@@ -117,7 +117,7 @@ function buildExecutionPlanSteps(
         timeoutMs: 120000,
         retryable: true,
         maxRetries: 1,
-        fallbackAgent: "plan",
+        fallbackAgent: "pm_advisor",
         writesState: true,
         touchesFiles: true,
       },
@@ -145,7 +145,7 @@ function buildExecutionPlanSteps(
         timeoutMs: 120000,
         retryable: true,
         maxRetries: 1,
-        fallbackAgent: "build",
+        fallbackAgent: "pm_backend",
         writesState: true,
         touchesFiles: true,
       },
@@ -173,7 +173,7 @@ function buildExecutionPlanSteps(
         timeoutMs: 120000,
         retryable: true,
         maxRetries: 1,
-        fallbackAgent: "writer",
+        fallbackAgent: "pm_reviewer",
         writesState: true,
         touchesFiles: true,
       },
@@ -181,7 +181,7 @@ function buildExecutionPlanSteps(
         id: "release-summary",
         title: "整理发布摘要",
         action: "prepare-release",
-        agent: "writer",
+        agent: "pm_reviewer",
         mode: "single-subagent",
         dependsOn: ["release-prepare"],
         timeoutMs: 90000,
@@ -205,10 +205,7 @@ function buildExecutionPlanSteps(
           timeoutMs: 120000,
           retryable: true,
           maxRetries: 1,
-          fallbackAgent:
-            dispatch.executableAgent === "build"
-              ? "plan"
-              : dispatch.recommendedAgent,
+          fallbackAgent: dispatch.recommendedAgent,
           writesState: true,
           touchesFiles: true,
         },
@@ -303,7 +300,7 @@ export function buildDispatchCommand(
     targetAgent,
     config.agents.dispatch_map,
   );
-  const invocationMode = targetAgent === "pm" || targetAgent === "pm_lead" ? "primary" : "subagent";
+  const invocationMode = targetAgent === "pm_lead" ? "primary" : "subagent";
   const invocation = resolveAgentInvocationSemantics(
     executableAgent,
     invocationMode,

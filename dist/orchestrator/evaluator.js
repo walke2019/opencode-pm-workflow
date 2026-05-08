@@ -49,13 +49,14 @@ function hasStructuredResponse(text) {
 }
 function inferNextAgent(packet, exitCode, text) {
     if (exitCode !== 0) {
-        return "pm";
+        return "pm_lead";
     }
-    if (packet.targetAgent === "backend" && !mentionsVerification(text)) {
-        return "qa_engineer";
+    if (packet.targetAgent === "pm_backend" &&
+        !mentionsVerification(text)) {
+        return "pm_reviewer";
     }
-    if (packet.targetAgent === "commander") {
-        return "pm";
+    if (packet.targetAgent === "pm_advisor") {
+        return "pm_lead";
     }
     return undefined;
 }
@@ -66,10 +67,10 @@ function inferNextAction(packet, exitCode, text) {
     if (exitCode !== 0) {
         return "continue-development";
     }
-    if (packet.targetAgent === "backend" && !mentionsVerification(text)) {
+    if (packet.targetAgent === "pm_backend" && !mentionsVerification(text)) {
         return "run-code-review";
     }
-    if (packet.targetAgent === "commander") {
+    if (packet.targetAgent === "pm_advisor") {
         return "continue-development";
     }
     return undefined;
@@ -78,10 +79,10 @@ function canAutoContinue(packet, exitCode, text) {
     if (exitCode !== 0 || isBlockedText(text)) {
         return false;
     }
-    if (packet.targetAgent === "commander") {
+    if (packet.targetAgent === "pm_advisor") {
         return true;
     }
-    if (packet.targetAgent === "backend" && !mentionsVerification(text)) {
+    if (packet.targetAgent === "pm_backend" && !mentionsVerification(text)) {
         return true;
     }
     return false;
@@ -141,7 +142,7 @@ export function evaluateDispatchResult(input) {
             autoContinueSafe: false,
         };
     }
-    if (input.packet.targetAgent === "backend" && !mentionsVerification(text)) {
+    if (input.packet.targetAgent === "pm_backend" && !mentionsVerification(text)) {
         return {
             status: "needs_verification",
             summary: "后端工作已完成，但缺少可验证证据。",
@@ -155,10 +156,10 @@ export function evaluateDispatchResult(input) {
             nextAutoAction: inferNextAction(input.packet, input.exitCode, text),
         };
     }
-    if (input.packet.targetAgent === "commander") {
+    if (input.packet.targetAgent === "pm_advisor") {
         return {
             status: "partial",
-            summary: "commander 已提供建议，仍需 PM 二次分派。",
+            summary: "顾问已提供建议，仍需 PM 二次分派。",
             matchedDeliverables: ["任务拆解建议"],
             missingDeliverables: [],
             gaps: ["建议不能直接视为最终完成"],

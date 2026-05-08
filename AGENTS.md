@@ -216,7 +216,7 @@ npm view @walke/opencode-pm-workflow version
 | `pm_reviewer` | 从全局配置读取 | subagent (hidden) | 审查与文档：QA、回归、发布说明 |
 | `pm_researcher` | 从全局配置读取 | subagent (hidden) | 调研：检索、官方方案、事实核查 |
 
-> 注：0.2.0 起移除硬编码模型 ID，改为从全局 OpenCode 配置读取。0.2.1 起子 agent mode 统一为 `subagent`。旧名称（pm_workflow_caocao 等）自动映射到新名称，保留 2 个版本兼容期。
+> 注：0.2.0 起移除硬编码模型 ID，改为从全局 OpenCode 配置读取。0.2.1 起子 agent mode 统一为 `subagent`。0.3.0 起完全移除旧 agent 名称兼容。
 
 ### 常用 npm 脚本
 

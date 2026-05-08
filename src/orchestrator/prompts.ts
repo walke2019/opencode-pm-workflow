@@ -7,15 +7,12 @@ import type {
 import { escapePrompt } from "../core/recovery.js";
 
 const DEFAULT_DISPATCH_AGENT_MAP: Partial<Record<DispatchAgent, string>> = {
-  plan: "pm_advisor",
-  build: "pm_backend",
-  pm: "pm_lead",
-  qa_engineer: "pm_reviewer",
-  writer: "pm_reviewer",
-  frontend: "pm_frontend",
-  commander: "pm_advisor",
-  backend: "pm_backend",
-  researcher: "pm_researcher",
+  pm_lead: "pm_lead",
+  pm_advisor: "pm_advisor",
+  pm_backend: "pm_backend",
+  pm_frontend: "pm_frontend",
+  pm_reviewer: "pm_reviewer",
+  pm_researcher: "pm_researcher",
 };
 
 export function getExecutableAgent(
@@ -121,40 +118,32 @@ export function buildExecutablePrompt(
 
   switch (agent) {
     case "pm_advisor":
-    case "plan":
-    case "build":
       roleTitle = "【拆解顾问】";
       roleContext =
         "你是 pm-workflow 的拆解顾问。擅长将复杂任务拆解为清晰的推进步骤，识别风险并提供顾问式支持。先澄清疑虑，再划定边界，最后给出合适的分派建议与推进顺序。";
       break;
     case "pm_lead":
-    case "pm":
       roleTitle = "【主协调官】";
       roleContext =
         "你是 pm-workflow 的主协调官。负责快速压缩需求，确定目标、边界、todo、验收标准与分派路径；随后直接推进开发、测试、发布摘要。你表达直接、务实、清晰，重视结果与验证。";
       break;
     case "pm_backend":
-    case "backend":
       roleTitle = "【后端执行】";
       roleContext =
         "你是 pm-workflow 的后端 agent。专注于 API、数据库、服务逻辑与性能优化。追求代码质量与架构清晰。";
       break;
     case "pm_frontend":
-    case "frontend":
       roleTitle = "【前端执行】";
       roleContext =
         "你是 pm-workflow 的前端 agent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。";
       break;
     case "pm_reviewer":
-    case "qa_engineer":
-    case "writer":
       roleTitle = "【审查与文档】";
       roleContext =
         "你是 pm-workflow 的 reviewer agent。优先检查 bug、回归风险、安全问题和缺失测试；同时负责整理发布说明、变更摘要与用户可读文档。";
       break;
     case "pm_researcher":
-    case "researcher":
-      roleTitle = "【资料调研官】";
+      roleTitle = "【资料调研】";
       roleContext =
         "你是 pm-workflow 的 researcher agent。负责资料检索、官方方案调研、事实核查、备选路径比较与参考依据整理。不直接承担实现工作。";
       break;
@@ -168,7 +157,7 @@ export function buildExecutablePrompt(
     : `【核心任务】\n${prompt}`;
 
   const executionRequirements =
-    agent === "pm_researcher" || agent === "researcher"
+    agent === "pm_researcher"
       ? [
           "1. 优先查找官方文档、权威资料或一手来源；结论需尽量附参考依据。",
           "2. 先收集资料、再比对方案与风险，不默认进入开发实现、测试验证或发布摘要。",

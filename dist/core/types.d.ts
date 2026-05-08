@@ -8,7 +8,7 @@ export type FallbackStatus = "idle" | "used" | "exhausted";
 export type AutomationMode = "off" | "observe" | "assist" | "strict";
 export type DocsStorageMode = "legacy" | "project_scoped";
 export type AutomationCapability = "event_sync" | "prompt_inject" | "commit_gate" | "review_marker";
-export type DispatchAgent = "pm" | "plan" | "build" | "qa_engineer" | "writer" | "frontend" | "commander" | "backend";
+export type DispatchAgent = "pm_lead" | "pm_advisor" | "pm_backend" | "pm_frontend" | "pm_reviewer" | "pm_researcher";
 export type ExecutableAgent = string;
 export type AgentDefinitionSource = "project" | "global" | "fallback";
 export type AgentDirectoryKind = "agents" | "agent" | "fallback";
@@ -29,7 +29,7 @@ export interface ResolveWorkflowAgentInput {
     semanticAgent: DispatchAgent;
 }
 export type DispatchAction = "collect-spec" | "create-design-brief" | "create-dev-plan" | "start-development" | "run-code-review" | "prepare-release" | "continue-development" | "blocked";
-export type TaskDomain = "pm" | "backend" | "frontend" | "writer" | "qa_engineer" | "orchestration";
+export type TaskDomain = "pm" | "backend" | "frontend" | "writer" | "qa_engineer" | "researcher" | "orchestration";
 export type TaskComplexity = "simple" | "multi_step" | "composite";
 export type DispatchExecutionMode = "pm_direct" | "single_agent" | "serial_handoff" | "advisor_then_dispatch";
 export type AgentInvocationMode = "primary" | "subagent" | "all";

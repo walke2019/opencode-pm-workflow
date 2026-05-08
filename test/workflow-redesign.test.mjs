@@ -64,14 +64,14 @@ async function testDefaults() {
   console.log('✓ Advisor definition correctly mapped to advisor-only role');
 
   assert.strictEqual(
-    config.fallback.agent_map.researcher,
+    config.fallback.agent_map.pm_researcher,
     'pm_researcher',
-    'Fallback agent map should support researcher',
+    'Fallback agent map should support pm_researcher',
   );
   assert.strictEqual(
-    config.agents.dispatch_map.researcher,
+    config.agents.dispatch_map.pm_researcher,
     'pm_researcher',
-    'Dispatch map should support researcher',
+    'Dispatch map should support pm_researcher',
   );
   assert.ok(
     config.agents.definitions.pm_researcher,

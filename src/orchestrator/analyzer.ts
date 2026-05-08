@@ -22,13 +22,12 @@ function inferDomain(
   prompt: string,
   preferredAgent?: DispatchAgent | null,
 ): TaskDomain {
-  if (preferredAgent === "pm_backend" || preferredAgent === "backend") return "backend";
-  if (preferredAgent === "pm_frontend" || preferredAgent === "frontend") return "frontend";
-  if (preferredAgent === "writer") return "writer";
-  if (preferredAgent === "pm_reviewer" || preferredAgent === "qa_engineer") return "qa_engineer";
-  if (preferredAgent === "pm_researcher" || preferredAgent === "researcher") return "researcher";
-  if (preferredAgent === "pm_advisor" || preferredAgent === "commander") return "orchestration";
-  // pm/pm_lead 是主协调默认值，不应阻止后续基于任务内容分派给专业 subagent。
+  if (preferredAgent === "pm_backend") return "backend";
+  if (preferredAgent === "pm_frontend") return "frontend";
+  if (preferredAgent === "pm_reviewer") return "writer";
+  if (preferredAgent === "pm_researcher") return "researcher";
+  if (preferredAgent === "pm_advisor") return "orchestration";
+  // pm_lead 是主协调默认值，不应阻止后续基于任务内容分派给专业 subagent。
 
   const normalized = prompt.toLowerCase();
   const researcherMatched =
@@ -198,7 +197,7 @@ function inferRecommendedAgent(
   complexity: TaskComplexity,
   preferredAgent?: DispatchAgent | null,
 ): DispatchAgent {
-  if (preferredAgent && preferredAgent !== "pm" && preferredAgent !== "pm_lead") {
+  if (preferredAgent && preferredAgent !== "pm_lead") {
     return preferredAgent;
   }
   return mapDomainToAgent(domain);
@@ -209,7 +208,7 @@ function inferExpectedNextAgents(
   recommendedAgent: DispatchAgent,
   complexity: TaskComplexity,
 ): DispatchAgent[] {
-  if (recommendedAgent === "pm_advisor" || recommendedAgent === "commander") {
+  if (recommendedAgent === "pm_advisor") {
     return ["pm_lead", "pm_frontend", "pm_reviewer"];
   }
   if (domain === "researcher") {
@@ -218,7 +217,7 @@ function inferExpectedNextAgents(
   if (domain === "backend" && complexity !== "simple") {
     return ["pm_backend", "pm_reviewer"];
   }
-  if (recommendedAgent === "pm_lead" || recommendedAgent === "pm") {
+  if (recommendedAgent === "pm_lead") {
     return complexity === "simple"
       ? ["pm_advisor"]
       : ["pm_advisor", "pm_reviewer"];
@@ -248,7 +247,7 @@ export function analyzeDispatchTask(
     domain,
     complexity,
     recommendedAgent,
-    fallbackAgents: recommendedAgent === "pm_lead" || recommendedAgent === "pm" ? ["pm_advisor"] : ["pm_lead"],
+    fallbackAgents: recommendedAgent === "pm_lead" ? ["pm_advisor"] : ["pm_lead"],
     executionMode,
     needsDecomposition: complexity !== "simple",
     rationale: [
@@ -266,7 +265,7 @@ export function analyzeDispatchTask(
     suggestedStepCount:
       complexity === "simple" ? 1 : complexity === "multi_step" ? 3 : 4,
     specialistCount: new Set(
-      expectedNextAgents.filter((agent) => agent !== "pm" && agent !== "pm_lead"),
+      expectedNextAgents.filter((agent) => agent !== "pm_lead"),
     ).size,
   };
 }

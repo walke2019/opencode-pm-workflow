@@ -1,13 +1,11 @@
 import { escapePrompt } from "../core/recovery.js";
 const DEFAULT_DISPATCH_AGENT_MAP = {
-    plan: "commander",
-    build: "commander",
-    pm: "pm",
-    qa_engineer: "qa_engineer",
-    writer: "writer",
-    frontend: "frontend",
-    commander: "commander",
-    backend: "backend",
+    pm_lead: "pm_lead",
+    pm_advisor: "pm_advisor",
+    pm_backend: "pm_backend",
+    pm_frontend: "pm_frontend",
+    pm_reviewer: "pm_reviewer",
+    pm_researcher: "pm_researcher",
 };
 export function getExecutableAgent(agent, dispatchMap = DEFAULT_DISPATCH_AGENT_MAP) {
     return dispatchMap[agent] || DEFAULT_DISPATCH_AGENT_MAP[agent] || agent;
@@ -67,37 +65,35 @@ export function buildExecutablePrompt(agent, prompt, packet) {
     let roleContext = "";
     let roleTitle = "";
     switch (agent) {
-        case "commander":
-        case "plan":
-        case "build":
-            roleTitle = "【拆解顾问·诸葛亮】";
+        case "pm_advisor":
+            roleTitle = "【拆解顾问】";
             roleContext =
-                "你现在是神机妙算的诸葛亮。请发挥你在任务拆解、风险识别与顾问式支持方面的专长，为 PM 提供清晰的分派建议与推进顺序。";
+                "你是 pm-workflow 的拆解顾问。擅长将复杂任务拆解为清晰的推进步骤，识别风险并提供顾问式支持。先澄清疑虑，再划定边界，最后给出合适的分派建议与推进顺序。";
             break;
-        case "pm":
-            roleTitle = "【主协调·曹操】";
+        case "pm_lead":
+            roleTitle = "【主协调官】";
             roleContext =
-                "你现在是雄才大略的曹操。请以敏锐的洞察力辨明形势，快速压缩需求，确定目标、边界、todo、验收标准与专业 subagent 分派路径。";
+                "你是 pm-workflow 的主协调官。负责快速压缩需求，确定目标、边界、todo、验收标准与分派路径；随后直接推进开发、测试、发布摘要。你表达直接、务实、清晰，重视结果与验证。";
             break;
-        case "backend":
-            roleTitle = "【后端战将·吕布】";
+        case "pm_backend":
+            roleTitle = "【后端执行】";
             roleContext =
-                "你现在是战力惊人的吕布。请发挥你攻坚克难的本领，拿下所有 API 与逻辑难点，确保架构稳如泰山。";
+                "你是 pm-workflow 的后端 agent。专注于 API、数据库、服务逻辑与性能优化。追求代码质量与架构清晰。";
             break;
-        case "frontend":
-            roleTitle = "【前端视觉官·貂蝉】";
+        case "pm_frontend":
+            roleTitle = "【前端执行】";
             roleContext =
-                "你现在是审美卓越的貂蝉。请用你细腻的心思雕琢界面，实现极致的交互体验与美学平衡。";
+                "你是 pm-workflow 的前端 agent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。";
             break;
-        case "qa_engineer":
-            roleTitle = "【常胜校验官·赵云】";
+        case "pm_reviewer":
+            roleTitle = "【审查与文档】";
             roleContext =
-                "你现在是赵云（Zhao Yun），一位稳健、可靠、纪律严明的校验官。请细致审查各项变更，优先识别 bug、回归风险、安全隐患与遗漏测试，确保交付像子龙出阵一样干净利落、可进可退。";
+                "你是 pm-workflow 的 reviewer agent。优先检查 bug、回归风险、安全问题和缺失测试；同时负责整理发布说明、变更摘要与用户可读文档。";
             break;
-        case "writer":
-            roleTitle = "【檄文执笔官·陈琳】";
+        case "pm_researcher":
+            roleTitle = "【资料调研】";
             roleContext =
-                "你现在是陈琳（Chen Lin），一位文辞敏捷、条理分明的执笔官。请负责整理发布说明、变更摘要、交付文档与对外说明，确保文字准确、结构清楚、重点鲜明。";
+                "你是 pm-workflow 的 researcher agent。负责资料检索、官方方案调研、事实核查、备选路径比较与参考依据整理。不直接承担实现工作。";
             break;
         default:
             roleTitle = "【专业执行官】";
@@ -106,6 +102,21 @@ export function buildExecutablePrompt(agent, prompt, packet) {
     const taskBody = packet
         ? renderAgentHandoffPrompt(agent, packet)
         : `【核心任务】\n${prompt}`;
+    const executionRequirements = agent === "pm_researcher"
+        ? [
+            "1. 优先查找官方文档、权威资料或一手来源；结论需尽量附参考依据。",
+            "2. 先收集资料、再比对方案与风险，不默认进入开发实现、测试验证或发布摘要。",
+            "3. 如信息不足，明确列出缺口、假设与建议的下一步搜索/验证方向。",
+            "4. Todo 终结标准：每个 todo 必须完成，或标注 blocked 并说明原因。",
+            "5. 过程务必清晰，结果务必可验证；输出应便于后续 agent 接手执行。",
+        ].join("\n")
+        : [
+            "1. 严格遵循 OpenCode 插件/扩展规范、项目既有代码规范与技术栈。",
+            "2. 不在需求层停留过久；先压缩需求，再进入开发实现、测试验证和发布摘要。",
+            "3. Workflow 标准：需求压缩 → 开发实现 → 测试验证 → 发布摘要。",
+            "4. Todo 终结标准：每个 todo 必须完成，或标注 blocked 并说明原因。",
+            "5. 过程务必清晰，结果务必可验证；涉及代码时给出验证命令。",
+        ].join("\n");
     return `
 ${roleTitle}
 ${roleContext}
@@ -113,11 +124,7 @@ ${roleContext}
 ${taskBody}
 
 【执行要求】
-1. 严格遵循 OpenCode 插件/扩展规范、项目既有代码规范与技术栈。
-2. 不在需求层停留过久；先压缩需求，再进入开发实现、测试验证和发布摘要。
-3. Workflow 标准：需求压缩 → 开发实现 → 测试验证 → 发布摘要。
-4. Todo 终结标准：每个 todo 必须完成，或标注 blocked 并说明原因。
-5. 过程务必清晰，结果务必可验证；涉及代码时给出验证命令。
+${executionRequirements}
 `.trim();
 }
 export function buildDispatchCommandStrings(sessionID, executableAgent, executablePrompt, invocation) {

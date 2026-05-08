@@ -25,99 +25,70 @@ function appendConfigHistory(projectDir, payload) {
     writeFileSync(historyPath, existsSync(historyPath) ? readFileSync(historyPath, "utf-8") + line : line, "utf-8");
 }
 const WORKFLOW_AGENT_ORDER = [
-    "pm",
-    "plan",
-    "build",
-    "commander",
-    "qa_engineer",
-    "writer",
-    "frontend",
-    "backend",
+    "pm_lead",
+    "pm_advisor",
+    "pm_backend",
+    "pm_frontend",
+    "pm_reviewer",
+    "pm_researcher",
 ];
-const LEGACY_SEMANTIC_AGENT_NAMES = ["pm", "qa_engineer", "writer"];
-const CLI_COMPATIBLE_SUBAGENTS = new Set([
-    "pm_workflow_qa",
-    "pm_workflow_writer",
-    "pm_workflow_frontend",
-    "pm_workflow_zhuge",
-    "pm_workflow_diaochan",
-    "pm_workflow_lvbu",
-]);
 const DEFAULT_WORKFLOW_AGENTS = {
-    pm_workflow_caocao: {
-        model: "cx/gpt-5.5",
+    pm_lead: {
         mode: "primary",
-        description: "曹操 (Cao Cao)，pm-workflow 主协调官，负责决策、指挥、分派、收敛 todo 与验收结果。",
-        prompt: "你是曹操（Cao Cao），pm-workflow 的主协调官。你取其决断、统筹、识人用人和风险判断之长：快速压缩需求，确定目标、边界、todo、验收标准与分派路径；随后直接推进开发、测试、发布摘要。你表达直接、务实、清晰，重视结果与验证；不使用贬损、羞辱或嘲讽式表达。",
+        description: "pm-workflow 主协调官，负责分析决策、规划分派、收敛验收。",
+        prompt: "你是 pm-workflow 的主协调官。负责快速压缩需求，确定目标、边界、todo、验收标准与分派路径；随后直接推进开发、测试、发布摘要。你表达直接、务实、清晰，重视结果与验证。",
         permission: {
             edit: "ask",
             write: "ask",
             bash: "ask",
         },
     },
-    pm_workflow_zhuge: {
-        model: "kr/claude-sonnet-4.5",
+    pm_advisor: {
         mode: "primary",
-        description: "诸葛亮 (Zhuge Liang)，神机妙算的拆解顾问，擅长任务拆解、风险识别与顾问式支持。",
-        prompt: "你是诸葛亮（Zhuge Liang），一位极具洞察力和全局观的拆解顾问。你擅长将复杂任务拆解为清晰的推进步骤，识别风险并为 PM 提供顾问式支持。你先澄清疑虑，再划定边界，最后给出合适的分派建议与推进顺序。你言语优雅、周密，但不取代 PM 的主协调职责。",
+        description: "拆解顾问，擅长任务拆解、风险识别与顾问式支持。",
+        prompt: "你是 pm-workflow 的拆解顾问。擅长将复杂任务拆解为清晰的推进步骤，识别风险并提供顾问式支持。先澄清疑虑，再划定边界，最后给出合适的分派建议与推进顺序。",
         permission: {
             edit: "allow",
             write: "allow",
             bash: "allow",
         },
     },
-    pm_workflow_lvbu: {
-        model: "cx/gpt-5.3-codex",
-        mode: "all",
-        description: "吕布 (Lv Bu)，战力天花板的后端战将，负责攻克逻辑难点与架构性能。",
-        prompt: "你是吕布（Lv Bu），一位勇猛无双的后端战将。你专注于攻克代码逻辑中的深水区，不论是 API、数据库还是高并发挑战。你追求极致的性能与力量。你说话狂放而自信，更看重代码的绝对掌控力。",
+    pm_backend: {
+        mode: "subagent",
+        description: "后端执行，负责 API、数据库、服务、性能。",
+        prompt: "你是 pm-workflow 的后端 agent。专注于 API、数据库、服务逻辑与性能优化。追求代码质量与架构清晰。",
         permission: {
             edit: "allow",
             write: "allow",
             bash: "allow",
         },
     },
-    pm_workflow_diaochan: {
-        model: "antigravity/gemini-3-flash-preview",
-        mode: "all",
-        description: "貂蝉 (Diao Chan)，倾国倾城的前端视觉官，负责 UI/UX 与美学体验。",
-        prompt: "你是貂蝉（Diao Chan），一位心思细腻、审美卓越的前端视觉官。你负责界面的灵动交互与极致美感。你不仅关注功能实现，更在乎用户与界面的每一次心动邂逅。你表达柔美、敏锐，追求艺术与技术的完美平衡。",
+    pm_frontend: {
+        mode: "subagent",
+        description: "前端执行，负责 UI、交互、组件、响应式。",
+        prompt: "你是 pm-workflow 的前端 agent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。",
         permission: {
             edit: "allow",
             write: "allow",
             bash: "allow",
         },
     },
-    pm_workflow_qa: {
-        model: "kr/claude-sonnet-4.5",
-        mode: "all",
+    pm_reviewer: {
+        mode: "subagent",
         hidden: true,
-        description: "赵云（Zhao Yun），pm-workflow QA/code-review agent，负责审查变更、控制回归风险并解除 review gate。",
-        prompt: "你是赵云（Zhao Yun），pm-workflow 的 QA/code-review agent。你风格稳健、严谨、可靠。优先检查 bug、回归风险、安全问题和缺失测试，确保改动可验证、可回退；除非明确要求，不要直接修改代码。",
+        description: "审查与文档，负责测试、回归、代码审查、文档与发布。",
+        prompt: "你是 pm-workflow 的 reviewer agent。优先检查 bug、回归风险、安全问题和缺失测试；同时负责整理发布说明、变更摘要与用户可读文档。",
         permission: {
             edit: "ask",
             write: "ask",
             bash: "ask",
         },
     },
-    pm_workflow_writer: {
-        model: "kr/claude-haiku-4.5",
-        mode: "all",
+    pm_researcher: {
+        mode: "subagent",
         hidden: true,
-        description: "陈琳（Chen Lin），pm-workflow 文档与发布 agent，负责发布说明、总结和交付文档。",
-        prompt: "你是陈琳（Chen Lin），pm-workflow 的 writer agent。你文辞清晰、结构分明，负责整理发布说明、变更摘要、用户可读文档和交付检查清单。",
-        permission: {
-            edit: "ask",
-            write: "ask",
-            bash: "ask",
-        },
-    },
-    pm_workflow_frontend: {
-        model: "antigravity/gemini-3-flash-preview",
-        mode: "all",
-        hidden: true,
-        description: "pm-workflow 前端/UI subagent，负责界面实现、交互、可访问性与视觉一致性。",
-        prompt: "你是 pm-workflow 的 frontend subagent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。除非明确要求，不要直接修改代码；优先给出可执行建议、风险和验收点。",
+        description: "调研，负责资料检索、官方方案调研、事实比对。",
+        prompt: "你是 pm-workflow 的 researcher agent。负责资料检索、官方方案调研、事实核查、备选路径比较与参考依据整理。不直接承担实现工作。",
         permission: {
             edit: "ask",
             write: "ask",
@@ -149,28 +120,24 @@ export function defaultWorkflowConfig() {
                 "continue-development",
             ],
             agent_map: {
-                plan: "commander",
-                build: "commander",
-                pm: "pm",
-                qa_engineer: "qa_engineer",
-                writer: "writer",
-                commander: "pm_workflow_zhuge",
-                backend: "pm_workflow_lvbu",
-                frontend: "pm_workflow_diaochan",
+                pm_lead: "pm_lead",
+                pm_advisor: "pm_advisor",
+                pm_backend: "pm_backend",
+                pm_frontend: "pm_frontend",
+                pm_reviewer: "pm_reviewer",
+                pm_researcher: "pm_researcher",
             },
         },
         agents: {
             enabled: true,
             default_mode: "subagent",
             dispatch_map: {
-                plan: "commander",
-                build: "commander",
-                pm: "pm",
-                qa_engineer: "qa_engineer",
-                writer: "writer",
-                frontend: "frontend",
-                commander: "commander",
-                backend: "backend",
+                pm_lead: "pm_lead",
+                pm_advisor: "pm_advisor",
+                pm_backend: "pm_backend",
+                pm_frontend: "pm_frontend",
+                pm_reviewer: "pm_reviewer",
+                pm_researcher: "pm_researcher",
             },
             definitions: DEFAULT_WORKFLOW_AGENTS,
         },
@@ -293,31 +260,6 @@ function normalizeAgentConfig(input) {
         agent.disabled = source.disabled;
     }
     return Object.keys(agent).length > 0 ? agent : undefined;
-}
-function normalizeWorkflowAgentMode(agentName, agent) {
-    if (!agent)
-        return agent;
-    if (agent.mode === "subagent" && CLI_COMPATIBLE_SUBAGENTS.has(agentName)) {
-        return {
-            ...agent,
-            // 这些 agent 既要保留委派能力，也要兼容当前 CLI 直调链路。
-            mode: "all",
-        };
-    }
-    return agent;
-}
-function normalizeWorkflowConfigModes(config) {
-    const definitions = Object.fromEntries(Object.entries(config.agents.definitions).map(([agentName, agent]) => [
-        agentName,
-        normalizeWorkflowAgentMode(agentName, agent),
-    ]));
-    return {
-        ...config,
-        agents: {
-            ...config.agents,
-            definitions,
-        },
-    };
 }
 export function normalizeWorkflowConfigOverrides(input) {
     if (!input || typeof input !== "object")
@@ -442,7 +384,7 @@ export function readGlobalWorkflowConfigOverrides() {
             return overrides;
         const definitions = Object.fromEntries(Object.entries(overrides.agents.definitions).map(([agentName, agent]) => [
             agentName,
-            normalizeWorkflowAgentMode(agentName, agent),
+            agent,
         ]));
         return {
             ...overrides,
@@ -508,7 +450,7 @@ export function readWorkflowConfig(projectDir, overrides) {
     }
     try {
         const parsed = readJsonFile(configPath);
-        const merged = validateAgentModelsFromGlobalOpenCodeConfig(normalizeWorkflowConfigModes(mergeWorkflowConfig(defaults, parsed)));
+        const merged = validateAgentModelsFromGlobalOpenCodeConfig(mergeWorkflowConfig(defaults, parsed));
         const migrationTypes = [];
         if (!parsed.permissions)
             migrationTypes.push("config.migrate_permissions_v1");
@@ -520,23 +462,6 @@ export function readWorkflowConfig(projectDir, overrides) {
             migrationTypes.push("config.migrate_agents_v1");
         if (!parsed.docs)
             migrationTypes.push("config.migrate_docs_v1");
-        if (parsed.agents?.dispatch_map?.pm === "pm_workflow_pm") {
-            merged.agents.dispatch_map.pm = "pm_workflow_caocao";
-            delete merged.agents.definitions.pm_workflow_pm;
-            migrationTypes.push("config.migrate_caocao_agent_v1");
-        }
-        for (const agentName of LEGACY_SEMANTIC_AGENT_NAMES) {
-            if (parsed.agents?.definitions?.[agentName]) {
-                delete merged.agents.definitions[agentName];
-                migrationTypes.push("config.migrate_namespaced_agents_v1");
-            }
-        }
-        for (const agentName of CLI_COMPATIBLE_SUBAGENTS) {
-            if (parsed.agents?.definitions?.[agentName]?.mode === "subagent") {
-                migrationTypes.push("config.migrate_cli_compatible_agent_modes_v1");
-                break;
-            }
-        }
         if (migrationTypes.length > 0) {
             writeFileSync(configPath, JSON.stringify(merged, null, 2));
             for (const type of migrationTypes) {
@@ -594,8 +519,6 @@ export function buildOpenCodeAgentConfig(config) {
     const agents = {};
     for (const [agentName, agent] of Object.entries(config.agents.definitions)) {
         if (!agent)
-            continue;
-        if (LEGACY_SEMANTIC_AGENT_NAMES.includes(agentName))
             continue;
         agents[agentName] = toOpenCodeAgentConfig(agentName, agent, config.agents.default_mode);
         for (const [index, model] of (agent.fallback_models || []).entries()) {

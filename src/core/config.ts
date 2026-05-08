@@ -56,42 +56,13 @@ export type WorkflowConfigOverrides = {
 };
 
 const WORKFLOW_AGENT_ORDER: DispatchAgent[] = [
-  "pm",
-  "plan",
-  "build",
-  "commander",
-  "qa_engineer",
-  "writer",
-  "frontend",
-  "backend",
-  "researcher",
+  "pm_lead",
+  "pm_advisor",
+  "pm_backend",
+  "pm_frontend",
+  "pm_reviewer",
+  "pm_researcher",
 ];
-
-const LEGACY_SEMANTIC_AGENT_NAMES = ["pm", "qa_engineer", "writer"] as const;
-
-const CLI_COMPATIBLE_SUBAGENTS = new Set([
-  "pm_workflow_qa",
-  "pm_workflow_writer",
-  "pm_workflow_frontend",
-  "pm_workflow_zhuge",
-  "pm_workflow_diaochan",
-  "pm_workflow_lvbu",
-]);
-
-// 旧三国角色名到新通用名称的自动映射（向后兼容）
-const LEGACY_AGENT_MAP: Record<string, string> = {
-  "pm_workflow_caocao": "pm_lead",
-  "pm_workflow_zhuge": "pm_advisor",
-  "pm_workflow_lvbu": "pm_backend",
-  "pm_workflow_diaochan": "pm_frontend",
-  "pm_workflow_qa": "pm_reviewer",
-  "pm_workflow_writer": "pm_reviewer",
-  "pm_workflow_frontend": "pm_frontend",
-};
-
-function normalizeAgentName(name: string): string {
-  return LEGACY_AGENT_MAP[name] || name;
-}
 
 const DEFAULT_WORKFLOW_AGENTS: Partial<Record<string, WorkflowAgentConfig>> = {
   pm_lead: {
@@ -192,30 +163,24 @@ export function defaultWorkflowConfig(): WorkflowConfig {
         "continue-development",
       ],
       agent_map: {
-        plan: "pm_advisor",
-        build: "pm_backend",
-        pm: "pm_lead",
-        qa_engineer: "pm_reviewer",
-        writer: "pm_reviewer",
-        commander: "pm_advisor",
-        backend: "pm_backend",
-        frontend: "pm_frontend",
-        researcher: "pm_researcher",
+        pm_lead: "pm_lead",
+        pm_advisor: "pm_advisor",
+        pm_backend: "pm_backend",
+        pm_frontend: "pm_frontend",
+        pm_reviewer: "pm_reviewer",
+        pm_researcher: "pm_researcher",
       },
     },
     agents: {
       enabled: true,
       default_mode: "subagent",
       dispatch_map: {
-        plan: "pm_advisor",
-        build: "pm_backend",
-        pm: "pm_lead",
-        qa_engineer: "pm_reviewer",
-        writer: "pm_reviewer",
-        frontend: "pm_frontend",
-        commander: "pm_advisor",
-        backend: "pm_backend",
-        researcher: "pm_researcher",
+        pm_lead: "pm_lead",
+        pm_advisor: "pm_advisor",
+        pm_backend: "pm_backend",
+        pm_frontend: "pm_frontend",
+        pm_reviewer: "pm_reviewer",
+        pm_researcher: "pm_researcher",
       },
       definitions: DEFAULT_WORKFLOW_AGENTS,
     },
@@ -359,38 +324,6 @@ function normalizeAgentConfig(input: unknown): WorkflowAgentConfig | undefined {
   }
 
   return Object.keys(agent).length > 0 ? agent : undefined;
-}
-
-function normalizeWorkflowAgentMode(
-  agentName: string,
-  agent?: WorkflowAgentConfig,
-) {
-  if (!agent) return agent;
-  if (agent.mode === "subagent" && CLI_COMPATIBLE_SUBAGENTS.has(agentName)) {
-    return {
-      ...agent,
-      // 这些 agent 既要保留委派能力，也要兼容当前 CLI 直调链路。
-      mode: "all" as const,
-    };
-  }
-  return agent;
-}
-
-function normalizeWorkflowConfigModes(config: WorkflowConfig): WorkflowConfig {
-  const definitions = Object.fromEntries(
-    Object.entries(config.agents.definitions).map(([agentName, agent]) => [
-      agentName,
-      normalizeWorkflowAgentMode(agentName, agent),
-    ]),
-  );
-
-  return {
-    ...config,
-    agents: {
-      ...config.agents,
-      definitions,
-    },
-  };
 }
 
 export function normalizeWorkflowConfigOverrides(
@@ -541,7 +474,7 @@ export function readGlobalWorkflowConfigOverrides() {
     const definitions = Object.fromEntries(
       Object.entries(overrides.agents.definitions).map(([agentName, agent]) => [
         agentName,
-        normalizeWorkflowAgentMode(agentName, agent),
+        agent,
       ]),
     );
 
@@ -638,7 +571,7 @@ export function readWorkflowConfig(
   try {
     const parsed = readJsonFile(configPath) as Partial<WorkflowConfig>;
     const merged = validateAgentModelsFromGlobalOpenCodeConfig(
-      normalizeWorkflowConfigModes(mergeWorkflowConfig(defaults, parsed)),
+      mergeWorkflowConfig(defaults, parsed),
     );
     const migrationTypes: string[] = [];
     if (!parsed.permissions)
@@ -647,23 +580,6 @@ export function readWorkflowConfig(
     if (!parsed.automation) migrationTypes.push("config.migrate_automation_v1");
     if (!parsed.agents) migrationTypes.push("config.migrate_agents_v1");
     if (!parsed.docs) migrationTypes.push("config.migrate_docs_v1");
-    if (parsed.agents?.dispatch_map?.pm === "pm_workflow_pm") {
-      merged.agents.dispatch_map.pm = "pm_workflow_caocao";
-      delete merged.agents.definitions.pm_workflow_pm;
-      migrationTypes.push("config.migrate_caocao_agent_v1");
-    }
-    for (const agentName of LEGACY_SEMANTIC_AGENT_NAMES) {
-      if (parsed.agents?.definitions?.[agentName]) {
-        delete merged.agents.definitions[agentName];
-        migrationTypes.push("config.migrate_namespaced_agents_v1");
-      }
-    }
-    for (const agentName of CLI_COMPATIBLE_SUBAGENTS) {
-      if (parsed.agents?.definitions?.[agentName]?.mode === "subagent") {
-        migrationTypes.push("config.migrate_cli_compatible_agent_modes_v1");
-        break;
-      }
-    }
 
     if (migrationTypes.length > 0) {
       writeFileSync(configPath, JSON.stringify(merged, null, 2));
@@ -678,13 +594,6 @@ export function readWorkflowConfig(
         });
       }
     }
-
-    // 将旧 agent 名称自动转换为新名称
-    const normalizedDefinitions: WorkflowConfig["agents"]["definitions"] = {};
-    for (const [name, def] of Object.entries(merged.agents.definitions)) {
-      normalizedDefinitions[normalizeAgentName(name)] = def;
-    }
-    merged.agents.definitions = normalizedDefinitions;
 
     return merged;
   } catch {
@@ -734,8 +643,6 @@ export function buildOpenCodeAgentConfig(config: WorkflowConfig) {
   const agents: Record<string, Record<string, unknown>> = {};
   for (const [agentName, agent] of Object.entries(config.agents.definitions)) {
     if (!agent) continue;
-    if ((LEGACY_SEMANTIC_AGENT_NAMES as readonly string[]).includes(agentName))
-      continue;
     agents[agentName] = toOpenCodeAgentConfig(
       agentName,
       agent,

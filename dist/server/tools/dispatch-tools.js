@@ -88,13 +88,13 @@ export function formatTaskAnalysisLines(analysis) {
     if (!analysis) {
         return ["- task analysis: unavailable"];
     }
-    const coordinationLine = analysis.recommendedAgent === "pm"
-        ? analysis.expectedNextAgents.includes("commander")
-            ? "- task analysis coordination: pm 负责主协调，commander 作为顾问支持"
-            : "- task analysis coordination: pm 负责主协调"
-        : analysis.recommendedAgent === "commander"
-            ? "- task analysis coordination: commander 负责顾问式拆解支持"
-            : `- task analysis coordination: pm 负责主协调，${analysis.recommendedAgent} 作为专业 subagent 执行`;
+    const coordinationLine = analysis.recommendedAgent === "pm_lead"
+        ? analysis.expectedNextAgents.includes("pm_advisor")
+            ? "- task analysis coordination: pm_lead 负责主协调，pm_advisor 作为顾问支持"
+            : "- task analysis coordination: pm_lead 负责主协调"
+        : analysis.recommendedAgent === "pm_advisor"
+            ? "- task analysis coordination: pm_advisor 负责顾问式拆解支持"
+            : `- task analysis coordination: pm_lead 负责主协调，${analysis.recommendedAgent} 作为专业 subagent 执行`;
     return [
         `- task analysis: domain=${analysis.domain} complexity=${analysis.complexity} mode=${analysis.executionMode}`,
         `- task analysis agent: recommended=${analysis.recommendedAgent} fallback=${analysis.fallbackAgents.join(",") || "none"}`,

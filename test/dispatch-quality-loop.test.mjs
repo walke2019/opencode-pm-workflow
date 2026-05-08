@@ -264,7 +264,7 @@ async function testAgentSpecificCompactContext() {
   assert.ok(frontendPacket.scope.do.some((item) => item.includes('只处理当前任务直接相关内容')));
   assert.ok(qaPacket.acceptance.some((item) => item.includes('可验证') || item.includes('未完成')));
   assert.ok(writerPacket.artifacts.some((item) => item.includes('相关任务')));
-  assert.ok(commanderPacket.deliverables.some((item) => item.includes('执行结果摘要')));
+  assert.ok(commanderPacket.deliverables.some((item) => item.includes('任务拆解')));
 }
 
 async function testEvaluator() {

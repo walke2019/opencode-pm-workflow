@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+- **Breaking**: 完全移除旧 agent 名称兼容层。删除 `LEGACY_AGENT_MAP`、`CLI_COMPATIBLE_SUBAGENTS`、`normalizeAgentName`、`normalizeWorkflowAgentMode`、`normalizeWorkflowConfigModes` 等所有向后兼容代码。
+- **Breaking**: `DispatchAgent` 类型仅保留新名称（`pm_lead/pm_advisor/pm_backend/pm_frontend/pm_reviewer/pm_researcher`），不再包含旧名称。
+- **Breaking**: `dispatch_map` / `fallback.agent_map` 的 key 从语义名称改为新 agent 名称。
+- 清理 `prompts.ts`、`analyzer.ts`、`evaluator.ts`、`handoff.ts`、`plan.ts`、`dispatch-tools.ts` 中所有旧名称分支。
+- 更新 `pm-workflow.schema.json`，移除旧名称 properties。
+- 更新 `AGENTS.md` 移除兼容期说明。
+
 ## 0.2.2
 
 - 更新 `commands/*.md`（4 条 lane 命令）的 agent 从 `pm_workflow_caocao` 改为 `pm_lead`。
