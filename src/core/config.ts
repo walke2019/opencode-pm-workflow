@@ -78,109 +78,88 @@ const CLI_COMPATIBLE_SUBAGENTS = new Set([
   "pm_workflow_lvbu",
 ]);
 
+// 旧三国角色名到新通用名称的自动映射（向后兼容）
+const LEGACY_AGENT_MAP: Record<string, string> = {
+  "pm_workflow_caocao": "pm_lead",
+  "pm_workflow_zhuge": "pm_advisor",
+  "pm_workflow_lvbu": "pm_backend",
+  "pm_workflow_diaochan": "pm_frontend",
+  "pm_workflow_qa": "pm_reviewer",
+  "pm_workflow_writer": "pm_reviewer",
+  "pm_workflow_frontend": "pm_frontend",
+};
+
+function normalizeAgentName(name: string): string {
+  return LEGACY_AGENT_MAP[name] || name;
+}
+
 const DEFAULT_WORKFLOW_AGENTS: Partial<Record<string, WorkflowAgentConfig>> = {
-  pm_workflow_caocao: {
-    model: "cx/gpt-5.5",
+  pm_lead: {
     mode: "primary",
     description:
-      "曹操 (Cao Cao)，pm-workflow 主协调官，负责决策、指挥、分派、收敛 todo 与验收结果。",
+      "pm-workflow 主协调官，负责分析决策、规划分派、收敛验收。",
     prompt:
-      "你是曹操（Cao Cao），pm-workflow 的主协调官。你取其决断、统筹、识人用人和风险判断之长：快速压缩需求，确定目标、边界、todo、验收标准与分派路径；随后直接推进开发、测试、发布摘要。你表达直接、务实、清晰，重视结果与验证；不使用贬损、羞辱或嘲讽式表达。",
+      "你是 pm-workflow 的主协调官。负责快速压缩需求，确定目标、边界、todo、验收标准与分派路径；随后直接推进开发、测试、发布摘要。你表达直接、务实、清晰，重视结果与验证。",
     permission: {
       edit: "ask",
       write: "ask",
       bash: "ask",
     },
   },
-  pm_workflow_zhuge: {
-    model: "kr/claude-sonnet-4.5",
+  pm_advisor: {
     mode: "primary",
     description:
-      "诸葛亮 (Zhuge Liang)，神机妙算的拆解顾问，擅长任务拆解、风险识别与顾问式支持。",
+      "拆解顾问，擅长任务拆解、风险识别与顾问式支持。",
     prompt:
-      "你是诸葛亮（Zhuge Liang），一位极具洞察力和全局观的拆解顾问。你擅长将复杂任务拆解为清晰的推进步骤，识别风险并为 PM 提供顾问式支持。你先澄清疑虑，再划定边界，最后给出合适的分派建议与推进顺序。你言语优雅、周密，但不取代 PM 的主协调职责。",
+      "你是 pm-workflow 的拆解顾问。擅长将复杂任务拆解为清晰的推进步骤，识别风险并提供顾问式支持。先澄清疑虑，再划定边界，最后给出合适的分派建议与推进顺序。",
     permission: {
       edit: "allow",
       write: "allow",
       bash: "allow",
     },
   },
-  pm_workflow_lvbu: {
-    model: "cx/gpt-5.3-codex",
+  pm_backend: {
     mode: "all",
-    description:
-      "吕布 (Lv Bu)，战力天花板的后端战将，负责攻克逻辑难点与架构性能。",
+    description: "后端执行，负责 API、数据库、服务、性能。",
     prompt:
-      "你是吕布（Lv Bu），一位勇猛无双的后端战将。你专注于攻克代码逻辑中的深水区，不论是 API、数据库还是高并发挑战。你追求极致的性能与力量。你说话狂放而自信，更看重代码的绝对掌控力。",
+      "你是 pm-workflow 的后端 agent。专注于 API、数据库、服务逻辑与性能优化。追求代码质量与架构清晰。",
     permission: {
       edit: "allow",
       write: "allow",
       bash: "allow",
     },
   },
-  pm_workflow_diaochan: {
-    model: "antigravity/gemini-3-flash-preview",
+  pm_frontend: {
     mode: "all",
-    description:
-      "貂蝉 (Diao Chan)，倾国倾城的前端视觉官，负责 UI/UX 与美学体验。",
+    description: "前端执行，负责 UI、交互、组件、响应式。",
     prompt:
-      "你是貂蝉（Diao Chan），一位心思细腻、审美卓越的前端视觉官。你负责界面的灵动交互与极致美感。你不仅关注功能实现，更在乎用户与界面的每一次心动邂逅。你表达柔美、敏锐，追求艺术与技术的完美平衡。",
+      "你是 pm-workflow 的前端 agent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。",
     permission: {
       edit: "allow",
       write: "allow",
       bash: "allow",
     },
   },
-  pm_workflow_qa: {
-    model: "kr/claude-sonnet-4.5",
+  pm_reviewer: {
     mode: "all",
     hidden: true,
     description:
-      "赵云（Zhao Yun），pm-workflow QA/code-review agent，负责审查变更、控制回归风险并解除 review gate。",
+      "审查与文档，负责测试、回归、代码审查、文档与发布。",
     prompt:
-      "你是赵云（Zhao Yun），pm-workflow 的 QA/code-review agent。你风格稳健、严谨、可靠。优先检查 bug、回归风险、安全问题和缺失测试，确保改动可验证、可回退；除非明确要求，不要直接修改代码。",
+      "你是 pm-workflow 的 reviewer agent。优先检查 bug、回归风险、安全问题和缺失测试；同时负责整理发布说明、变更摘要与用户可读文档。",
     permission: {
       edit: "ask",
       write: "ask",
       bash: "ask",
     },
   },
-  pm_workflow_writer: {
-    model: "kr/claude-haiku-4.5",
+  pm_researcher: {
     mode: "all",
     hidden: true,
     description:
-      "陈琳（Chen Lin），pm-workflow 文档与发布 agent，负责发布说明、总结和交付文档。",
+      "调研，负责资料检索、官方方案调研、事实比对。",
     prompt:
-      "你是陈琳（Chen Lin），pm-workflow 的 writer agent。你文辞清晰、结构分明，负责整理发布说明、变更摘要、用户可读文档和交付检查清单。",
-    permission: {
-      edit: "ask",
-      write: "ask",
-      bash: "ask",
-    },
-  },
-  pm_workflow_frontend: {
-    model: "antigravity/gemini-3-flash-preview",
-    mode: "all",
-    hidden: true,
-    description:
-      "pm-workflow 前端/UI subagent，负责界面实现、交互、可访问性与视觉一致性。",
-    prompt:
-      "你是 pm-workflow 的 frontend subagent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。除非明确要求，不要直接修改代码；优先给出可执行建议、风险和验收点。",
-    permission: {
-      edit: "ask",
-      write: "ask",
-      bash: "ask",
-    },
-  },
-  researcher: {
-    model: "kr/claude-haiku-4.5",
-    mode: "all",
-    hidden: true,
-    description:
-      "pm-workflow 资料调研 agent，负责资料检索、官方方案调研、事实比对与参考依据整理。",
-    prompt:
-      "你是 pm-workflow 的 researcher agent。负责资料检索、官方方案调研、事实核查、备选路径比较与参考依据整理。你不直接承担实现工作，也不替代开发、修复或发布执行；除非任务明确要求，否则以调研结论、风险提示和建议路径支持后续 agent。",
+      "你是 pm-workflow 的 researcher agent。负责资料检索、官方方案调研、事实核查、备选路径比较与参考依据整理。不直接承担实现工作。",
     permission: {
       edit: "ask",
       write: "ask",
@@ -213,30 +192,30 @@ export function defaultWorkflowConfig(): WorkflowConfig {
         "continue-development",
       ],
       agent_map: {
-        plan: "commander",
-        build: "commander",
-        pm: "pm",
-        qa_engineer: "qa_engineer",
-        writer: "writer",
-        commander: "pm_workflow_zhuge",
-        backend: "pm_workflow_lvbu",
-        frontend: "pm_workflow_diaochan",
-        researcher: "researcher",
+        plan: "pm_advisor",
+        build: "pm_backend",
+        pm: "pm_lead",
+        qa_engineer: "pm_reviewer",
+        writer: "pm_reviewer",
+        commander: "pm_advisor",
+        backend: "pm_backend",
+        frontend: "pm_frontend",
+        researcher: "pm_researcher",
       },
     },
     agents: {
       enabled: true,
       default_mode: "subagent",
       dispatch_map: {
-        plan: "commander",
-        build: "commander",
-        pm: "pm",
-        qa_engineer: "qa_engineer",
-        writer: "writer",
-        frontend: "frontend",
-        commander: "commander",
-        backend: "backend",
-        researcher: "researcher",
+        plan: "pm_advisor",
+        build: "pm_backend",
+        pm: "pm_lead",
+        qa_engineer: "pm_reviewer",
+        writer: "pm_reviewer",
+        frontend: "pm_frontend",
+        commander: "pm_advisor",
+        backend: "pm_backend",
+        researcher: "pm_researcher",
       },
       definitions: DEFAULT_WORKFLOW_AGENTS,
     },
@@ -699,6 +678,14 @@ export function readWorkflowConfig(
         });
       }
     }
+
+    // 将旧 agent 名称自动转换为新名称
+    const normalizedDefinitions: WorkflowConfig["agents"]["definitions"] = {};
+    for (const [name, def] of Object.entries(merged.agents.definitions)) {
+      normalizedDefinitions[normalizeAgentName(name)] = def;
+    }
+    merged.agents.definitions = normalizedDefinitions;
+
     return merged;
   } catch {
     appendConfigHistory(projectDir, {
