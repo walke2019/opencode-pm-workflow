@@ -59,6 +59,49 @@
 
 **新增 agent ≠ 新增语义角色**。新 agent 先进入 Registry，只有满足高频/稳定/边界清晰/自动分派收益显著才考虑进入核心。
 
+### 主从 Agent 协作模型
+
+**主 Agent（pm_workflow_caocao）定位**：
+- 分析决策：识别任务类型、判断优先级、评估风险
+- 规划：拆解任务、确定执行顺序、设定验收标准
+- 分发委派：根据任务特征将具体要求委派给合适的子 agent
+- 汇总收敛：接收子 agent 反馈，判断是否完成或需要继续分派
+
+**子 Agent 定位**：
+- 负责执行：frontend / backend / researcher / writer / qa_engineer 等
+- 按主 agent 的 handoff packet 要求完成具体工作
+- 完成后按 `summary / verification / risk` 结构反馈给主 agent
+- 不自行决定下一步，由主 agent 统一判断
+
+**协作流程**：
+```
+用户请求 → 主 Agent 分析 → 规划分派 → 子 Agent 执行 → 反馈结果 → 主 Agent 评估 → 继续分派或完成
+```
+
+主 agent 可根据任务复杂度将工作委派给多个子 agent 串行执行，例如：
+- 调研任务：researcher → tech-lead → plan
+- 开发任务：backend → qa → writer
+- 全栈任务：researcher → backend → frontend → qa → writer
+
+### Token 效率原则
+
+**强制要求**：所有设计与实现必须节省 token，避免冗余消耗。
+
+- **精简 prompt**：handoff packet 采用 `mission / context / scope / acceptance / artifacts / responseFormat` 压缩结构，不重复注入完整原始 prompt
+- **避免重复上下文**：子 agent 只接收与当前任务直接相关的上下文，不复制整段历史对话
+- **结构化回传**：子 agent 统一返回 `summary / verification / risk`，不输出无关长文本
+- **按需加载**：artifacts 只提示相关文件路径，不默认注入完整文件内容
+- **收敛输出**：evaluator 对缺少结构化字段的输出更谨慎，避免"有输出但不可评估"的 token 浪费
+
+### 自动化工作流优先
+
+**核心原则**：项目侧重于自动化工作流推进，而非手动确认。
+
+- **自动续跑**：低风险条件下系统自动进入下一步分派，不等待人工回复
+- **Gate 约束**：自动推进不绕过 spec/plan/review/release gate，不安全时自动停住并返回原因
+- **减少人工干预**：只在高风险操作、阻塞状态或信息不足时才要求人工确认
+- **Todo 终结标准**：每个 todo 必须完成或标注 blocked 并说明原因，不遗留悬而未决的任务
+
 ### 关键设计决策
 
 - `pm_workflow_caocao` 是唯一 primary orchestrator
