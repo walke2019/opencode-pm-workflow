@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`0.1.17`。
+当前发布版本：`0.2.0`。
 
 ## 项目定位
 
@@ -97,5 +97,6 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-09 | 0.2.0 | Agent 命名简化：弃用三国角色名，统一为通用短名称；合并 QA+Writer 为 pm_reviewer；移除硬编码模型 ID |
 | 2026-05-09 | 0.1.18 | 文档收敛：将 30+ 篇分散文档合并为 5 篇主文档，删除历史 spec/plan/migration 文档，统一流程图到主文档正文 |
 | 2026-05-08 | 0.1.17 | 新增 researcher 路由、Agent Definition Registry、compact handoff、mode-aware dispatch |

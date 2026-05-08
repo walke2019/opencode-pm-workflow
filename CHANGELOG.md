@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+- **Agent 命名简化**：弃用三国角色名（pm_workflow_caocao/zhuge/lvbu/diaochan/qa/writer），统一为通用短名称（pm_lead/pm_advisor/pm_backend/pm_frontend/pm_reviewer/pm_researcher）。
+- **角色合并**：QA + Writer 合并为 `pm_reviewer`（审查与文档），前端双角色合并为 `pm_frontend`。
+- **移除硬编码模型 ID**：所有内置 agent 定义不再携带具体模型 ID，改为从全局 OpenCode 配置读取。
+- **向后兼容**：新增 `LEGACY_AGENT_MAP` 自动映射机制，旧名称自动转换为新名称，保留 2 个版本兼容期。
+- `DispatchAgent` 类型扩展为新旧名称联合类型，确保旧配置仍可正常工作。
+- 更新 analyzer 路由、prompts 分支、evaluator 判断、plan 默认值、dispatch-tools 格式化输出，全面适配新名称。
+- 同步更新 AGENTS.md、README、全部 7 个测试文件。
+
 ## 0.1.18
 
 - 文档收敛：将 30+ 篇分散文档（dev/runbooks/specs/superpowers）合并为 5 篇主文档（README + 01-技术架构 + 02-业务功能 + 03-使用运维 + 04-待办演进）。

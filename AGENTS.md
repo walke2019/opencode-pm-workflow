@@ -104,7 +104,7 @@
 
 ### 关键设计决策
 
-- `pm_workflow_caocao` 是唯一 primary orchestrator
+- `pm_lead` 是唯一 primary orchestrator
 - command lanes 是 UX facade，不是第二套 runtime
 - specialist agent 若为 subagent，必须走 subagent-safe 路径
 - 项目级 `.opencode/agents/*.md` 优先于全局 `~/.config/opencode/agents/*.md`
@@ -127,7 +127,7 @@ src/
 ### 关键类型定义
 
 - `WorkflowStage`：idea / spec_ready / plan_ready / development / review_pending / release_ready / released / maintenance
-- `DispatchAgent`：pm / plan / build / qa_engineer / writer / frontend / commander / backend / researcher
+- `DispatchAgent`：pm_lead / pm_advisor / pm_backend / pm_frontend / pm_reviewer / pm_researcher（旧名称向后兼容）
 - `DispatchAction`：collect-spec / create-dev-plan / start-development / continue-development / run-code-review / prepare-release / blocked
 - `AgentInvocationMode`：primary / subagent / all
 
@@ -209,14 +209,14 @@ npm view @walke/opencode-pm-workflow version
 
 | Agent | 模型 | 模式 | 职责 |
 | --- | --- | --- | --- |
-| `pm_workflow_caocao` | cx/gpt-5.5 | primary | 主协调官：决策、指挥、分派、收敛 |
-| `pm_workflow_zhuge` | kr/claude-sonnet-4.5 | primary | 拆解顾问：任务拆解、风险识别 |
-| `pm_workflow_lvbu` | cx/gpt-5.3-codex | all | 后端战将：API、数据库、性能 |
-| `pm_workflow_diaochan` | antigravity/gemini-3-flash-preview | all | 前端视觉官：UI/UX、交互、美感 |
-| `pm_workflow_qa` | kr/claude-sonnet-4.5 | all (hidden) | QA/审查：回归、安全、测试 |
-| `pm_workflow_writer` | kr/claude-haiku-4.5 | all (hidden) | 文档与发布：说明、摘要 |
-| `pm_workflow_frontend` | antigravity/gemini-3-flash-preview | all (hidden) | 前端 subagent：组件、响应式 |
-| `researcher` | kr/claude-haiku-4.5 | all (hidden) | 调研：检索、官方方案、事实核查 |
+| `pm_lead` | 从全局配置读取 | primary | 主协调官：决策、指挥、分派、收敛 |
+| `pm_advisor` | 从全局配置读取 | primary | 拆解顾问：任务拆解、风险识别 |
+| `pm_backend` | 从全局配置读取 | all | 后端执行：API、数据库、性能 |
+| `pm_frontend` | 从全局配置读取 | all | 前端执行：UI/UX、交互、组件 |
+| `pm_reviewer` | 从全局配置读取 | all (hidden) | 审查与文档：QA、回归、发布说明 |
+| `pm_researcher` | 从全局配置读取 | all (hidden) | 调研：检索、官方方案、事实核查 |
+
+> 注：0.2.0 起移除硬编码模型 ID，改为从全局 OpenCode 配置读取。旧名称（pm_workflow_caocao 等）自动映射到新名称，保留 2 个版本兼容期。
 
 ### 常用 npm 脚本
 
