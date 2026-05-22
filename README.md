@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`0.10.1`。
+当前发布版本：`0.11.0`。
 
 ## 项目定位
 
@@ -107,6 +107,7 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-23 | 0.11.0 | 新增 `pmw docs check` 文档治理检查，自动校验版本同步、主文档数量、Change Log 与旧路径引用 |
 | 2026-05-22 | 0.10.1 | README 对齐当前版本、5 篇文档结构与 OpenCode npm plugin 接入方式 |
 | 2026-05-09 | 0.2.0 | Agent 命名简化：弃用三国角色名，统一为通用短名称；合并 QA+Writer 为 pm_reviewer；移除硬编码模型 ID |
 | 2026-05-09 | 0.1.18 | 文档收敛：将 30+ 篇分散文档合并为 5 篇主文档，删除历史 spec/plan/migration 文档，统一流程图到主文档正文 |

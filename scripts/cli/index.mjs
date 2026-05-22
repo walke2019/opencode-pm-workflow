@@ -18,6 +18,7 @@
  *   pmw agents list [--json]         列出项目级 + 全局级 agent，标注覆盖关系
  *   pmw agents promote <id> [--overwrite]  把项目级 agent 复制到 ~/.config/opencode/agents
  *   pmw agents doctor [--json]       检查所有 agent 的 frontmatter 完整性
+ *   pmw docs check [--json]          检查 README / 主文档 / Change Log 治理规则
  *   pmw verify                       本地 typecheck + build + smoke + pack-dry-run
  *   pmw --help                       命令一览
  *   pmw --version                    输出 npm 包版本
@@ -91,6 +92,7 @@ function printHelp() {
     "  agents list           列出项目级 + 全局级 agent，标注覆盖关系",
     "  agents promote <id>   把项目级 agent 复制到 ~/.config/opencode/agents（--overwrite 可覆盖）",
     "  agents doctor         检查所有 agent 的 frontmatter 完整性",
+    "  docs check            检查 README 版本、主文档数量、Change Log 与旧路径引用",
     "  verify                本地跑 typecheck + build + smoke + pack-dry-run",
     "  --help                显示本帮助",
     "  --version             输出 npm 包版本",
@@ -108,6 +110,7 @@ function printHelp() {
     "  pmw agents list",
     "  pmw agents promote pm_lead --overwrite",
     "  pmw agents doctor --json",
+    "  pmw docs check",
     "  pmw verify",
   ];
   console.log(help.join("\n"));
@@ -381,6 +384,44 @@ async function runAgentsDoctor(args) {
   return 0;
 }
 
+async function runDocsCheck(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const report = dist.buildDocsCheckReport(projectDir);
+
+  if (args.flags.json) {
+    emit(args, report);
+    return report.ok ? 0 : 1;
+  }
+
+  const passed = report.checks.filter((finding) => finding.severity === "ok");
+  const warnings = report.checks.filter((finding) => finding.severity === "warn");
+  const blockers = report.checks.filter((finding) => finding.severity === "blocker");
+  const lines = [
+    `pm-workflow docs check — ${projectDir}`,
+    `- package version: ${report.packageVersion}`,
+    `- ok: ${passed.length}/${report.checks.length}`,
+    `- warnings: ${warnings.length}`,
+    `- blockers: ${blockers.length}`,
+    "",
+    "checks:",
+    ...report.checks.map((finding) => {
+      const icon =
+        finding.severity === "ok"
+          ? "✓"
+          : finding.severity === "warn"
+            ? "!"
+            : "✗";
+      return `  ${icon} ${finding.name} — ${finding.detail}`;
+    }),
+  ];
+  if (report.blockers.length > 0) {
+    lines.push("", "blockers:", ...report.blockers.map((item) => `  - ${item}`));
+  }
+  console.log(lines.join("\n"));
+  return report.ok ? 0 : 1;
+}
+
 function runVerify() {
   // 直接调用本包的 verify-release 脚本；保留 stdio 流式输出以便 CI 看清。
   try {
@@ -429,6 +470,13 @@ async function main() {
       if (sub === "doctor") return await runAgentsDoctor(args);
       console.error(`未知 agents 子命令: ${sub ?? "<empty>"}`);
       console.error("当前支持: pmw agents list | promote <id> | doctor");
+      return 2;
+    }
+    case "docs": {
+      const sub = args._[1];
+      if (sub === "check") return await runDocsCheck(args);
+      console.error(`未知 docs 子命令: ${sub ?? "<empty>"}`);
+      console.error("当前支持: pmw docs check");
       return 2;
     }
     case "verify":

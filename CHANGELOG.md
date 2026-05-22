@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.11.0
+
+### 新能力：文档治理检查
+
+- 新增 `src/core/docs-check.ts`：
+  - `buildDocsCheckReport` — 只读检查 README 当前版本与 `package.json` 是否一致、docs 下是否仅保留 4 篇主文档、5 篇主文档是否都有 Change Log、CHANGELOG 是否包含当前版本节、是否残留旧文档目录或旧路径引用。
+  - 输出结构化 `checks / warnings / blockers`，便于 CI 消费；存在 blocker 时 `ok=false`。
+- `pmw` CLI 新增 `docs check` 子命令：
+  - `pmw docs check` — 人类可读输出
+  - `pmw docs check --json` — JSON 输出，存在 blocker 时退出码为 1
+- 文档同步：
+  - README 当前版本升到 0.11.0。
+  - `docs/03-使用与运维手册.md` 增加 `pmw docs check` 用法与 CI 建议。
+  - `docs/04-待办与演进清单.md` 标注文档治理检查已落地，并移除旧路径字面引用。
+
 ## 0.10.1
 
 ### 文档与 OpenCode 接入说明维护

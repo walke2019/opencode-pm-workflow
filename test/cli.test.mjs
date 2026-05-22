@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -140,6 +140,51 @@ function runCli(args, options = {}) {
   const r = runCli(['dispatch', 'unknown-sub']);
   assert.strictEqual(r.status, 2);
   assert.match(r.stderr, /未知 dispatch 子命令/);
+}
+
+// 11) docs check 在当前仓库通过
+{
+  const r = runCli(['docs', 'check', '--json']);
+  assert.strictEqual(r.status, 0, `docs check 应通过，stdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
+  const parsed = JSON.parse(r.stdout);
+  assert.strictEqual(parsed.ok, true);
+  assert.ok(Array.isArray(parsed.checks));
+  assert.ok(parsed.checks.some((check) => check.name === 'readme-version'));
+  assert.ok(parsed.checks.some((check) => check.name === 'main-doc-count'));
+}
+
+// 12) docs check 发现 README 版本漂移并返回非零
+{
+  const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-docs-check-'));
+  try {
+    mkdirSync(join(projectDir, 'docs'), { recursive: true });
+    writeFileSync(
+      join(projectDir, 'package.json'),
+      JSON.stringify({ name: 'fixture', version: '1.2.3' }),
+      'utf-8',
+    );
+    writeFileSync(join(projectDir, 'CHANGELOG.md'), '# Changelog\n\n## 1.2.3\n\n- ok\n', 'utf-8');
+    writeFileSync(join(projectDir, 'README.md'), '# Fixture\n\n当前发布版本：`1.2.2`。\n\n## Change Log\n', 'utf-8');
+    for (const name of [
+      '01-技术架构.md',
+      '02-业务功能与任务流转.md',
+      '03-使用与运维手册.md',
+      '04-待办与演进清单.md',
+    ]) {
+      writeFileSync(join(projectDir, 'docs', name), `# ${name}\n\n## Change Log\n`, 'utf-8');
+    }
+
+    const r = runCli(['docs', 'check', '--cwd', projectDir, '--json']);
+    assert.strictEqual(r.status, 1);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.ok, false);
+    assert.ok(
+      parsed.blockers.some((blocker) => blocker.includes('readme-version')),
+      `应报告 readme-version blocker，实际：${parsed.blockers.join('\n')}`,
+    );
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
 }
 
 console.log('cli tests passed');

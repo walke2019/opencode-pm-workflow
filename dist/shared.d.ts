@@ -34,6 +34,8 @@ export type { AgentTaskPermission, ResolvedAgentRouting, TaskPermissionValue, } 
 export { buildHistoryReportSummary, renderHistoryReportHtml, } from "./core/report.js";
 export type { ReportSummary } from "./core/report.js";
 export { doctorAgentLibrary, listAgentLibrary, promoteProjectAgentToGlobal, } from "./core/agent-library.js";
+export { buildDocsCheckReport } from "./core/docs-check.js";
+export type { DocsCheckSeverity, IDocsCheckFinding, IDocsCheckReport, } from "./core/docs-check.js";
 export type { AgentLibraryDoctorReport, AgentLibraryEntry, AgentLibraryFinding, AgentLibraryReport, PromoteAgentResult, } from "./core/agent-library.js";
 export type { WorkflowDocName } from "./core/project.js";
 export type { AgentDefinitionSource, AgentDirectoryKind, AgentStatsCard, AutomationCapability, AgentInvocationMode, AutomationMode, DispatchCommand, DispatchAction, DispatchAgent, DispatchInvocationSemantics, DispatchPlan, DocsStorageMode, HandoffPacket, ExecutionAggregationStrategy, ExecutionMode, ExecutionPlan, ExecutionPlanStep, ExecutableAgent, EvaluationResult, ExecutionReceipt, FallbackStatus, PermissionKey, PhaseStatus, ResolveWorkflowAgentInput, ReleaseStatus, ResolvedAgentDefinition, RetryStatus, ReviewStatus, TaskAnalysis, TaskStatus, WorkflowConfig, WorkflowHistoryEvent, WorkflowStage, WorkflowState, } from "./core/types.js";

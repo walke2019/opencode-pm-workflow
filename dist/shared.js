@@ -27,3 +27,4 @@ export { DEFAULT_HEALTH_THRESHOLDS, _resetPluginActivationGuardForTesting, evalu
 export { isSubagentAllowedByDeclarativeRouting, parseFrontmatterTaskPermission, resolveAgentTaskRouting, } from "./core/agent-routing.js";
 export { buildHistoryReportSummary, renderHistoryReportHtml, } from "./core/report.js";
 export { doctorAgentLibrary, listAgentLibrary, promoteProjectAgentToGlobal, } from "./core/agent-library.js";
+export { buildDocsCheckReport } from "./core/docs-check.js";

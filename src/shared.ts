@@ -179,6 +179,12 @@ export {
   listAgentLibrary,
   promoteProjectAgentToGlobal,
 } from "./core/agent-library.js";
+export { buildDocsCheckReport } from "./core/docs-check.js";
+export type {
+  DocsCheckSeverity,
+  IDocsCheckFinding,
+  IDocsCheckReport,
+} from "./core/docs-check.js";
 export type {
   AgentLibraryDoctorReport,
   AgentLibraryEntry,
