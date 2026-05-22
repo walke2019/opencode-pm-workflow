@@ -2,7 +2,18 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.0`。
+当前发布版本：`1.0.0-rc.1`。
+
+## 适用场景
+
+本工具有**两种使用模式**，请按你的需求选择：
+
+| 模式 | 何时用 | 提供的能力 | 不提供的能力 |
+| --- | --- | --- | --- |
+| **OpenCode 内（在线）** | 你已装 OpenCode，想用多 agent 分派 + 自动续跑 + 模型降级编排开发 | 全部能力：dispatch / Auto-continue / ForegroundFallback / 量化分派 / 声明式路由 / Gate / Permission / 健康检查 | — |
+| **OpenCode 外（离线 CLI）** | CI、服务器、没装 OpenCode 的环境，只需要诊断 / 审计 / 配置工具 | `pmw doctor` / `state` / `history` / `report` / `agents list/promote/doctor` / `docs check` / `models init` / `verify` | dispatch / Auto-continue / 任何依赖 LLM 的能力 |
+
+> **关键边界**：真实多 agent 分派**必须**在 OpenCode 进程里运行。pm-workflow 本身不实现 LLM runtime / tool 协议 / 子进程编排，这些都来自 OpenCode。`pmw` CLI 提供"独立可用的诊断与审计工具子集"，不能脱离 OpenCode 完成 dispatch。
 
 ## 项目定位
 
@@ -113,6 +124,7 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-23 | 1.0.0-rc.1 | 顶部新增"适用场景"段：明确 OpenCode 内（dispatch/Auto-continue 等需 OpenCode 进程）与 OpenCode 外（pmw CLI 诊断/审计/配置子集）两种使用模式 |
 | 2026-05-23 | 1.0.0-rc.0 | 真实环境端到端验收框架（docs/sandbox/e2e-checklist.md + scripts/e2e-headless.mjs）；1.0.0 路线第 3 步 |
 | 2026-05-23 | 0.13.0 | node_modules 从 git track 移除；测试覆盖率守门工具（Node 22 内置，6 个关键模块 ≥ 85%）（1.0.0 路线第 2 步） |
 | 2026-05-23 | 0.12.0 | 公开 API 锁定（120 个符号快照）+ docs/05 公开 API 参考 + prepare-publish 集成 api-snapshot 与 docs check（1.0.0 路线第 1 步） |

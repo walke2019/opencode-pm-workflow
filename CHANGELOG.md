@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.0.0-rc.1
+
+### 文档：明确"OpenCode 内 / 外两种使用模式"边界
+
+经过用户反馈，意识到 README / 主文档没有清晰说明 pm-workflow 与 OpenCode 的关系。本版本不引入新代码能力，只补足这个核心定位。
+
+- **README 顶部新增"适用场景"段**：用对照表清晰区分两种模式：
+  - **OpenCode 内（在线）**：dispatch / Auto-continue / ForegroundFallback / 量化分派 / 声明式路由 / Gate / Permission / 健康检查（**真实多 agent 分派必须在此**）
+  - **OpenCode 外（离线 CLI）**：`pmw doctor / state / history / report / agents / docs check / models init / verify`（诊断、审计、配置类工具）
+- 关键边界写明：pm-workflow 本身**不实现** LLM runtime / tool 协议 / 子进程编排，这些都来自 OpenCode；`pmw` CLI 提供的是"独立可用的诊断与审计工具子集"，不能脱离 OpenCode 完成 dispatch。
+- `docs/02-业务功能与任务流转.md` §2 业务能力表开头加边界说明。
+- `docs/03-使用与运维手册.md` FAQ 新增"我能不依赖 OpenCode 跑 pm-workflow 吗"。
+
+### 设计回应（不做的事）
+
+用户提出"是否能完全脱离 OpenCode 跑多 agent 分派"。经评估：
+
+- 真正脱离 OpenCode 需重写 LLM 调用层 / tool 协议 / 子进程编排 / 会话管理 / 权限沙盒等，工作量约 6-12 个月，等于写迷你版 OpenCode。
+- pm-workflow 的核心价值是"OpenCode 之上的 PM 编排"，离开 OpenCode 后 80% 能力消失。
+- 真实使用场景里"装 Node 但不装 OpenCode 还要分派"几乎不存在；用户要么用完整 OpenCode，要么用 Claude Code/Cursor 等同类工具。
+
+**决策**：保持现状（OpenCode 插件 + 独立 pmw CLI 共存）；通过文档明确边界，避免认知误差。0.8.0 起的 `pmw` CLI 已经满足"CI / 服务器 / 没装 OpenCode 的环境"独立诊断需求。
+
+### 验证
+
+- `npm run prepare-publish` 全绿（含 api-snapshot:check + docs:check）
+- `npm test` 全套 16 个测试文件继续全绿
+- `npm run test:e2e-headless` 3/3 通过
+- `npm run test:coverage` 6 个关键模块继续 ≥ 85%
+
 ## 1.0.0-rc.0
 
 ### 1.0.0 路线第 3 步：真实环境端到端验收框架
