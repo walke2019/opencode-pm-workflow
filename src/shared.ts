@@ -26,11 +26,17 @@ export {
   listGlobalOpenCodeModelKeys,
   readGlobalOpenCodeModelInventory,
 } from "./core/model-inventory.js";
+export { configureWorkflowAgentModels } from "./core/model-setup.js";
 export { resolveWorkflowAgentDefinition } from "./core/agent-registry.js";
 export type {
   OpenCodeModelInventory,
   OpenCodeModelInventoryEntry,
 } from "./core/model-inventory.js";
+export type {
+  IModelSetupInput,
+  IModelSetupResult,
+  ModelSetupScope,
+} from "./core/model-setup.js";
 export type { WorkflowConfigOverrides } from "./core/config.js";
 export {
   DOC_FILENAMES,

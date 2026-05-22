@@ -470,7 +470,11 @@ function buildDefaultWorkflowConfig(overrides) {
 }
 function validateAgentModelsFromGlobalOpenCodeConfig(config) {
     const inventory = readGlobalOpenCodeModelInventory();
-    const validModels = new Set(inventory.models.map((entry) => entry.model));
+    const validModels = new Set(inventory.models.flatMap((entry) => {
+        if (entry.model.includes("/"))
+            return [entry.model];
+        return [entry.model, `${entry.provider}/${entry.model}`];
+    }));
     if (validModels.size === 0)
         return config;
     const definitions = {};

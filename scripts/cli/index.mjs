@@ -18,6 +18,7 @@
  *   pmw agents list [--json]         列出项目级 + 全局级 agent，标注覆盖关系
  *   pmw agents promote <id> [--overwrite]  把项目级 agent 复制到 ~/.config/opencode/agents
  *   pmw agents doctor [--json]       检查所有 agent 的 frontmatter 完整性
+ *   pmw models init --model <id> [--fallback <id>]  初始化 agent 模型与回退模型
  *   pmw docs check [--json]          检查 README / 主文档 / Change Log 治理规则
  *   pmw verify                       本地 typecheck + build + smoke + pack-dry-run
  *   pmw --help                       命令一览
@@ -92,6 +93,7 @@ function printHelp() {
     "  agents list           列出项目级 + 全局级 agent，标注覆盖关系",
     "  agents promote <id>   把项目级 agent 复制到 ~/.config/opencode/agents（--overwrite 可覆盖）",
     "  agents doctor         检查所有 agent 的 frontmatter 完整性",
+    "  models init           初始化 agent 主模型与回退模型（默认写全局配置）",
     "  docs check            检查 README 版本、主文档数量、Change Log 与旧路径引用",
     "  verify                本地跑 typecheck + build + smoke + pack-dry-run",
     "  --help                显示本帮助",
@@ -110,6 +112,8 @@ function printHelp() {
     "  pmw agents list",
     "  pmw agents promote pm_lead --overwrite",
     "  pmw agents doctor --json",
+    "  pmw models init --model opencode/gpt-5 --fallback opencode/gpt-5-mini",
+    "  pmw models init --scope project --agent pm_backend --model cx/gpt-5.5 --fallback cx/gpt-5.4",
     "  pmw docs check",
     "  pmw verify",
   ];
@@ -422,6 +426,63 @@ async function runDocsCheck(args) {
   return report.ok ? 0 : 1;
 }
 
+async function runModelsInit(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const model = args.options.model ? String(args.options.model) : "";
+  const fallbackModel = args.options.fallback
+    ? String(args.options.fallback)
+    : args.options["fallback-model"]
+      ? String(args.options["fallback-model"])
+      : undefined;
+  const scope = args.options.scope === "project" ? "project" : "global";
+  const agents = args.options.agent
+    ? String(args.options.agent)
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : undefined;
+
+  if (!model) {
+    console.error("用法: pmw models init --model <model-id> [--fallback <model-id>]");
+    return 2;
+  }
+
+  const result = dist.configureWorkflowAgentModels({
+    projectDir,
+    model,
+    fallbackModel,
+    agents,
+    scope,
+    allowUnknown: Boolean(args.flags["allow-unknown"]),
+  });
+
+  if (args.flags.json) {
+    emit(args, result);
+    return result.ok ? 0 : 1;
+  }
+
+  if (!result.ok) {
+    console.error("pmw models init 失败");
+    for (const blocker of result.blockers) console.error(`- ${blocker}`);
+    return 1;
+  }
+
+  const lines = [
+    "pmw models init ✓",
+    `- scope: ${result.scope}`,
+    `- config: ${result.path}`,
+    `- agents: ${result.agents.join(", ")}`,
+    `- model: ${result.model}`,
+    `- fallback: ${result.fallbackModel ?? "(none)"}`,
+  ];
+  if (result.warnings.length > 0) {
+    lines.push("", "warnings:", ...result.warnings.map((item) => `  - ${item}`));
+  }
+  console.log(lines.join("\n"));
+  return 0;
+}
+
 function runVerify() {
   // 直接调用本包的 verify-release 脚本；保留 stdio 流式输出以便 CI 看清。
   try {
@@ -470,6 +531,13 @@ async function main() {
       if (sub === "doctor") return await runAgentsDoctor(args);
       console.error(`未知 agents 子命令: ${sub ?? "<empty>"}`);
       console.error("当前支持: pmw agents list | promote <id> | doctor");
+      return 2;
+    }
+    case "models": {
+      const sub = args._[1];
+      if (sub === "init") return await runModelsInit(args);
+      console.error(`未知 models 子命令: ${sub ?? "<empty>"}`);
+      console.error("当前支持: pmw models init --model <id> [--fallback <id>]");
       return 2;
     }
     case "docs": {

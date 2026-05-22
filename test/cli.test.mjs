@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -181,6 +181,97 @@ function runCli(args, options = {}) {
     assert.ok(
       parsed.blockers.some((blocker) => blocker.includes('readme-version')),
       `应报告 readme-version blocker，实际：${parsed.blockers.join('\n')}`,
+    );
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
+// 13) models init 写入全局 agent 主模型与回退模型
+{
+  const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-models-'));
+  const configHome = join(projectDir, 'config-home');
+  const opencodeDir = join(configHome, 'opencode');
+  mkdirSync(opencodeDir, { recursive: true });
+  writeFileSync(
+    join(opencodeDir, 'opencode.json'),
+    JSON.stringify({
+      provider: {
+        openai: {
+          models: {
+            'gpt-5': {},
+            'gpt-5-mini': {},
+          },
+        },
+      },
+    }),
+    'utf-8',
+  );
+  try {
+    const r = runCli(
+      [
+        'models',
+        'init',
+        '--cwd',
+        projectDir,
+        '--model',
+        'openai/gpt-5',
+        '--fallback',
+        'openai/gpt-5-mini',
+        '--json',
+      ],
+      { env: { XDG_CONFIG_HOME: configHome } },
+    );
+    assert.strictEqual(r.status, 0, `models init 应成功，stdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.ok, true);
+    assert.strictEqual(parsed.scope, 'global');
+    assert.ok(parsed.agents.includes('pm_lead'));
+
+    const config = JSON.parse(
+      readFileSync(join(opencodeDir, 'pm-workflow.config.json'), 'utf-8'),
+    );
+    assert.strictEqual(config.agents.definitions.pm_lead.model, 'openai/gpt-5');
+    assert.deepStrictEqual(
+      config.agents.definitions.pm_lead.fallback_models,
+      ['openai/gpt-5-mini'],
+    );
+    assert.deepStrictEqual(config.fallback.chains.pm_lead, ['openai/gpt-5-mini']);
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
+// 14) models init 对未知模型返回 blocker
+{
+  const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-models-invalid-'));
+  const configHome = join(projectDir, 'config-home');
+  const opencodeDir = join(configHome, 'opencode');
+  mkdirSync(opencodeDir, { recursive: true });
+  writeFileSync(
+    join(opencodeDir, 'opencode.json'),
+    JSON.stringify({
+      provider: {
+        openai: {
+          models: {
+            'gpt-5': {},
+          },
+        },
+      },
+    }),
+    'utf-8',
+  );
+  try {
+    const r = runCli(
+      ['models', 'init', '--cwd', projectDir, '--model', 'unknown/model', '--json'],
+      { env: { XDG_CONFIG_HOME: configHome } },
+    );
+    assert.strictEqual(r.status, 1);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.ok, false);
+    assert.ok(
+      parsed.blockers.some((blocker) => blocker.includes('unknown/model')),
+      `应报告未知模型 blocker，实际：${parsed.blockers.join('\n')}`,
     );
   } finally {
     rmSync(projectDir, { recursive: true, force: true });

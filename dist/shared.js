@@ -3,6 +3,7 @@ export { resolveLaneContext, shouldCreateTodoForLane, buildTodoPolicySummary, } 
 export { inferTopologyFromAnalysis } from "./commands/topology.js";
 export { summarizeLaneDispatch } from "./commands/result.js";
 export { getGlobalOpenCodeConfigPath, isGlobalOpenCodeModelKey, listGlobalOpenCodeModelKeys, readGlobalOpenCodeModelInventory, } from "./core/model-inventory.js";
+export { configureWorkflowAgentModels } from "./core/model-setup.js";
 export { resolveWorkflowAgentDefinition } from "./core/agent-registry.js";
 export { DOC_FILENAMES, REVIEW_MARKER_FILENAME, ensureProjectStorageDirs, ensureStateDir, getConfigPath, getFeedbackReadRoots, getHistoryPath, getMigrationManifestPath, getProjectDocsDir, getProjectFeedbackDir, getProjectScopedDocPath, getStatePath, resolveDocReadPath, resolveDocWritePath, } from "./core/project.js";
 export { appendHistory, ensureHistoryBootstrap, getLastFailure, queryHistory, readHistory, } from "./core/history.js";

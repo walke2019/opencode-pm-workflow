@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.11.1
+
+### 新能力：模型初始化 CLI
+
+- 新增 `configureWorkflowAgentModels`：
+  - 默认写入全局 `~/.config/opencode/pm-workflow.config.json`，也支持 `scope: "project"` 写当前项目配置。
+  - 一次性给内置 6 个 pm agent 设置 `model`。
+  - 可同步写入 `fallback_models` 与 `fallback.chains`，让 OpenCode agent fallback 定义和 pm-workflow ForegroundFallback 使用同一组备用模型。
+  - 默认校验模型是否存在于 OpenCode 全局 `provider.*.models` 清单，支持 `provider/model-id` 与已带 `/` 的模型 key；需要时可显式跳过校验。
+- `pmw` CLI 新增 `models init` 子命令：
+  - `pmw models init --model <id> --fallback <id>`：初次使用时配置所有内置 agent。
+  - `--scope project`：只写当前项目 `.pm-workflow/config.json`。
+  - `--agent pm_backend,pm_frontend`：只配置指定 agent。
+  - `--allow-unknown`：跳过 OpenCode 模型清单校验。
+- 更新模型清单读取逻辑：当 provider model key 不含 `/` 时，同时接受官方 `provider/model-id` 写法；当 key 已含 `/` 时保持原样，避免重复拼接 provider。
+- 新增 CLI 回归测试，覆盖成功写入全局配置与未知模型 blocker。
+- README、使用与运维手册、待办与演进清单同步更新。
+
 ## 0.11.0
 
 ### 新能力：文档治理检查

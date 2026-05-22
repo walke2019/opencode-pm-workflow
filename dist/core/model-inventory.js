@@ -36,7 +36,11 @@ export function readGlobalOpenCodeModelInventory(sourcePath = getGlobalOpenCodeC
     return { sourcePath, models };
 }
 export function listGlobalOpenCodeModelKeys(sourcePath = getGlobalOpenCodeConfigPath()) {
-    return Array.from(new Set(readGlobalOpenCodeModelInventory(sourcePath).models.map((entry) => entry.model))).sort();
+    return Array.from(new Set(readGlobalOpenCodeModelInventory(sourcePath).models.flatMap((entry) => {
+        if (entry.model.includes("/"))
+            return [entry.model];
+        return [entry.model, `${entry.provider}/${entry.model}`];
+    }))).sort();
 }
 export function isGlobalOpenCodeModelKey(model, sourcePath = getGlobalOpenCodeConfigPath()) {
     return listGlobalOpenCodeModelKeys(sourcePath).includes(model);

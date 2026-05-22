@@ -61,6 +61,7 @@ try {
   assert.ok(inventory.models.some((entry) => entry.provider === 'bestool-route-cx'));
   assert.ok(inventory.models.some((entry) => entry.model === 'cx/gpt-5.5'));
   assert.ok(!listGlobalOpenCodeModelKeys().includes('bestool-route-cx/cx/gpt-5.5'));
+  assert.ok(listGlobalOpenCodeModelKeys().includes('cx/gpt-5.5'));
 
   const config = validateWorkflowConfigAgentModels(defaultWorkflowConfig());
   assert.strictEqual(config.agents.definitions.pm_lead.model, undefined);
