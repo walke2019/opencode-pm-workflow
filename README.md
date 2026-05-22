@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`0.11.1`。
+当前发布版本：`0.11.2`。
 
 ## 项目定位
 
@@ -71,6 +71,12 @@ export { default } from "@walke/opencode-pm-workflow/tui";
 
 > 注意：不要同时加载源码入口、dist 入口和兼容壳，避免插件重复注册。
 
+## 初次模型配置
+
+推荐让用户和 AI 通过模板完成配置：复制 `pm-workflow.models.example.json` 的内容，填好 `default_model`、`default_fallback_model` 或各 agent 的模型映射，然后让 AI 读取该模板并合并到 `~/.config/opencode/pm-workflow.config.json` 或当前项目 `.pm-workflow/config.json`。
+
+模板会指导 AI 只从 OpenCode 全局 `provider.*.models` 清单校验模型，并同步写入 agent `model`、`fallback_models` 与 `fallback.chains`。
+
 ## 当前文档结构
 
 本项目的现行文档已收敛为 README + 4 篇主文档：
@@ -107,6 +113,7 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-23 | 0.11.2 | 新增模型配置模板，推荐用户填模板后由 AI 读取并自动合并配置 |
 | 2026-05-23 | 0.11.1 | 新增 `pmw models init`，初次使用时可一次性配置 agent 主模型与回退模型 |
 | 2026-05-23 | 0.11.0 | 新增 `pmw docs check` 文档治理检查，自动校验版本同步、主文档数量、Change Log 与旧路径引用 |
 | 2026-05-22 | 0.10.1 | README 对齐当前版本、5 篇文档结构与 OpenCode npm plugin 接入方式 |

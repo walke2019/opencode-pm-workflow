@@ -1,0 +1,30 @@
+{
+  "$schema": "https://unpkg.com/@walke/opencode-pm-workflow@latest/pm-workflow.models.schema.json",
+  "write_target": "global",
+  "default_model": "opencode/gpt-5",
+  "default_fallback_model": "opencode/gpt-5-mini",
+  "agent_models": {
+    "pm_lead": "opencode/gpt-5",
+    "pm_advisor": "opencode/gpt-5",
+    "pm_backend": "opencode/gpt-5",
+    "pm_frontend": "opencode/gpt-5",
+    "pm_reviewer": "opencode/gpt-5-mini",
+    "pm_researcher": "opencode/gpt-5-mini"
+  },
+  "agent_fallback_models": {
+    "pm_lead": "opencode/gpt-5-mini",
+    "pm_advisor": "opencode/gpt-5-mini",
+    "pm_backend": "opencode/gpt-5-mini",
+    "pm_frontend": "opencode/gpt-5-mini",
+    "pm_reviewer": "opencode/gpt-5",
+    "pm_researcher": "opencode/gpt-5"
+  },
+  "ai_apply_instructions": [
+    "读取本文件后，先从全局 OpenCode 配置 ~/.config/opencode/opencode.json 的 provider.*.models 获取可用模型清单。",
+    "校验 default_model、default_fallback_model、agent_models、agent_fallback_models 中的模型 ID，不要臆造模型。",
+    "write_target=global 时写入 ~/.config/opencode/pm-workflow.config.json；write_target=project 时写入当前项目 .pm-workflow/config.json。",
+    "把每个 agent 的主模型写入 agents.definitions.<agent>.model。",
+    "把每个 agent 的回退模型写入 agents.definitions.<agent>.fallback_models，同时同步到 fallback.chains.<agent>。",
+    "保留已有配置字段，只合并模型相关字段。"
+  ]
+}

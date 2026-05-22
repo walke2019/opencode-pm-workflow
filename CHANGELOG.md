@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.11.2
+
+### 新能力：对话式模型配置模板
+
+- 新增 `pm-workflow.models.example.json`：
+  - 用户只需要填 `default_model`、`default_fallback_model`、`agent_models`、`agent_fallback_models`。
+  - 模板内置 `ai_apply_instructions`，提示 AI 读取 OpenCode 全局 `provider.*.models` 清单、校验模型 ID，并合并到 pm-workflow 配置。
+  - 支持 `write_target=global|project`，分别对应全局 `~/.config/opencode/pm-workflow.config.json` 与项目 `.pm-workflow/config.json`。
+- 更新 `agent-model-config` Skill：
+  - 增加“读取模型模板并配置 pm-workflow”的触发语义。
+  - 明确模板字段到 `agents.definitions.*.model`、`fallback_models` 与 `fallback.chains` 的映射。
+  - 将 CLI 定位为脚本化兜底，初次使用主路径改为“用户填模板，AI 读取并合并配置”。
+- README、使用与运维手册、待办与演进清单同步更新到 0.11.2。
+
 ## 0.11.1
 
 ### 新能力：模型初始化 CLI

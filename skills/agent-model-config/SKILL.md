@@ -15,6 +15,8 @@ Use this Skill when starting or onboarding a project and the user asks to config
 - “按前端/后端/测试/文档分配模型”
 - “自动识别项目类型并配置 agents”
 - “从全局 OpenCode 模型配置里选择模型”
+- “读取模型模板并配置 pm-workflow”
+- “我填好了 pm-workflow.models.example.json”
 
 ## Hard rules
 
@@ -28,6 +30,7 @@ Use this Skill when starting or onboarding a project and the user asks to config
 5. Project `.opencode/opencode.json` or `.opencode/opencode.jsonc` may define plugins, permissions, commands, and project overrides, but must not be treated as the authoritative model inventory.
 6. Before writing files, present the detected project type, proposed agents, and proposed model mapping. Ask whether the user wants changes unless the user has already explicitly requested automatic creation/update.
 7. Preserve existing user content. Edit/merge instead of overwriting when files already exist.
+8. If the user provides a model template (`pm-workflow.models.example.json`, `.pm-workflow/model-profile.json`, or pasted JSON with `default_model` / `agent_models`), treat it as the preferred source of intent. Read it, validate models, then merge into pm-workflow config.
 
 ## Project type detection
 
@@ -62,6 +65,26 @@ Choose from available global OpenCode model keys. Prefer these mappings when pre
 If a preferred model is not in the global inventory, pick the closest available model and explain why.
 
 ## Files to create/update
+
+### pm-workflow template-first configuration
+
+When a user fills a model template, merge it into one of:
+
+- Global: `~/.config/opencode/pm-workflow.config.json` when `write_target` is `global` or omitted.
+- Project: `.pm-workflow/config.json` when `write_target` is `project`.
+
+Apply fields as follows:
+
+| Template field | Target config |
+| --- | --- |
+| `default_model` | `agents.definitions.<agent>.model` for any built-in pm agent without explicit `agent_models` override |
+| `default_fallback_model` | `agents.definitions.<agent>.fallback_models[0]` and `fallback.chains.<agent>[0]` when no explicit fallback override exists |
+| `agent_models.<agent>` | `agents.definitions.<agent>.model` |
+| `agent_fallback_models.<agent>` | `agents.definitions.<agent>.fallback_models[0]` and `fallback.chains.<agent>[0]` |
+
+Supported built-in pm agents: `pm_lead`, `pm_advisor`, `pm_backend`, `pm_frontend`, `pm_reviewer`, `pm_researcher`.
+
+Do not require the user to run a CLI command for this flow. The CLI can be mentioned only as an optional fallback for scripted setup.
 
 ### Claude Code
 
