@@ -23,6 +23,7 @@ const MAIN_DOCS = [
   "docs/02-业务功能与任务流转.md",
   "docs/03-使用与运维手册.md",
   "docs/04-待办与演进清单.md",
+  "docs/05-公开-API-参考.md",
 ];
 
 const FORBIDDEN_DOC_DIRS = [
@@ -99,7 +100,7 @@ export function buildDocsCheckReport(projectDir: string): IDocsCheckReport {
       extraDocs.length === 0 ? "ok" : "blocker",
       "main-doc-count",
       extraDocs.length === 0
-        ? "docs/ 下仅包含 4 篇主文档"
+        ? `docs/ 下仅包含 ${allowedDocs.size} 篇主文档`
         : `docs/ 下存在额外 markdown 文档: ${extraDocs.join(", ")}`,
     ),
   );

@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.12.0
+
+### 新能力：公开 API 锁定 + 治理集成（1.0.0 路线第 1 步）
+
+- **公开 API 快照工具**：新增 `scripts/api-snapshot.mjs`：
+  - `check` 模式：把 `dist/index.js` 全部 named export（去掉 `__esModule` / `default`）与 `tools/api-snapshot.json` 对比；删除 / 改名 / 新增任一变更都 exit=1。
+  - `update` 模式：用户确认变更后写回快照（含 schema_version / package_version / generated_at / 排序后的 public_symbols）。
+  - 零额外依赖；纯本地操作；不解析类型签名（由 tsc 自然兜底）。
+- 初始快照 `tools/api-snapshot.json` 入库，含 **120 个公开符号**。
+- **prepare-publish 治理集成**：
+  - `npm run prepare-publish` 现在等于 `typecheck && build && api-snapshot:check && docs:check`，发布前自动校验 API 与文档治理。
+  - 新增 `npm run api-snapshot:check` / `api-snapshot:update` / `docs:check` 三个独立子脚本。
+  - `pmw verify` 通过 prepare-publish 间接获得相同保护。
+- **公开 API 文档** `docs/05-公开-API-参考.md`：
+  - 把 120 个符号按 19 个职责分类列出（OpenCode 入口 / 配置 / 模型清单 / 状态机 / 项目目录与文档 / Dispatch 编排 / Gate / Retry-Fallback / ForegroundFallback / Auto-continue / 健康检查 / 声明式路由 / 量化分派 / 评估回执 / 历史审计 / Doctor / Report / Agent Library / OpenCode agent 配置生成）。
+  - 写明 1.0.0 起的 SemVer 兼容承诺（minor 仅新增、major 走 deprecation 周期）。
+  - `_*` 前缀符号（如 `_resetPluginActivationGuardForTesting`）和 `@beta` 不享受承诺。
+- **docs-check 升级**：`MAIN_DOCS` 从 4 篇扩到 5 篇（含 `docs/05`），相关提示文案改为动态读取主文档数量。
+
+### 设计权衡
+
+- **不引入第三方 api-extractor**：自研 80 行 mjs 已能满足"符号级 SemVer 守护"需求；类型签名变化由 tsc 兜底。
+- **快照仅记录符号名，不记录签名**：签名变化在 typescript build 阶段就会被拦截，重复维护意义不大。
+- **快照差异 = 显式 update 二选一**：CI 永远不静默更新；变更必须由人确认，符合"少而稳"原则。
+
+### 测试
+
+- 新增 `test/api-snapshot.test.mjs`：7 组用例，覆盖 check 一致性 / 默认参数 / 未知 mode / 模拟删除符号 breaking / 模拟新增符号 / 快照结构合法性 / 快照不存在时报错。
+- `npm test` 全套 16 个测试文件继续全绿。
+
+### 修复
+
+- README 当前发布版本字段从 `0.11.2` 对齐到 `0.11.4`（被 `pmw docs check` 第一次集成时发现）。
+
+### 文档
+
+- CHANGELOG 与 5 篇主文档底部 Change Log 同步。
+- `docs/04-待办与演进清单.md` 标注 1.0.0 路线 §0.12 已落地。
+
 ## 0.11.4
 
 ### 优化：模型配置模板支持关键词数组与 provider 优先级

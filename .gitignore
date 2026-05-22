@@ -1,4 +1,5 @@
 .graymatter/
 .pm-workflow/
 .worktrees/
+.kilo/
 node_modules/
