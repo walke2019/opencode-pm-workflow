@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.13.0
+
+### 卫生与守门（1.0.0 路线第 2 步）
+
+- **node_modules 历史 track 清理**：执行 `git rm -r --cached node_modules`，3703 个文件从 git track 移除（磁盘文件保留）。`.gitignore` 已声明 `node_modules/`，本次让它真正生效。从此 `git status` 不再被 npm install 污染；diff 干净。
+- **测试覆盖率守门工具**：新增 `scripts/test-coverage.mjs`：
+  - 用 Node 22 内置 `--experimental-test-coverage` 跑全套测试，零依赖。
+  - 解析 `# file | line% | branch% | funcs% | uncovered` 表格，提取关键模块行覆盖率。
+  - 守门阈值 **85%**，不达标 exit=1。
+  - 关键模块清单（6 个，覆盖 0.4-0.10 引入的核心能力）：
+    - `core/fallback-runtime`
+    - `core/auto-continue`
+    - `core/agent-routing`
+    - `core/agent-library`
+    - `core/report`
+    - `core/agent-stats`
+- **新增 npm 脚本** `npm run test:coverage`，可独立调用；不进入 `prepare-publish`（避免每次发布前都跑 5-10 秒覆盖率）。
+- **`.gitignore` 加入 `.kilo/`**：本地 IDE 配置不再污染工作树。
+
+### 当前覆盖率（0.13.0 基线）
+
+| 模块 | 行覆盖率 | 阈值 |
+| --- | --- | --- |
+| `core/fallback-runtime` | 100.0% | 85% ✓ |
+| `core/auto-continue` | 88.0% | 85% ✓ |
+| `core/agent-routing` | 95.4% | 85% ✓ |
+| `core/agent-library` | 91.3% | 85% ✓ |
+| `core/report` | 98.3% | 85% ✓ |
+| `core/agent-stats` | 100.0% | 85% ✓ |
+
+**所有关键模块达标**，无需额外补测试。
+
+### 设计权衡
+
+- **不集成到 prepare-publish**：覆盖率跑一次约 5-10 秒，且数据稳定（除非新增模块）。让 `pmw verify` / `npm run prepare-publish` 仍快速通过；用户主动跑 `npm run test:coverage` 即可。
+- **不强制全仓库阈值**：`all files` 当前约 74.6%，但其中 receipts.js / migration.js / safety.js 等模块多为运行时审计代码，单元测试很难直接覆盖，强 85% 反而引入垃圾测试。
+- **不引入第三方覆盖率工具**：c8 / istanbul / nyc 都需要额外依赖；Node 22 内置足够用。
+
+### 文档
+
+- CHANGELOG 与 5 篇主文档底部 Change Log 同步。
+- `docs/03-使用与运维手册.md` 安装节增加 `npm run test:coverage` 用法。
+- `docs/04-待办与演进清单.md` 状态摘要升 0.13.0；已完成能力补本次两项。
+
 ## 0.12.0
 
 ### 新能力：公开 API 锁定 + 治理集成（1.0.0 路线第 1 步）

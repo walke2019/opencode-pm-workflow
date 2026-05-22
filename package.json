@@ -1,6 +1,6 @@
 {
   "name": "@walke/opencode-pm-workflow",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "pm-workflow 的可发布 OpenCode 插件包实现（server + tui + shared package-first implementation）。",
   "type": "module",
   "private": false,
@@ -64,6 +64,7 @@
     "api-snapshot:check": "node ./scripts/api-snapshot.mjs check",
     "api-snapshot:update": "node ./scripts/api-snapshot.mjs update",
     "docs:check": "node ./scripts/cli/index.mjs docs check",
+    "test:coverage": "node ./scripts/test-coverage.mjs",
     "prepare-publish": "npm run typecheck && npm run build && npm run api-snapshot:check && npm run docs:check",
     "verify-release": "npm run prepare-publish && npm run smoke && npm run pack-dry-run",
     "prepublishOnly": "npm run verify-release",
