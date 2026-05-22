@@ -1,5 +1,59 @@
 # Changelog
 
+## 1.0.0-rc.0
+
+### 1.0.0 路线第 3 步：真实环境端到端验收框架
+
+**这是 1.0.0 release candidate**。代码层面没有新增能力；本版本目标是把"仅通过单元测试"的隐性风险降到 0，为 1.0.0 SemVer 承诺正式生效做最后的真实环境验证。
+
+- **新增 `docs/sandbox/e2e-checklist.md`**：7 个真实 OpenCode 端到端验收场景，每个含执行步骤、期望输出、`实际` 字段（执行时填）：
+  1. `pmw doctor` 在新项目跑通
+  2. dispatch 真实执行（非 dry-run）
+  3. ForegroundFallback 触发（mock 限流）
+  4. Auto-continue 链路 + Guard 拒绝路径（含 4a/4b/4c 三个子场景）
+  5. 声明式路由 routing.denied
+  6. hot-reload activation: duplicate
+  7. `pmw report` 生成 dashboard
+- 该 checklist 不进入 5 篇主文档治理范围（`docs/sandbox/` 不被 `pmw docs check` 校验为额外主文档，因为 `listMarkdownDocs` 只扫顶层）。
+- **新增 `scripts/e2e-headless.mjs` + `npm run test:e2e-headless`**：自动跑通其中 3 个场景（doctor / routing / report），覆盖代码层闭环：
+  - 在 `mkdtemp` 隔离项目里写真实 history.jsonl 与 agent frontmatter
+  - 调 `buildDoctorReport` / `resolveAgentTaskRouting` / `isSubagentAllowedByDeclarativeRouting` / `buildHistoryReportSummary` / `renderHistoryReportHtml` 真实公开 API
+  - 校验关键指标计数（dispatch 2 / failures 1 / fallback 1 / auto-continue chain 1 step 1 / routing 拒绝 1）+ HTML 体积
+- 场景 2 / 3 / 4 / 6 仍需用户在真实 OpenCode 工作区手动验证；checklist 提供执行步骤与期望输出。
+- `.gitignore` 加入 `docs/sandbox/screenshots/`：截图默认不入库。
+
+### 设计权衡
+
+- **rc 版本不引入新代码能力**：完全聚焦于真实环境验证。任何 0.x → 1.0 的迁移压力都在 0.12.0 / 0.13.0 提前消化。
+- **headless 子集 ≠ 替代真实 OpenCode**：dispatch 真实 spawn / hot-reload activation / 限流模拟 这三件事不能脱离 OpenCode 进程模拟，因此明确划出"必须人工验"的范围。
+- **不引入 Playwright / 真实 e2e 框架**：headless 部分是直接调公开 API；不需要自动化浏览器；保持零依赖。
+
+### 测试
+
+- `npm run test:e2e-headless`：3 / 3 通过
+- `npm test` 全套 16 个测试文件继续全绿
+- `npm run test:coverage` 6 个关键模块继续 ≥ 85%
+- `npm run prepare-publish` 全绿（含 api-snapshot:check + docs:check）
+
+### 文档
+
+- CHANGELOG 与 5 篇主文档底部 Change Log 同步
+- `docs/03-使用与运维手册.md` 安装节增加 `npm run test:e2e-headless` 用法
+- `docs/04-待办与演进清单.md` 状态摘要升 1.0.0-rc.0；1.0.0 发布前置条件清单更新
+
+### 1.0.0 发布前置条件
+
+升 1.0.0 之前必须**全部**满足：
+
+- [ ] `docs/sandbox/e2e-checklist.md` 7 个场景的"实际"字段全部填写完毕
+- [ ] `npm run test:e2e-headless` 全绿（已自动跑）
+- [ ] `npm run test:coverage` 6 个关键模块 ≥ 85%（已自动跑）
+- [ ] `npm run prepare-publish` 全绿（已自动跑）
+- [ ] CHANGELOG `1.0.0` 段写明"语义版本承诺正式生效"
+- [ ] 5 篇主文档底部 Change Log 同步
+- [ ] `git tag v1.0.0` annotated tag
+- [ ] `gh release create v1.0.0` GitHub Release
+
 ## 0.13.0
 
 ### 卫生与守门（1.0.0 路线第 2 步）
