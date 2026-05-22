@@ -159,6 +159,16 @@ export type {
   PluginHealthReport,
   PluginHealthThresholds,
 } from "./server/hooks-health.js";
+export {
+  isSubagentAllowedByDeclarativeRouting,
+  parseFrontmatterTaskPermission,
+  resolveAgentTaskRouting,
+} from "./core/agent-routing.js";
+export type {
+  AgentTaskPermission,
+  ResolvedAgentRouting,
+  TaskPermissionValue,
+} from "./core/agent-routing.js";
 export type { WorkflowDocName } from "./core/project.js";
 export type {
   AgentDefinitionSource,

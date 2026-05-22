@@ -24,3 +24,4 @@ export { AGENT_STATS_LIBRARY, pickAgentStats, } from "./core/agent-stats.js";
 export { buildForegroundFallbackPlan, detectFallbackTrigger, pickNextFallbackModel, resolveFallbackChain, } from "./core/fallback-runtime.js";
 export { detectFeedbackStopSignal, evaluateAutoContinueGuard, markAutoContinueAborted, markAutoContinueChainStart, recordAutoContinueStep, } from "./core/auto-continue.js";
 export { DEFAULT_HEALTH_THRESHOLDS, _resetPluginActivationGuardForTesting, evaluatePluginHealth, guardPluginActivation, reportPluginHealth, } from "./server/hooks-health.js";
+export { isSubagentAllowedByDeclarativeRouting, parseFrontmatterTaskPermission, resolveAgentTaskRouting, } from "./core/agent-routing.js";

@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.7.0
+
+### 新能力：permission.task 声明式路由
+
+- 新增 `src/core/agent-routing.ts` 模块：
+  - `parseFrontmatterTaskPermission`：自研轻量 frontmatter parser，仅解析 `permission.task` 两层 map 结构，**不引入 yaml 依赖**；解析失败的行直接跳过，markdown 编辑错误不会拖垮 dispatch。
+  - `resolveAgentTaskRouting`：按"项目 `.opencode/agents/` → 全局 `~/.config/opencode/agents/`"顺序查找 primary agent 的 markdown，返回 `allowedSubagents / deniedSubagents / taskPermission` 三件套；找不到时 `source: "none"`，调用方自行回退。
+  - `isSubagentAllowedByDeclarativeRouting`：三级优先级判定 — `deny` > `allow|ask` > fallback（默认 `true`，保持向后兼容）。
+- 接入 `src/server/runtime.ts` 的 `buildAutoContinueDispatch`：
+  - Auto-continue 选择 next agent 时，先调 `resolveAgentTaskRouting` + `isSubagentAllowedByDeclarativeRouting`；被 deny 时直接返回 `undefined` 让链路停在 `completed`。
+  - 拒绝事件写 `routing.denied` 历史，便于排障。
+  - primary 缺 frontmatter（`source: "none"`）时按 fallback 允许，旧项目零改动。
+
+### 设计权衡
+
+- **不删除 `dispatch_map`**：它仍是官方支持的"全局覆盖手段"。0.7.0 的目标是"让用户改 markdown 就能调路由"，而不是"让用户失去现有运行时配置入口"。
+- **不引入 yaml 解析器**：完整 YAML 是不可控复杂度。`permission.task` 的两层结构只需要约 70 行自研 parser，更稳。
+- **frontmatter 形式与 OpenCode 1.15.x 官方约定保持一致**：`permission.task[subagent]: allow|deny|ask`。
+
+### 测试
+
+- 新增 `test/permission-task-routing.test.mjs`：10 组用例，覆盖完整 frontmatter / 缺失 frontmatter / 仅 permission 无 task / 错值容错 / 引号 value / 项目级命中 / source=none / ask 等价 allow / deny 优先 / fallback 行为。
+- `npm test` 全套 12 个测试绿。
+
+### 文档
+
+- CHANGELOG 与 4 篇主文档底部 Change Log 同步。
+- `docs/01-技术架构.md` 新增 §14 节描述声明式路由分层。
+- `docs/03-使用与运维手册.md` FAQ 增加 frontmatter 路由示例。
+
 ## 0.6.0
 
 ### 新能力：插件启动健康检查 + Hook 注册去重
