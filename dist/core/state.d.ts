@@ -7,6 +7,7 @@ export declare function detectDocs(projectDir: string): {
 export declare function detectHasCode(projectDir: string): boolean;
 export declare function defaultRetryState(): WorkflowState["retry"];
 export declare function defaultFallbackState(): WorkflowState["fallback"];
+export declare function defaultAutoContinueState(): WorkflowState["auto_continue"];
 export declare function inferStage(projectDir: string, reviewStatus?: ReviewStatus): WorkflowStage;
 export declare function inferStageLabel(stage: WorkflowStage): "全新项目" | "Spec 已完成" | "Design 已完成" | "Plan 已完成" | "项目开发中" | "等待代码审查" | "准备发布" | "已发布" | "维护中";
 export declare function inferNextStep(stage: WorkflowStage): "使用 pm-workflow 收集产品需求" | "生成 DEV-PLAN.md 或继续补设计规范" | "生成 DEV-PLAN.md 或开始设计图制作" | "开始执行开发" | "继续开发、审查、修复或发布" | "先完成 code review，再继续推进 phase 或 release" | "执行 release 检查并发布" | "进入维护或下一轮迭代" | "继续修复、迭代或规划下一阶段";
@@ -66,6 +67,11 @@ export declare function buildStateSummary(projectDir: string): {
         max_attempts: number;
         last_error: string | null;
         last_exit_code: number | null;
+    };
+    auto_continue: {
+        last_step_at: string | null;
+        steps_used: number;
+        aborted_reason: string | null;
     };
     timestamps: {
         updated_at: string;

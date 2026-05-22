@@ -27,7 +27,10 @@ type AutoContinueExecutionInput = {
     };
 };
 export declare function collectAutoContinueDispatches({ projectPath, prompt, firstEvaluation, subsequentEvaluations, maxAutoSteps, }: AutoContinueCollectionInput): import("../../shared.js").DispatchCommand[];
-export declare function executeAutoContinueChain({ projectPath, prompt, firstEvaluation, maxAutoSteps, canExecute, runDispatch, }: AutoContinueExecutionInput): {
+export declare function executeAutoContinueChain({ projectPath, prompt, firstEvaluation, maxAutoSteps, canExecute, runDispatch, sleep, }: AutoContinueExecutionInput & {
+    /** 注入 sleep 便于测试。生产环境用 setTimeout-based 异步 sleep，不阻塞事件循环 */
+    sleep?: (ms: number) => Promise<void>;
+}): Promise<{
     executions: {
         dispatch: ReturnType<typeof buildDispatchCommand>;
         result: {
@@ -37,8 +40,9 @@ export declare function executeAutoContinueChain({ projectPath, prompt, firstEva
         };
         evaluation?: EvaluationResult;
     }[];
-    stopReason: "completed" | "no-auto-continue" | "gate-blocked" | "execution-failed" | "max-steps-reached";
-};
+    stopReason: "completed" | "no-auto-continue" | "gate-blocked" | "guard-blocked" | "feedback-stop" | "execution-failed" | "max-steps-reached";
+    lastBlockReasons: string[];
+}>;
 export declare function formatTaskAnalysisLines(analysis?: TaskAnalysis): string[];
 export declare function formatHandoffPacketLines(packet?: HandoffPacket): string[];
 export declare function formatEvaluationLines(evaluation?: EvaluationResult): string[];

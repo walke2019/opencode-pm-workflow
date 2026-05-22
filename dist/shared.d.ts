@@ -25,6 +25,8 @@ export { buildAutoContinueDispatch, executeDispatchCommand, } from "./server/run
 export { AGENT_STATS_LIBRARY, pickAgentStats, } from "./core/agent-stats.js";
 export { buildForegroundFallbackPlan, detectFallbackTrigger, pickNextFallbackModel, resolveFallbackChain, } from "./core/fallback-runtime.js";
 export type { FallbackPlanRuntime, FallbackTriggerKind, FallbackTriggerSignal, } from "./core/fallback-runtime.js";
+export { detectFeedbackStopSignal, evaluateAutoContinueGuard, markAutoContinueAborted, markAutoContinueChainStart, recordAutoContinueStep, } from "./core/auto-continue.js";
+export type { AutoContinueGuardDecision, AutoContinueGuardInput, } from "./core/auto-continue.js";
 export type { WorkflowDocName } from "./core/project.js";
 export type { AgentDefinitionSource, AgentDirectoryKind, AgentStatsCard, AutomationCapability, AgentInvocationMode, AutomationMode, DispatchCommand, DispatchAction, DispatchAgent, DispatchInvocationSemantics, DispatchPlan, DocsStorageMode, HandoffPacket, ExecutionAggregationStrategy, ExecutionMode, ExecutionPlan, ExecutionPlanStep, ExecutableAgent, EvaluationResult, ExecutionReceipt, FallbackStatus, PermissionKey, PhaseStatus, ResolveWorkflowAgentInput, ReleaseStatus, ResolvedAgentDefinition, RetryStatus, ReviewStatus, TaskAnalysis, TaskStatus, WorkflowConfig, WorkflowHistoryEvent, WorkflowStage, WorkflowState, } from "./core/types.js";
 export type { ExecutionTopology, PmCommandLane, PmLaneContext, TodoPolicySummary, TopologySummary, } from "./commands/types.js";

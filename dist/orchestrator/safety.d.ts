@@ -5,6 +5,7 @@ export declare function buildSafetyReport(projectDir: string, prompt?: string): 
         allow_execute_tools: boolean;
         allow_repair_tools: boolean;
         allow_release_actions: boolean;
+        allow_auto_continue: boolean;
     };
     doctor: {
         ok: boolean;

@@ -65,6 +65,14 @@ export function defaultFallbackState(): WorkflowState["fallback"] {
   };
 }
 
+export function defaultAutoContinueState(): WorkflowState["auto_continue"] {
+  return {
+    last_step_at: null,
+    steps_used: 0,
+    aborted_reason: null,
+  };
+}
+
 export function inferStage(
   projectDir: string,
   reviewStatus?: ReviewStatus,
@@ -180,6 +188,7 @@ export function createInitialState(projectDir: string): WorkflowState {
     },
     retry: defaultRetryState(),
     fallback: defaultFallbackState(),
+    auto_continue: defaultAutoContinueState(),
     timestamps: {
       updated_at: nowIso(),
       last_verified_at: null,
@@ -209,6 +218,7 @@ export function readState(projectDir: string): WorkflowState {
       ...parsed,
       retry: parsed.retry ?? defaultRetryState(),
       fallback: parsed.fallback ?? defaultFallbackState(),
+      auto_continue: parsed.auto_continue ?? defaultAutoContinueState(),
     };
     if (!existsSync(historyPath)) {
       appendHistory(projectDir, {
@@ -229,6 +239,13 @@ export function readState(projectDir: string): WorkflowState {
       appendHistory(projectDir, {
         type: "state.migrate_fallback_v1",
         fallback: normalized.fallback.status,
+      });
+    }
+    if (!parsed.auto_continue) {
+      writeState(projectDir, normalized);
+      appendHistory(projectDir, {
+        type: "state.migrate_auto_continue_v1",
+        auto_continue_steps_used: normalized.auto_continue.steps_used,
       });
     }
     return normalized;

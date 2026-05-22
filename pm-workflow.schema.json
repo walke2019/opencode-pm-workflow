@@ -65,6 +65,10 @@
         },
         "allow_release_actions": {
           "type": "boolean"
+        },
+        "allow_auto_continue": {
+          "type": "boolean",
+          "description": "0.5.0 起：是否允许 dispatch 完成后自动续跑下一步。默认 false；即便打开仍受 auto_continue.enabled 与 Gate / Confirm 全部约束。"
         }
       }
     },
@@ -153,6 +157,36 @@
       "properties": {
         "mode": {
           "enum": ["off", "observe", "assist", "strict"]
+        }
+      }
+    },
+    "auto_continue": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "0.5.0 起：自动续跑（Auto-continue）受控配置。所有字段都是在 Gate / Permission / Confirm 之上叠加的额外约束；Gate 不通过即停。",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "总开关。默认 false，必须显式打开。"
+        },
+        "max_steps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "单次链路最大续跑步数（不含原始步）。建议 ≤ 3。"
+        },
+        "cooldown_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "步骤之间的最小等待毫秒数，避免瞬间烧 token。建议 ≥ 2000。"
+        },
+        "require_clean_tree": {
+          "type": "boolean",
+          "description": "开启时只在 git 工作树干净（无未提交改动）时自动续跑。"
+        },
+        "stop_on_feedback_signal": {
+          "type": "boolean",
+          "description": "开启时，specialist 输出里出现『停下/不要再/stop/cancel/abort』等用户反馈停止词，立即终止链路。"
         }
       }
     },

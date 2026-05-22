@@ -146,12 +146,20 @@ export function defaultWorkflowConfig() {
             allow_execute_tools: true,
             allow_repair_tools: true,
             allow_release_actions: false,
+            allow_auto_continue: false,
         },
         confirm: {
             require_confirm_for_execute: false,
         },
         automation: {
             mode: "observe",
+        },
+        auto_continue: {
+            enabled: false,
+            max_steps: 3,
+            cooldown_ms: 2000,
+            require_clean_tree: false,
+            stop_on_feedback_signal: true,
         },
         docs: {
             storage_mode: "project_scoped",
@@ -210,6 +218,10 @@ function mergeWorkflowConfig(base, overrides = {}) {
         automation: {
             ...base.automation,
             ...(overrides.automation || {}),
+        },
+        auto_continue: {
+            ...base.auto_continue,
+            ...(overrides.auto_continue || {}),
         },
         docs: {
             ...base.docs,
@@ -353,6 +365,7 @@ export function normalizeWorkflowConfigOverrides(input) {
             "allow_execute_tools",
             "allow_repair_tools",
             "allow_release_actions",
+            "allow_auto_continue",
         ]) {
             if (typeof permissions[key] === "boolean") {
                 overrides.permissions[key] = permissions[key];
@@ -375,6 +388,32 @@ export function normalizeWorkflowConfigOverrides(input) {
             automation.mode === "assist" ||
             automation.mode === "strict") {
             overrides.automation.mode = automation.mode;
+        }
+    }
+    if (configSource.auto_continue &&
+        typeof configSource.auto_continue === "object") {
+        const autoContinue = configSource.auto_continue;
+        overrides.auto_continue = {};
+        if (typeof autoContinue.enabled === "boolean") {
+            overrides.auto_continue.enabled = autoContinue.enabled;
+        }
+        if (typeof autoContinue.max_steps === "number" &&
+            Number.isFinite(autoContinue.max_steps) &&
+            autoContinue.max_steps >= 1) {
+            overrides.auto_continue.max_steps = Math.floor(autoContinue.max_steps);
+        }
+        if (typeof autoContinue.cooldown_ms === "number" &&
+            Number.isFinite(autoContinue.cooldown_ms) &&
+            autoContinue.cooldown_ms >= 0) {
+            overrides.auto_continue.cooldown_ms = Math.floor(autoContinue.cooldown_ms);
+        }
+        if (typeof autoContinue.require_clean_tree === "boolean") {
+            overrides.auto_continue.require_clean_tree =
+                autoContinue.require_clean_tree;
+        }
+        if (typeof autoContinue.stop_on_feedback_signal === "boolean") {
+            overrides.auto_continue.stop_on_feedback_signal =
+                autoContinue.stop_on_feedback_signal;
         }
     }
     if (configSource.docs && typeof configSource.docs === "object") {

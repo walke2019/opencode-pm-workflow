@@ -293,6 +293,19 @@ export type WorkflowState = {
     last_error: string | null;
     last_exit_code: number | null;
   };
+  /**
+   * 自动续跑链路状态。
+   *
+   * - `last_step_at`：上一次自动续跑步骤完成的 ISO 时间，用于冷却判断。
+   * - `steps_used`：当前链路已用步数，每次新链路启动重置为 0。
+   * - `aborted_reason`：链路被强制终止的原因（用户反馈信号、Gate 阻断、超过 max_steps 等），
+   *   下次启动会清零。
+   */
+  auto_continue: {
+    last_step_at: string | null;
+    steps_used: number;
+    aborted_reason: string | null;
+  };
   timestamps: {
     updated_at: string;
     last_verified_at: string | null;
@@ -319,6 +332,26 @@ export type WorkflowConfig = {
      */
     chains?: Partial<Record<string, string[]>>;
   };
+  /**
+   * 自动续跑（Auto-continue）受控配置。
+   *
+   * 与 oh-my-opencode-slim 的"无 Gate 自动续跑"不同，pm-workflow 的自动续跑
+   * 必须经过 Gate / Permission / Confirm 全部前置检查；任一不满足就停。
+   * 这里的字段控制"在 Gate 之上还需要满足的额外约束"：
+   *
+   * - `enabled`：总开关；默认 `false`，必须显式打开。
+   * - `max_steps`：单次连续自动推进的最大步数（含原始步）。建议 ≤ 5。
+   * - `cooldown_ms`：步骤之间的最小间隔，避免瞬间烧 token。建议 ≥ 2000。
+   * - `require_clean_tree`：开启时只在 git 工作树干净时自动续跑，避免覆盖未提交改动。
+   * - `stop_on_feedback_signal`：检测到用户反馈型停止词（如"停下"、"不要再"）时立刻终止链路。
+   */
+  auto_continue: {
+    enabled: boolean;
+    max_steps: number;
+    cooldown_ms: number;
+    require_clean_tree: boolean;
+    stop_on_feedback_signal: boolean;
+  };
   agents: {
     enabled: boolean;
     default_mode: "primary" | "subagent" | "all";
@@ -329,6 +362,12 @@ export type WorkflowConfig = {
     allow_execute_tools: boolean;
     allow_repair_tools: boolean;
     allow_release_actions: boolean;
+    /**
+     * 是否允许在 dispatch 完成后自动续跑下一步。
+     * 默认 `false`：必须用户显式 `pm-set-permission allow_auto_continue true` 才生效。
+     * 即便打开，仍受 `auto_continue.enabled` 与 Gate / Confirm 全部约束。
+     */
+    allow_auto_continue: boolean;
   };
   confirm: {
     require_confirm_for_execute: boolean;

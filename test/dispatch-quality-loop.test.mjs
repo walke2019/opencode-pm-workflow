@@ -454,7 +454,28 @@ async function testEvaluator() {
     blockedEvaluationLines.some((line) => line.includes('next auto action: none')),
   );
 
-  const projectDir = process.cwd();
+  const projectDir = mkdtempSync(join(tmpdir(), 'pm-workflow-evaluator-'));
+  // 注入允许 auto-continue 的配置；新版 0.5.0 默认关闭，需显式打开才能跑链路。
+  mkdirSync(join(projectDir, '.pm-workflow'), { recursive: true });
+  writeFileSync(
+    join(projectDir, '.pm-workflow', 'config.json'),
+    JSON.stringify(
+      {
+        permissions: { allow_auto_continue: true },
+        auto_continue: {
+          enabled: true,
+          max_steps: 3,
+          cooldown_ms: 0,
+          require_clean_tree: false,
+          stop_on_feedback_signal: true,
+        },
+      },
+      null,
+      2,
+    ),
+    'utf-8',
+  );
+  try {
   const qaAutoContinueDispatch = buildAutoContinueDispatch(
     projectDir,
     '修复认证接口 401 并确认不影响现有登录流程',
@@ -480,9 +501,7 @@ async function testEvaluator() {
     '等待产品确认后再继续开发',
     blockedResult,
   );
-  assert.strictEqual(blockedAutoContinueDispatch, undefined);
-
-  const doneAutoContinueDispatch = buildAutoContinueDispatch(
+  assert.strictEqual(blockedAutoContinueDispatch, undefined);  const doneAutoContinueDispatch = buildAutoContinueDispatch(
     projectDir,
     '修复认证接口 401 并确认不影响现有登录流程',
     done,
@@ -520,7 +539,7 @@ async function testEvaluator() {
   assert.strictEqual(cappedChain[0]?.recommendedAgent, 'pm_lead');
 
   const executed = [];
-  const executedChain = executeAutoContinueChain({
+  const executedChain = await executeAutoContinueChain({
     projectPath: projectDir,
     prompt: '修复认证接口 401 并确认不影响现有登录流程',
     firstEvaluation: needsVerification,
@@ -534,12 +553,13 @@ async function testEvaluator() {
         evaluation: done,
       };
     },
+    sleep: () => Promise.resolve(),
   });
   assert.strictEqual(executedChain.executions.length, 1);
   assert.deepStrictEqual(executed, ['pm_reviewer/run-code-review']);
   assert.strictEqual(executedChain.stopReason, 'completed');
 
-  const blockedExecutionChain = executeAutoContinueChain({
+  const blockedExecutionChain = await executeAutoContinueChain({
     projectPath: projectDir,
     prompt: '修复认证接口 401 并确认不影响现有登录流程',
     firstEvaluation: needsVerification,
@@ -548,9 +568,13 @@ async function testEvaluator() {
     runDispatch: () => {
       throw new Error('should not execute when gate is blocked');
     },
+    sleep: () => Promise.resolve(),
   });
   assert.strictEqual(blockedExecutionChain.executions.length, 0);
   assert.strictEqual(blockedExecutionChain.stopReason, 'gate-blocked');
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
 }
 
 async function runTests() {

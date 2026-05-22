@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.5.0
+
+### 新能力：Auto-continue 真自动化（Gate 之上的自动续跑）
+
+- 新增 `WorkflowConfig.auto_continue` 节：`enabled / max_steps / cooldown_ms / require_clean_tree / stop_on_feedback_signal`，全部默认保守值（`enabled=false`）。
+- 新增 `permissions.allow_auto_continue` 总开关，默认 `false`。**双总开关同时打开**才允许进入续跑链路；与 Gate / Permission / Confirm 不互替。
+- 新增 `WorkflowState.auto_continue`：`last_step_at / steps_used / aborted_reason`，作为冷却判定与终止原因审计来源。
+- 新增 `src/core/auto-continue.ts` 模块：`evaluateAutoContinueGuard`（5 步分层校验）、`detectFeedbackStopSignal`（中英文用户停止词识别）、`markAutoContinueChainStart` / `recordAutoContinueStep` / `markAutoContinueAborted` 三件套生命周期事件。
+- `executeAutoContinueChain` 全面重写：
+  - 改为 async，使用 setTimeout-based 异步 sleep，不再阻塞 OpenCode 事件循环。
+  - 链路启动前 + 每步前两次调用 `evaluateAutoContinueGuard`。
+  - `maxAutoSteps` 默认值改为读取 `config.auto_continue.max_steps`，硬上限提到 5。
+  - 步骤间真实冷却 sleep。
+  - 反馈停止信号匹配后立即写 `auto_continue.aborted` 并退出。
+  - `stopReason` 扩展 `guard-blocked` 与 `feedback-stop` 两个新值，并附 `lastBlockReasons` 帮助诊断。
+- 与 oh-my-opencode-slim 的"无 Gate 自动续跑"严格区分：本能力**绝不绕过**已有 Gate；这是 pm-workflow 的核心安全承诺。
+
+### 测试
+
+- 新增 `test/auto-continue.test.mjs`：8 组用例，覆盖反馈停止词、双总开关默认拒绝、双开关打开后允许、`max_steps` 拦截、冷却期内被拒、冷却期外允许、状态机生命周期、`defaultWorkflowConfig` 默认值检查。
+- 调整 `test/dispatch-quality-loop.test.mjs`：原 evaluator 测试改用隔离的 mkdtemp 项目并显式打开 `enabled=true / cooldown_ms=0`，反映新默认行为；同时把 `executeAutoContinueChain` 调用加 `await` + 注入 `sleep` 桩。
+- 全套 10 个测试 (`npm test`) 全绿。
+
+### 文档
+
+- `pm-workflow.schema.json` 增加 `auto_continue` 与 `permissions.allow_auto_continue` 字段说明。
+- `pm-workflow.config.example.json` 增加默认配置块。
+- 4 篇主文档 + CHANGELOG 同步更新底部 Change Log。
+
 ## 0.4.0
 
 ### 新能力

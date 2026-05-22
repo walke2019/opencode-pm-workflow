@@ -134,6 +134,17 @@ export type {
   FallbackTriggerKind,
   FallbackTriggerSignal,
 } from "./core/fallback-runtime.js";
+export {
+  detectFeedbackStopSignal,
+  evaluateAutoContinueGuard,
+  markAutoContinueAborted,
+  markAutoContinueChainStart,
+  recordAutoContinueStep,
+} from "./core/auto-continue.js";
+export type {
+  AutoContinueGuardDecision,
+  AutoContinueGuardInput,
+} from "./core/auto-continue.js";
 export type { WorkflowDocName } from "./core/project.js";
 export type {
   AgentDefinitionSource,

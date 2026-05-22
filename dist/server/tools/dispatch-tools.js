@@ -1,6 +1,8 @@
 import { tool } from "@opencode-ai/plugin";
 import { evaluateDispatchResult, buildConfirmGate, buildFallbackCommand, buildDispatchCommand, buildExecutionPlan, buildExecutionGate, buildFallbackPlan, buildPermissionGate, buildRetryPlan, buildStateSummary, recordExecutionReceipt, recordFallbackExecution, setLastAgent, } from "../../shared.js";
 import { buildAutoContinueDispatch, executeDispatchCommand, } from "../runtime.js";
+import { readWorkflowConfig } from "../../core/config.js";
+import { detectFeedbackStopSignal, evaluateAutoContinueGuard, markAutoContinueAborted, markAutoContinueChainStart, recordAutoContinueStep, } from "../../core/auto-continue.js";
 export function collectAutoContinueDispatches({ projectPath, prompt, firstEvaluation, subsequentEvaluations = [], maxAutoSteps = 2, }) {
     const collected = [];
     let currentEvaluation = firstEvaluation;
@@ -17,12 +19,33 @@ export function collectAutoContinueDispatches({ projectPath, prompt, firstEvalua
     }
     return collected;
 }
-export function executeAutoContinueChain({ projectPath, prompt, firstEvaluation, maxAutoSteps = 2, canExecute, runDispatch, }) {
+export async function executeAutoContinueChain({ projectPath, prompt, firstEvaluation, maxAutoSteps, canExecute, runDispatch, sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), }) {
     const executions = [];
-    const safeMaxSteps = Math.max(0, Math.min(3, maxAutoSteps));
+    const config = readWorkflowConfig(projectPath);
+    // 实际可用步数 = min(用户指定 / 配置上限 / 硬上限 5)。若调用方不传 maxAutoSteps，
+    // 一律以配置中的 max_steps 为准；硬上限保留 5 防止被错误配置失控。
+    const cappedMax = Math.max(0, Math.min(5, maxAutoSteps ?? config.auto_continue.max_steps));
     let currentEvaluation = firstEvaluation;
     let stopReason = "no-auto-continue";
-    for (let index = 0; index < safeMaxSteps; index += 1) {
+    let lastBlockReasons = [];
+    if (cappedMax === 0) {
+        return { executions, stopReason, lastBlockReasons };
+    }
+    // 链路启动前先做一次 guard 校验：若总开关 / 权限关闭，直接返回，不写 chain_start
+    const initialGuard = evaluateAutoContinueGuard({
+        projectDir: projectPath,
+        config,
+        stepsAlreadyDone: 0,
+    });
+    if (!initialGuard.allowed) {
+        stopReason = "guard-blocked";
+        lastBlockReasons = initialGuard.reasons;
+        return { executions, stopReason, lastBlockReasons };
+    }
+    markAutoContinueChainStart(projectPath, {
+        initialAction: undefined,
+    });
+    for (let index = 0; index < cappedMax; index += 1) {
         const dispatch = currentEvaluation
             ? buildAutoContinueDispatch(projectPath, prompt, currentEvaluation)
             : undefined;
@@ -30,9 +53,39 @@ export function executeAutoContinueChain({ projectPath, prompt, firstEvaluation,
             stopReason = executions.length > 0 ? "completed" : "no-auto-continue";
             break;
         }
+        // 每步执行前再次 guard：max_steps / cooldown / 干净树。
+        const guard = evaluateAutoContinueGuard({
+            projectDir: projectPath,
+            config,
+            stepsAlreadyDone: index,
+            action: dispatch.recommendedAction,
+        });
+        if (!guard.allowed) {
+            stopReason = "guard-blocked";
+            lastBlockReasons = guard.reasons;
+            markAutoContinueAborted(projectPath, "guard-blocked", {
+                reasons: guard.reasons,
+            });
+            break;
+        }
+        // 冷却：guard 已确认应该等多久；这里是真实 sleep。
+        if (guard.cooldownRemainingMs && guard.cooldownRemainingMs > 0) {
+            // eslint-disable-next-line no-await-in-loop
+            sleep(guard.cooldownRemainingMs);
+        }
+        else if (index > 0 && config.auto_continue.cooldown_ms > 0) {
+            // 步骤间硬性冷却（即使 last_step_at 已经过去也强制等一拍，
+            // 避免第二步几乎立刻触发，仍可被 Esc 中断）
+            // eslint-disable-next-line no-await-in-loop
+            sleep(config.auto_continue.cooldown_ms);
+        }
         const gate = canExecute(dispatch);
         if (!gate.allowed) {
             stopReason = "gate-blocked";
+            lastBlockReasons = gate.reasons;
+            markAutoContinueAborted(projectPath, "gate-blocked", {
+                reasons: gate.reasons,
+            });
             break;
         }
         const execution = runDispatch(dispatch);
@@ -40,7 +93,31 @@ export function executeAutoContinueChain({ projectPath, prompt, firstEvaluation,
         const exitCode = execution.result.status ?? -1;
         if (exitCode !== 0) {
             stopReason = "execution-failed";
+            markAutoContinueAborted(projectPath, "execution-failed", {
+                exit_code: exitCode,
+            });
             break;
+        }
+        recordAutoContinueStep(projectPath, {
+            stepIndex: index + 1,
+            action: dispatch.recommendedAction,
+            agent: dispatch.recommendedAgent,
+            exitCode,
+        });
+        // 反馈停止信号：specialist 输出里包含"停下"等用户型停止词时立即终止链路。
+        if (config.auto_continue.stop_on_feedback_signal) {
+            const stopSignal = detectFeedbackStopSignal(execution.result.stdout) ??
+                detectFeedbackStopSignal(execution.result.stderr);
+            if (stopSignal) {
+                stopReason = "feedback-stop";
+                lastBlockReasons = [
+                    `feedback stop signal matched: ${stopSignal.matched}`,
+                ];
+                markAutoContinueAborted(projectPath, "feedback-stop", {
+                    matched: stopSignal.matched,
+                });
+                break;
+            }
         }
         currentEvaluation = execution.evaluation;
         if (!currentEvaluation?.canAutoContinue ||
@@ -48,11 +125,14 @@ export function executeAutoContinueChain({ projectPath, prompt, firstEvaluation,
             stopReason = "completed";
             break;
         }
-        stopReason = index === safeMaxSteps - 1 ? "max-steps-reached" : stopReason;
+        if (index === cappedMax - 1) {
+            stopReason = "max-steps-reached";
+        }
     }
     return {
         executions,
         stopReason,
+        lastBlockReasons,
     };
 }
 function buildAutoContinueGate(projectPath, dispatch) {
@@ -77,6 +157,9 @@ function formatAutoContinueExecutionLines(autoContinue) {
         `- auto-continue executed steps: ${autoContinue.executions.length}`,
         `- auto-continue stop reason: ${autoContinue.stopReason}`,
     ];
+    if (autoContinue.lastBlockReasons.length > 0) {
+        lines.push(`- auto-continue block reasons: ${autoContinue.lastBlockReasons.join("；")}`);
+    }
     autoContinue.executions.forEach((execution, index) => {
         lines.push(`- auto-continue executed step ${index + 1}: ${execution.dispatch.recommendedAgent}/${execution.dispatch.recommendedAction}`);
         lines.push(`  auto-continue exitCode: ${execution.result.status ?? -1}`);
@@ -352,7 +435,7 @@ export function createDispatchTools() {
                     stageBefore: beforeState.stage,
                     stageAfter: afterState.stage,
                 });
-                const autoContinue = executeAutoContinueChain({
+                const autoContinue = await executeAutoContinueChain({
                     projectPath,
                     prompt: executionPrompt,
                     firstEvaluation: evaluation,
@@ -498,7 +581,7 @@ export function createDispatchTools() {
                     outputs.push(...formatLoopEvaluationLines(evaluation));
                     appendAutoContinueSummary(outputs, projectPath, args.prompt, evaluation, 2);
                     if ((result.status ?? -1) === 0) {
-                        const autoContinue = executeAutoContinueChain({
+                        const autoContinue = await executeAutoContinueChain({
                             projectPath,
                             prompt: args.prompt,
                             firstEvaluation: evaluation,

@@ -6,6 +6,7 @@ export type WorkflowConfigOverrides = {
     permissions?: Partial<WorkflowConfig["permissions"]>;
     confirm?: Partial<WorkflowConfig["confirm"]>;
     automation?: Partial<WorkflowConfig["automation"]>;
+    auto_continue?: Partial<WorkflowConfig["auto_continue"]>;
     agents?: Partial<WorkflowConfig["agents"]>;
     docs?: Partial<WorkflowConfig["docs"]>;
 };

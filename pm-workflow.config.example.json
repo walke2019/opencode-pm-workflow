@@ -6,10 +6,18 @@
   "permissions": {
     "allow_execute_tools": true,
     "allow_repair_tools": true,
-    "allow_release_actions": false
+    "allow_release_actions": false,
+    "allow_auto_continue": false
   },
   "confirm": {
     "require_confirm_for_execute": false
+  },
+  "auto_continue": {
+    "enabled": false,
+    "max_steps": 3,
+    "cooldown_ms": 2000,
+    "require_clean_tree": false,
+    "stop_on_feedback_signal": true
   },
   "agents": {
     "enabled": true,
