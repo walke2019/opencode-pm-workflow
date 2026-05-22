@@ -1,0 +1,279 @@
+#!/usr/bin/env node
+/**
+ * 0.8.0：pm-workflow CLI 子命令入口（pmw）。
+ *
+ * 设计目标：
+ * - 让 `pm-doctor` / `pm-dry-run-dispatch` / `pm-verify` 等高频离线诊断命令
+ *   不再依赖 OpenCode runtime。CI / 服务器 / 没装 OpenCode 的环境也能用。
+ * - 复用 dist/ 中已经纯函数化的 core / orchestrator 模块，零额外依赖。
+ * - 不接管 OpenCode 主循环；CLI 仅做诊断、预演、状态查询；运行时 dispatch
+ *   仍走插件路径。
+ *
+ * 命令一览：
+ *   pmw doctor [--json]              输出 doctor 报告
+ *   pmw dispatch dry-run [prompt...] dispatch 预演（不执行）
+ *   pmw state [--json]               输出当前 state.json 摘要
+ *   pmw history [--limit N] [--type T] 查询历史事件
+ *   pmw verify                       本地 typecheck + build + smoke + pack-dry-run
+ *   pmw --help                       命令一览
+ *   pmw --version                    输出 npm 包版本
+ *
+ * 不做的事情：
+ * - 不实际执行 dispatch（不开 spawn）；dispatch dry-run 仅输出建议命令字符串。
+ * - 不写文件（除非 doctor 自动 bootstrap 状态）；CLI 默认只读。
+ */
+
+import { readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { execSync } from "node:child_process";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PACKAGE_ROOT = resolve(__dirname, "..", "..");
+
+function loadPackageJson() {
+  return JSON.parse(
+    readFileSync(join(PACKAGE_ROOT, "package.json"), "utf-8"),
+  );
+}
+
+async function loadDist() {
+  // 通过 dist 加载，确保 CLI 使用与运行时一致的代码路径。
+  const distPath = join(PACKAGE_ROOT, "dist", "index.js");
+  return await import(distPath);
+}
+
+function parseArgs(argv) {
+  // 极简 argv 解析：--key=value / --key value / --flag / 余下作为 positional。
+  const args = { _: [], flags: {}, options: {} };
+  for (let i = 0; i < argv.length; i += 1) {
+    const token = argv[i];
+    if (token.startsWith("--")) {
+      const stripped = token.slice(2);
+      const eqIndex = stripped.indexOf("=");
+      if (eqIndex !== -1) {
+        args.options[stripped.slice(0, eqIndex)] = stripped.slice(eqIndex + 1);
+      } else if (
+        i + 1 < argv.length &&
+        !argv[i + 1].startsWith("--")
+      ) {
+        args.options[stripped] = argv[i + 1];
+        i += 1;
+      } else {
+        args.flags[stripped] = true;
+      }
+    } else {
+      args._.push(token);
+    }
+  }
+  return args;
+}
+
+function printHelp() {
+  const pkg = loadPackageJson();
+  const help = [
+    `pmw v${pkg.version} — pm-workflow 离线诊断 CLI`,
+    "",
+    "USAGE:",
+    "  pmw <command> [options]",
+    "",
+    "COMMANDS:",
+    "  doctor                输出当前项目 doctor 报告（state/config/history/gates 健康度）",
+    "  dispatch dry-run [prompt]  dispatch 预演：不执行，输出推荐 agent / action / 命令",
+    "  state                 输出当前 state.json 摘要",
+    "  history               查询 history.jsonl 事件",
+    "  verify                本地跑 typecheck + build + smoke + pack-dry-run",
+    "  --help                显示本帮助",
+    "  --version             输出 npm 包版本",
+    "",
+    "GLOBAL OPTIONS:",
+    "  --json                JSON 输出（便于 CI 消费）",
+    "  --cwd <path>          指定项目目录；默认 process.cwd()",
+    "",
+    "EXAMPLES:",
+    "  pmw doctor",
+    "  pmw doctor --json",
+    "  pmw dispatch dry-run '修复登录接口 401'",
+    "  pmw history --limit 5 --type fallback.foreground_switch",
+    "  pmw verify",
+  ];
+  console.log(help.join("\n"));
+}
+
+function getProjectDir(args) {
+  return args.options.cwd
+    ? resolve(String(args.options.cwd))
+    : process.cwd();
+}
+
+function emit(args, payload) {
+  if (args.flags.json || args.options.json !== undefined) {
+    console.log(JSON.stringify(payload, null, 2));
+    return;
+  }
+  if (typeof payload === "string") {
+    console.log(payload);
+    return;
+  }
+  console.log(JSON.stringify(payload, null, 2));
+}
+
+async function runDoctor(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const report = dist.buildDoctorReport(projectDir);
+  if (args.flags.json) {
+    emit(args, report);
+    return report.blockers.length === 0 ? 0 : 1;
+  }
+  const lines = [
+    `pm-workflow doctor — ${projectDir}`,
+    `- ok: ${report.checks.filter((c) => c.ok).length}/${report.checks.length}`,
+    `- warnings: ${report.warnings.length}`,
+    `- blockers: ${report.blockers.length}`,
+    "",
+    "checks:",
+    ...report.checks.map(
+      (c) => `  ${c.ok ? "✓" : "✗"} ${c.name} — ${c.detail}`,
+    ),
+  ];
+  if (report.warnings.length > 0) {
+    lines.push("", "warnings:", ...report.warnings.map((w) => `  - ${w}`));
+  }
+  if (report.blockers.length > 0) {
+    lines.push("", "blockers:", ...report.blockers.map((b) => `  - ${b}`));
+  }
+  console.log(lines.join("\n"));
+  return report.blockers.length === 0 ? 0 : 1;
+}
+
+async function runDispatchDryRun(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const prompt = args._.slice(2).join(" ").trim() || undefined;
+  const dispatch = dist.buildDispatchCommand(projectDir, prompt);
+  const plan = dist.buildExecutionPlan(projectDir, prompt);
+
+  if (args.flags.json) {
+    emit(args, { dispatch, plan });
+    return 0;
+  }
+  const lines = [
+    `pm-workflow dispatch dry-run — ${projectDir}`,
+    `- 当前阶段: ${dispatch.stageLabel}`,
+    `- 推荐 Agent: ${dispatch.recommendedAgent}`,
+    `- 可执行 Agent: ${dispatch.executableAgent}`,
+    `- 推荐动作: ${dispatch.recommendedAction}`,
+    `- 是否阻塞: ${dispatch.blocked ? "yes" : "no"}`,
+    dispatch.blockedReasons.length
+      ? `- 阻塞原因: ${dispatch.blockedReasons.join("；")}`
+      : "- 阻塞原因: 无",
+    `- 推荐命令: ${dispatch.command}`,
+    "",
+    "execution plan:",
+    `- mode: ${plan.mode}`,
+    `- steps: ${plan.steps.length}`,
+    ...plan.steps.map(
+      (s, i) =>
+        `  step ${i + 1}: ${s.id} | ${s.mode} | ${s.agent ?? "local"} | ${s.action}`,
+    ),
+  ];
+  console.log(lines.join("\n"));
+  return 0;
+}
+
+async function runState(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const summary = dist.buildStateSummary(projectDir);
+  if (args.flags.json) {
+    emit(args, summary);
+    return 0;
+  }
+  console.log(JSON.stringify(summary, null, 2));
+  return 0;
+}
+
+async function runHistory(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const limit = Number.parseInt(String(args.options.limit || "20"), 10);
+  const filterType = args.options.type ? String(args.options.type) : undefined;
+  const events = dist.queryHistory(projectDir, {
+    type: filterType,
+    limit,
+  });
+  if (args.flags.json) {
+    emit(args, events);
+    return 0;
+  }
+  if (events.length === 0) {
+    console.log(
+      `pm-workflow history — ${projectDir}\n（无事件${filterType ? ` type=${filterType}` : ""}）`,
+    );
+    return 0;
+  }
+  console.log(`pm-workflow history — ${projectDir} (最近 ${events.length} 条)`);
+  for (const e of events) {
+    const at = e.at ?? "?";
+    const type = e.type ?? "?";
+    const summary = JSON.stringify({ ...e, at: undefined, type: undefined });
+    console.log(`  ${at} [${type}] ${summary}`);
+  }
+  return 0;
+}
+
+function runVerify() {
+  // 直接调用本包的 verify-release 脚本；保留 stdio 流式输出以便 CI 看清。
+  try {
+    execSync("npm run verify-release", {
+      cwd: PACKAGE_ROOT,
+      stdio: "inherit",
+    });
+    return 0;
+  } catch (err) {
+    return err && typeof err.status === "number" ? err.status : 1;
+  }
+}
+
+async function main() {
+  const argv = process.argv.slice(2);
+  const args = parseArgs(argv);
+
+  if (args.flags.version) {
+    console.log(loadPackageJson().version);
+    return 0;
+  }
+  if (args.flags.help || args._.length === 0) {
+    printHelp();
+    return 0;
+  }
+
+  const command = args._[0];
+  switch (command) {
+    case "doctor":
+      return await runDoctor(args);
+    case "dispatch":
+      if (args._[1] === "dry-run") return await runDispatchDryRun(args);
+      console.error(`未知 dispatch 子命令: ${args._[1] ?? "<empty>"}`);
+      console.error("当前仅支持: pmw dispatch dry-run [prompt...]");
+      return 2;
+    case "state":
+      return await runState(args);
+    case "history":
+      return await runHistory(args);
+    case "verify":
+      return runVerify();
+    default:
+      console.error(`未知命令: ${command}`);
+      printHelp();
+      return 2;
+  }
+}
+
+main()
+  .then((code) => process.exit(code ?? 0))
+  .catch((err) => {
+    console.error("[pmw] 命令执行失败:", err && err.message ? err.message : err);
+    process.exit(1);
+  });

@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.8.0
+
+### 新能力：pmw CLI 子命令（长期路线 §7.1 落地）
+
+- 新增 `scripts/cli/index.mjs` 主入口与 5 个子命令：
+  - `pmw doctor [--json]` — 输出当前项目 doctor 报告
+  - `pmw dispatch dry-run [prompt...]` — dispatch 预演，不执行命令
+  - `pmw state [--json]` — 输出 state.json 摘要
+  - `pmw history [--limit N] [--type T] [--json]` — 查询 history.jsonl
+  - `pmw verify` — 本地跑 typecheck + build + smoke + pack-dry-run
+  - 全局支持 `--cwd <path>` / `--json` / `--help` / `--version`
+- `package.json` 增加 `bin: { pmw: "./scripts/cli/index.mjs" }`：用户 `npm install -g @walke/opencode-pm-workflow` 后即可在任何项目直接 `pmw doctor`。
+- CLI 完全复用 dist/ 中已经纯函数化的 `buildDoctorReport` / `buildDispatchCommand` / `buildExecutionPlan` / `buildStateSummary` / `queryHistory`；零额外依赖、零运行时改动。
+
+### 设计权衡
+
+- **同包内 bin 入口，不拆独立 npm 包**：子包发布维护成本高；`bin` 字段已能让用户直接通过 `pmw` 命令调用，无需额外 npm 包。
+- **手写 argv 解析（约 30 行）**：不引入 `commander` / `yargs`；命令简单，自研更稳。
+- **CLI 默认只读**：`doctor` / `state` / `history` / `dispatch dry-run` 全部不写文件、不开 spawn；只有 `verify` 调本包 `npm run verify-release` 是唯一例外（且写入边界由 npm script 控制）。
+- **不接管 OpenCode 主循环**：CLI 仅做诊断与离线编排预演；运行时 dispatch 仍走插件路径。
+
+### 测试
+
+- 新增 `test/cli.test.mjs`：10 组 spawnSync 集成测试，覆盖 `--version` / `--help` / 无参等同 help / 未知命令 / 5 个子命令各自 happy path / `--json` 结构化输出 / `--limit` 截断。
+- `npm test` 全套 13 个测试绿。
+
+### 文档
+
+- CHANGELOG 与 5 篇主文档底部 Change Log 同步。
+- `docs/03-使用与运维手册.md` 第 3 节增加 CLI 命令表与典型用法。
+- `docs/04-待办与演进清单.md` §7.1 标注为已完成，并把版本号升到 0.8.0。
+
 ## 0.7.0
 
 ### 新能力：permission.task 声明式路由
