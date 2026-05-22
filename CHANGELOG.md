@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.11.4
+
+### 优化：模型配置模板支持关键词数组与 provider 优先级
+
+- `pm-workflow.models.example.json` 重写：
+  - 每个 agent 的 `model` / `fallback_models` 字段同时支持 **完整模型 ID / 关键词字符串 / 关键词数组** 三种形式。
+  - 关键词数组按出现顺序逐个尝试匹配，**第一个命中的关键词就停**，不再尝试后续。
+  - 默认值替换为用户偏好示例：`pm_lead/pm_advisor` = `[claude-opus, gpt-5.5, gpt-5.4]`、`pm_backend` = `[gpt-5.4, gpt-5.3-codex]`、`pm_frontend` = `[gemini-3.1-, gemini-3-]` 等。
+  - 新增 `_resolve_strategy` 段，定义 `match_order` / `provider_priority`（默认 `bestool-route-` > `bestool-` > `antigravity-manager/` > `antigravity/` > `opencode/` > `kr/` > `kg/` > `gh/` > `cx/`）/ `exclude_keywords_default`（`preview` / `deprecated` / `experimental`）。
+  - `ai_apply_instructions` 扩到 12 条，明确多源 tiebreak、解析失败容忍场景（关键词当前 0 命中时保留模板原样，等接入新 provider 后再跑）、写入前必须用户确认等硬规则。
+- `skills/agent-model-config/SKILL.md` 升级：
+  - Hard rule 8-10 改为"读取模板 → 关键词解析 → 用户确认 → 合并配置"四步流程。
+  - 新增 "Keyword resolution rules" 段：完整 ID 精确匹配 → 子串关键词匹配 → 多源 tiebreak → 关键词 0 命中容忍 → 用户确认表格的 5 步规范。
+  - 明确"AI 永远不静默替换模型 ID"。
+- `README.md` 与 `docs/03-使用与运维手册.md` 同步：模型配置 FAQ 增加关键词数组示例与 `_resolve_strategy` / `provider_priority` 说明。
+
+### 已用真实清单验证
+
+按本仓库当前 `~/.config/opencode/opencode.json`（43 个 provider 模型）跑模拟解析：
+
+| Agent | 模板 | 解析结果 |
+| --- | --- | --- |
+| `pm_lead` / `pm_advisor` | `[claude-opus, gpt-5.5, gpt-5.4]` | `bestool-route-kr/kr/claude-opus-4.7` |
+| `pm_backend` | `[gpt-5.4, gpt-5.3-codex]` | `bestool-route-cx/cx/gpt-5.4` |
+| `pm_frontend` | `[gemini-3.1-, gemini-3-]` | `bestool-route-antigravity/antigravity/gemini-3.1-pro-high` |
+| `pm_reviewer` | `[claude-sonnet, claude-haiku-4.5, gpt-5-mini]` | `bestool-route-kr/kr/claude-sonnet-4.6` |
+| `pm_researcher` | `[claude-haiku-4.5, gpt-5.4-mini, gpt-5-mini]` | `bestool-route-gh/gh/claude-haiku-4.5` |
+
+`gpt-5.4-mini` 当前 0 命中，按设计保留在数组里，等接入新 provider 后下次解析自动生效。
+
+### 测试
+
+- `npm test` 全套 15 个测试文件继续全绿。
+- `pmw docs check` 22/22 通过。
+
 ## 0.11.3
 
 ### 优化：模型配置模板补全 agent 角色画像

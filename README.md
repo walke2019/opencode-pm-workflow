@@ -73,7 +73,7 @@ export { default } from "@walke/opencode-pm-workflow/tui";
 
 ## 初次模型配置
 
-推荐让用户和 AI 通过模板完成配置：复制 `pm-workflow.models.example.json` 的内容，参考其中 `agent_profiles` 段对每个 agent 的 role / model_traits / fallback_traits / model_examples 说明，填好 `default_model`、`default_fallback_model` 或各 agent 的模型映射，然后让 AI 读取该模板并合并到 `~/.config/opencode/pm-workflow.config.json` 或当前项目 `.pm-workflow/config.json`。
+推荐让用户和 AI 通过模板完成配置：复制 `pm-workflow.models.example.json` 的内容，参考其中 `agent_profiles` 段对每个 agent 的 role / model_traits / fallback_traits 说明，填好 `default_model`、`default_fallback_model` 或各 agent 的模型映射。每个字段同时支持**完整模型 ID** 和**关键词**（含数组形式），例如 `["claude-opus", "gpt-5.5", "gpt-5.4"]`。然后让 AI 读取该模板：AI 会按 `_resolve_strategy` 把关键词解析为全局清单中存在的完整模型 ID（数组按顺序，第一个命中的关键词就停；多源命中时按 `provider_priority` tiebreak），并在写入前把展开结果展示给你确认，再合并到 `~/.config/opencode/pm-workflow.config.json` 或当前项目 `.pm-workflow/config.json`。
 
 模板会指导 AI 只从 OpenCode 全局 `provider.*.models` 清单校验模型，并同步写入 agent `model`、`fallback_models` 与 `fallback.chains`。
 
@@ -113,6 +113,7 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-23 | 0.11.4 | 模型配置模板支持关键词数组与 provider 优先级；用户填关键词，AI 解析展开后用户确认再写入 |
 | 2026-05-23 | 0.11.3 | 模型配置模板补全 agent 角色画像（agent_profiles），AI 校验时按 traits 给候选不静默替换 |
 | 2026-05-23 | 0.11.2 | 新增模型配置模板，推荐用户填模板后由 AI 读取并自动合并配置 |
 | 2026-05-23 | 0.11.1 | 新增 `pmw models init`，初次使用时可一次性配置 agent 主模型与回退模型 |

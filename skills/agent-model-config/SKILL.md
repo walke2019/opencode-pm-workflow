@@ -30,29 +30,43 @@ Use this Skill when starting or onboarding a project and the user asks to config
 5. Project `.opencode/opencode.json` or `.opencode/opencode.jsonc` may define plugins, permissions, commands, and project overrides, but must not be treated as the authoritative model inventory.
 6. Before writing files, present the detected project type, proposed agents, and proposed model mapping. Ask whether the user wants changes unless the user has already explicitly requested automatic creation/update.
 7. Preserve existing user content. Edit/merge instead of overwriting when files already exist.
-8. If the user provides a model template (`pm-workflow.models.example.json`, `.pm-workflow/model-profile.json`, or pasted JSON with `default_model` / `agent_models`), treat it as the preferred source of intent. Read it, validate models, then merge into pm-workflow config.
-9. The template's `agent_profiles` block describes each agent's role, `model_traits`, `fallback_traits`, and `model_examples`. Use it to:
-   - Validate user-filled `agent_models` / `agent_fallback_models` against the trait expectations and the global OpenCode model inventory.
-   - When a field is empty or the chosen model clearly violates `model_traits` (e.g. picking a coding-only model for `pm_lead`), present 1-3 candidates from `model_examples` that exist in the global inventory and ask the user to confirm.
+8. If the user provides a model template (`pm-workflow.models.example.json`, `.pm-workflow/model-profile.json`, or pasted JSON with `default_model` / `agent_models`), treat it as the preferred source of intent. Read it, **resolve keywords (see "Keyword resolution rules" below)**, present the resolved mapping to the user for confirmation, then merge into pm-workflow config.
+9. The template's `agent_profiles` block describes each agent's role, `model_traits`, `fallback_traits`. Use it to:
+   - Validate the resolved model against the trait expectations.
+   - When the resolved model clearly violates `model_traits` (e.g. a coding-only model resolved for `pm_lead`), surface the issue with 1-3 alternative candidates from the global inventory and ask the user to confirm.
    - Never silently substitute a different model. Always confirm with the user.
-10. `agent_profiles` is read-only metadata. Do not write it to `pm-workflow.config.json` or `agents.definitions.*`.
+10. `agent_profiles` and `_resolve_strategy` are read-only metadata. Do not write them to `pm-workflow.config.json` or `agents.definitions.*`.
 
-## Project type detection
+## Keyword resolution rules
 
-Inspect the target project:
+Each agent's `model` / `fallback_models` field in the template can be:
 
-| Detected file/path | Meaning |
-| --- | --- |
-| `.opencode/opencode.json` or `.opencode/opencode.jsonc` | OpenCode project |
-| `.opencode/plugins/*` | OpenCode extension/plugin project |
-| `.opencode/agent/*.md` or `.opencode/agents/*.md` | OpenCode agents exist |
-| `.opencode/skills/**/SKILL.md` | OpenCode skills exist |
-| `.claude/settings.json` or `.claude/settings.local.json` | Claude Code project-local config exists |
-| `.claude/agents/*.md` | Claude Code custom agents exist |
-| `CLAUDE.md` | Claude Code project instructions exist |
-| both `.opencode/` and `.claude/` | mixed OpenCode + Claude Code project |
+- A full model ID (e.g. `bestool-route-cx/cx/gpt-5.5`) — used as-is if present in global `provider.*.models`.
+- A short keyword (e.g. `gpt-5.5`, `claude-opus`, `gemini-3.1-`) — resolved via substring match against full model IDs.
+- An array of strings (e.g. `["claude-opus", "gpt-5.5", "gpt-5.4"]`) — tried in order; **the first keyword that matches at least one global model wins**, then keyword resolution stops.
 
-Classify as one of: `opencode-extension`, `opencode`, `claude-code`, `mixed`, or `plain`.
+### Resolution order
+
+For each keyword, follow `_resolve_strategy.match_order` from the template:
+
+1. **Exact full-ID match** wins immediately (`opencode/gpt-5` → exact `provider.opencode.models["gpt-5"]`).
+2. **Substring match** otherwise (`claude-opus` → all global models whose ID contains `claude-opus`).
+3. If a keyword matches **multiple sources** (e.g. `claude-opus` matches both `bestool-anthropic/...` and `bestool-route-kr/kr/...`), break ties using `_resolve_strategy.provider_priority` from front to back. Default priority order:
+   - `bestool-route-` → `bestool-` → `antigravity-manager/` → `antigravity/` → `opencode/` → `kr/` → `kg/` → `gh/` → `cx/`
+4. Down-weight candidates whose ID contains any of `_resolve_strategy.exclude_keywords_default` (`preview`, `deprecated`, `experimental`); they may still serve as a last-resort fallback.
+5. If **all keywords in the array** have zero matches, record the field as **unresolved** and report it to the user with the full candidate list — do not invent a model ID.
+6. Unresolved keywords are tolerated (e.g. user listed `gpt-5.4-mini` before that provider is wired up): keep the template entry untouched and skip the write for that single agent — the user can re-run resolution later when new providers are added.
+
+### Mandatory user confirmation
+
+Before writing any merged config, present the resolution result as a table and ask the user to confirm:
+
+| Agent | Template (keywords) | Resolved model ID | Source provider |
+| --- | --- | --- | --- |
+| `pm_lead` | `["claude-opus", "gpt-5.5"]` | `bestool-route-kr/kr/claude-opus-4.7` | `bestool-route-kr` |
+| ... | ... | ... | ... |
+
+Wait for explicit user confirmation. Do not assume "no objection = confirmation".
 
 ## Built-in pm agent profiles
 
