@@ -1,5 +1,6 @@
 import { buildDispatchCommand } from "../shared.js";
 import type { DispatchCommand, EvaluationResult } from "../core/types.js";
+import { type FallbackPlanRuntime } from "../core/fallback-runtime.js";
 export type LogLevel = "debug" | "info" | "warn" | "error";
 export type OpenCodeClient = {
     app?: {
@@ -38,7 +39,28 @@ export type ToolOutput = {
 export type TuiPromptOutput = {
     prompt?: string;
 };
-export declare function executeDispatchCommand(projectPath: string, dispatch: ReturnType<typeof buildDispatchCommand>, prompt: string): import("child_process").SpawnSyncReturns<string>;
+export type DispatchExecutionResult = {
+    status: number | null;
+    stdout: string;
+    stderr: string;
+    /**
+     * 当 ForegroundFallback 触发并切换到了备选模型时，会带上完整的降级链路记录。
+     *
+     * - `attempts`：所有尝试过的子进程结果（按时间顺序，含原始尝试与降级尝试）
+     * - `usedFallback`：是否真正切到了备选 model（区别于"识别出限流但链路已耗尽"）
+     * - `finalModel`：最后真正用于执行的 model id（如未切换则为 undefined）
+     */
+    fallback?: {
+        usedFallback: boolean;
+        finalModel?: string;
+        attempts: Array<{
+            model?: string;
+            exitCode: number;
+            plan: FallbackPlanRuntime;
+        }>;
+    };
+};
+export declare function executeDispatchCommand(projectPath: string, dispatch: ReturnType<typeof buildDispatchCommand>, prompt: string): DispatchExecutionResult;
 export declare function buildAutoContinueDispatch(projectDir: string, prompt: string, evaluation: EvaluationResult): DispatchCommand | undefined;
 export declare function getConfigDir(): string;
 export declare function getProjectDir(ctx: PluginContext): string;

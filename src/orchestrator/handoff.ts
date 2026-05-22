@@ -3,6 +3,7 @@ import type {
   HandoffPacket,
   TaskAnalysis,
 } from "../core/types.js";
+import { pickAgentStats } from "../core/agent-stats.js";
 
 export interface BuildHandoffPacketInput {
   prompt: string;
@@ -156,6 +157,15 @@ export function buildHandoffPacket(
   if (input.analysis.risks.length > 0) {
     packet.constraints.push(...input.analysis.risks);
     packet.constraints = limitItems(packet.constraints, 3);
+  }
+
+  // 量化分派指引：仅在多候选场景注入，避免单候选时浪费 token。
+  const stats = pickAgentStats({
+    targetAgent,
+    fallbackAgents: input.analysis.fallbackAgents,
+  });
+  if (stats) {
+    packet.agentStats = stats;
   }
 
   validatePacket(packet);

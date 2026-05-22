@@ -1,3 +1,4 @@
+import { pickAgentStats } from "../core/agent-stats.js";
 function uniqueNonEmpty(items) {
     return [...new Set(items.map((item) => item.trim()).filter(Boolean))];
 }
@@ -90,6 +91,14 @@ export function buildHandoffPacket(input) {
     if (input.analysis.risks.length > 0) {
         packet.constraints.push(...input.analysis.risks);
         packet.constraints = limitItems(packet.constraints, 3);
+    }
+    // 量化分派指引：仅在多候选场景注入，避免单候选时浪费 token。
+    const stats = pickAgentStats({
+        targetAgent,
+        fallbackAgents: input.analysis.fallbackAgents,
+    });
+    if (stats) {
+        packet.agentStats = stats;
     }
     validatePacket(packet);
     return packet;

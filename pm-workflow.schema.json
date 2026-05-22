@@ -39,6 +39,17 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "chains": {
+          "type": "object",
+          "description": "运行时模型降级链（ForegroundFallback）。key 为 agent 名（如 pm_lead）或 model id；value 为按优先级排列的备用 model id 列表。当 dispatch 子进程返回限流/超时/上下文溢出/模型不可用错误时，自动按链路切换备用 model，避免无效重试。",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          }
         }
       }
     },

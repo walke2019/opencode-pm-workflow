@@ -69,6 +69,37 @@ function renderScopeSection(scope: HandoffPacket["scope"]) {
   return lines.length > 0 ? `【处理范围】\n${lines.join("\n")}` : "";
 }
 
+/**
+ * 渲染量化分派指引（仅多候选场景）。
+ *
+ * 输出紧凑的卡片格式，让被 handoff 的 agent 一眼看出：
+ * - 自己（target）的角色定位、能力强项、不该做的事
+ * - 候选备选 agent 的速度/成本/质量对比
+ * 从而能更准确决定"是否需要再委派给别的 agent"，降低二次分派率。
+ */
+function renderAgentStatsSection(stats: HandoffPacket["agentStats"]) {
+  if (!stats || stats.length === 0) return "";
+
+  const cards = stats.map((card, index) => {
+    const lines = [
+      `${index + 1}. ${card.agent} · ${card.role}`,
+      `   - 速度：${card.speed}；成本：${card.cost}；质量：${card.quality}`,
+    ];
+    if (card.delegateWhen.length > 0) {
+      lines.push(`   - 适合：${card.delegateWhen.join("；")}`);
+    }
+    if (card.dontDelegateWhen.length > 0) {
+      lines.push(`   - 不适合：${card.dontDelegateWhen.join("；")}`);
+    }
+    if (card.ruleOfThumb) {
+      lines.push(`   - 经验法则：${card.ruleOfThumb}`);
+    }
+    return lines.join("\n");
+  });
+
+  return `【角色对比（用于判断是否需要再委派）】\n${cards.join("\n")}`;
+}
+
 export function renderAgentHandoffPrompt(
   agent:
     | DispatchAgent
@@ -89,6 +120,7 @@ export function renderAgentHandoffPrompt(
     renderListSection("【约束条件】", packet.constraints),
     renderListSection("【验收标准】", packet.acceptance),
     renderListSection("【交付物】", packet.deliverables),
+    renderAgentStatsSection(packet.agentStats),
     renderListSection("【回传格式】", packet.responseFormat),
   ].filter(Boolean);
 

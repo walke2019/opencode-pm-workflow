@@ -127,6 +127,7 @@ export function defaultWorkflowConfig() {
                 pm_reviewer: "pm_reviewer",
                 pm_researcher: "pm_researcher",
             },
+            chains: {},
         },
         agents: {
             enabled: true,
@@ -183,6 +184,10 @@ function mergeWorkflowConfig(base, overrides = {}) {
             agent_map: {
                 ...base.fallback.agent_map,
                 ...(overrides.fallback?.agent_map || {}),
+            },
+            chains: {
+                ...(base.fallback.chains || {}),
+                ...(overrides.fallback?.chains || {}),
             },
         },
         agents: {
@@ -293,6 +298,20 @@ export function normalizeWorkflowConfigOverrides(input) {
         if (fallback.agent_map && typeof fallback.agent_map === "object") {
             overrides.fallback.agent_map =
                 fallback.agent_map;
+        }
+        if (fallback.chains && typeof fallback.chains === "object") {
+            const chains = {};
+            for (const [key, value] of Object.entries(fallback.chains)) {
+                if (typeof key !== "string" || !key.trim())
+                    continue;
+                if (!Array.isArray(value))
+                    continue;
+                const models = value.filter((model) => typeof model === "string" && model.trim().length > 0);
+                if (models.length > 0) {
+                    chains[key] = models;
+                }
+            }
+            overrides.fallback.chains = chains;
         }
     }
     if (configSource.agents && typeof configSource.agents === "object") {

@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.4.0
+
+### 新能力
+
+- **ForegroundFallback 运行时模型降级**：新增 `WorkflowConfig.fallback.chains: Record<string, string[]>` 配置项。dispatch 子进程返回限流（429/rate-limit）、超时、上下文溢出、模型不可用四类错误时，自动按链路切换备用 model 重试，避免循环重试浪费 token。每次切换写入 `fallback.foreground_switch` 历史事件，便于审计。
+- **量化分派指引（agent stats）**：handoff packet 新增可选 `agentStats` 字段。当任务存在多候选 agent 时，自动注入 1-3 张候选卡片（speed/cost/quality/delegateWhen/dontDelegateWhen/ruleOfThumb），帮助被 handoff 的 agent 准确判断"是否需要再委派"，降低二次分派率。单候选场景不注入，避免无意义 token 消耗。
+- **新模块导出**：`shared.ts` / `dist/index.js` 新增 `AGENT_STATS_LIBRARY`、`pickAgentStats`、`buildForegroundFallbackPlan`、`detectFallbackTrigger`、`pickNextFallbackModel`、`resolveFallbackChain` 与对应类型 `AgentStatsCard`、`FallbackPlanRuntime`、`FallbackTriggerKind`、`FallbackTriggerSignal`。
+
+### OpenCode 1.15.7 兼容
+
+- 升级 `@opencode-ai/plugin` 依赖范围到 `^1.15.7`（之前 `^1.14.22`，跨 35+ 版本）。
+- TUI 命令注册改为 **runtime 双路径适配**：优先 `api.keymap.registerLayer({ commands })`（1.15.x 推荐 / v2 唯一可用），自动回退 `api.command.register(...)`（1.14.x 路径）。同一份代码兼容三个版本周期。
+
+### 测试
+
+- 新增 `test/fallback-runtime.test.mjs`：覆盖四种触发器命中、链路解析、双索引合并去重、`pickNextFallbackModel` 边界（空链路 / 当前不在链 / 链路用尽）、`buildForegroundFallbackPlan` 集成场景。
+- 新增 `test/agent-stats.test.mjs`：覆盖卡片完整性、单候选不注入、多候选 target 排首、最多 3 张卡片、target 与 fallback 重叠去重、handoff 端到端注入。
+- `npm test` 脚本扩展到 9 个测试文件，全绿。
+
+### 内部
+
+- 新增 `src/core/fallback-runtime.ts` 与 `src/core/agent-stats.ts` 两个独立模块，遵循"Analyzer/Registry/Runtime 分层不被打破"的架构治理规则。
+- `src/server/runtime.ts` 中 `executeDispatchCommand` 的返回类型由 `ReturnType<typeof spawnSync>` 收敛为显式 `DispatchExecutionResult`，`stdout/stderr` 类型 narrow 为 `string`，避免上层 `dispatch-tools.ts` 联合类型噪音。
+
+### 文档
+
+- 同步 `pm-workflow.schema.json`：新增 `fallback.chains` 字段说明。
+- 同步 `pm-workflow.config.example.json`：增加 chains 示例（按 agent 配置降级路径）。
+
 ## 0.3.0
 
 - **Breaking**: 完全移除旧 agent 名称兼容层。删除 `LEGACY_AGENT_MAP`、`CLI_COMPATIBLE_SUBAGENTS`、`normalizeAgentName`、`normalizeWorkflowAgentMode`、`normalizeWorkflowConfigModes` 等所有向后兼容代码。

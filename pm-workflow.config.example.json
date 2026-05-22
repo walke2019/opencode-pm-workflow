@@ -95,6 +95,23 @@
       "qa_engineer": "pm_reviewer",
       "writer": "pm_reviewer",
       "researcher": "pm_researcher"
+    },
+    "chains": {
+      "pm_lead": [
+        "kr/claude-sonnet-4.5",
+        "cx/gpt-5.5"
+      ],
+      "pm_backend": [
+        "cx/gpt-5.5",
+        "kr/claude-sonnet-4.5"
+      ],
+      "pm_frontend": [
+        "kr/claude-sonnet-4.5",
+        "cx/gpt-5.4"
+      ],
+      "pm_reviewer": [
+        "kr/claude-haiku-4.5"
+      ]
     }
   }
 }

@@ -23,6 +23,12 @@ import type { DispatchCommand, EvaluationResult } from "../core/types.js";
 import { buildDispatchCommandStrings } from "../orchestrator/prompts.js";
 import { analyzeDispatchTask } from "../orchestrator/analyzer.js";
 import { buildHandoffPacket } from "../orchestrator/handoff.js";
+import { readWorkflowConfig } from "../core/config.js";
+import {
+  buildForegroundFallbackPlan,
+  type FallbackPlanRuntime,
+} from "../core/fallback-runtime.js";
+import { appendHistory } from "../core/history.js";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -138,29 +144,186 @@ const FEEDBACK_SIGNAL_PATTERNS = [
   /先不要/,
 ];
 
+export type DispatchExecutionResult = {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+  /**
+   * 当 ForegroundFallback 触发并切换到了备选模型时，会带上完整的降级链路记录。
+   *
+   * - `attempts`：所有尝试过的子进程结果（按时间顺序，含原始尝试与降级尝试）
+   * - `usedFallback`：是否真正切到了备选 model（区别于"识别出限流但链路已耗尽"）
+   * - `finalModel`：最后真正用于执行的 model id（如未切换则为 undefined）
+   */
+  fallback?: {
+    usedFallback: boolean;
+    finalModel?: string;
+    attempts: Array<{
+      model?: string;
+      exitCode: number;
+      plan: FallbackPlanRuntime;
+    }>;
+  };
+};
+
+function toUtf8(value: string | Buffer | undefined | null): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  return value.toString("utf-8");
+}
+
+/**
+ * 在 commandArgs 中替换 model 参数。
+ *
+ * OpenCode 的 `run` / `task` 子命令支持 `--model <id>`；
+ * 旧的 commandArgs 可能没有携带该参数，因此既支持替换也支持追加。
+ */
+function replaceModelInCommandArgs(
+  commandArgs: string[],
+  nextModel: string,
+): string[] {
+  const next = [...commandArgs];
+  const flagIndex = next.indexOf("--model");
+  if (flagIndex !== -1 && flagIndex + 1 < next.length) {
+    next[flagIndex + 1] = nextModel;
+    return next;
+  }
+
+  // 把 --model 插入到第一个非选项参数前（即 prompt 字符串前），
+  // 这样不会影响 prompt 自身。
+  const insertAt = (() => {
+    for (let i = 1; i < next.length; i += 1) {
+      if (!next[i - 1].startsWith("-") && !next[i].startsWith("-")) {
+        return i;
+      }
+    }
+    return next.length;
+  })();
+  next.splice(insertAt, 0, "--model", nextModel);
+  return next;
+}
+
+/**
+ * 提取当前 commandArgs 中显式指定的 model id。未指定则返回 resolvedAgent.model。
+ */
+function detectCurrentModel(
+  commandArgs: string[],
+  resolvedModel?: string,
+): string | undefined {
+  const flagIndex = commandArgs.indexOf("--model");
+  if (flagIndex !== -1 && flagIndex + 1 < commandArgs.length) {
+    return commandArgs[flagIndex + 1];
+  }
+  return resolvedModel;
+}
+
 export function executeDispatchCommand(
   projectPath: string,
   dispatch: ReturnType<typeof buildDispatchCommand>,
   prompt: string,
-) {
+): DispatchExecutionResult {
   setLastAgent(projectPath, dispatch.recommendedAgent);
 
-  const result = spawnSync("opencode", dispatch.commandArgs, {
-    cwd: projectPath,
-    shell: false,
-    encoding: "utf-8",
-  });
+  const config = readWorkflowConfig(projectPath);
+
+  let currentArgs = dispatch.commandArgs;
+  let currentModel = detectCurrentModel(
+    currentArgs,
+    dispatch.resolvedAgent?.model,
+  );
+
+  const attempts: NonNullable<
+    DispatchExecutionResult["fallback"]
+  >["attempts"] = [];
+
+  // 单次原始执行 + 至多 N 次降级重试。N 由 fallback.max_attempts 限制（≥1）。
+  const maxFallbackAttempts = Math.max(
+    1,
+    config.fallback.max_attempts || 1,
+  );
+
+  let finalResult: ReturnType<typeof spawnSync> = spawnSync(
+    "opencode",
+    currentArgs,
+    {
+      cwd: projectPath,
+      shell: false,
+      encoding: "utf-8",
+    },
+  );
+
+  let finalStdout = toUtf8(finalResult.stdout);
+  let finalStderr = toUtf8(finalResult.stderr);
+
+  let usedFallback = false;
+  let fallbackAttemptsUsed = 0;
+
+  while (fallbackAttemptsUsed < maxFallbackAttempts) {
+    const plan = buildForegroundFallbackPlan({
+      config,
+      semanticAgent: dispatch.recommendedAgent,
+      currentModel,
+      exitCode: finalResult.status ?? -1,
+      stdout: finalStdout,
+      stderr: finalStderr,
+    });
+
+    attempts.push({
+      model: currentModel,
+      exitCode: finalResult.status ?? -1,
+      plan,
+    });
+
+    if (!plan.triggered || !plan.nextModel) {
+      // 未触发降级，或链路耗尽：保留 finalResult，跳出循环。
+      break;
+    }
+
+    const fromModel = currentModel;
+    currentArgs = replaceModelInCommandArgs(currentArgs, plan.nextModel);
+    currentModel = plan.nextModel;
+    fallbackAttemptsUsed += 1;
+    usedFallback = true;
+
+    appendHistory(projectPath, {
+      type: "fallback.foreground_switch",
+      action: dispatch.recommendedAction,
+      agent: dispatch.recommendedAgent,
+      from_model: fromModel,
+      to_model: plan.nextModel,
+      trigger_kind: plan.signal?.kind,
+      trigger_pattern: plan.signal?.matchedPattern,
+      trigger_source: plan.signal?.source,
+    });
+
+    finalResult = spawnSync("opencode", currentArgs, {
+      cwd: projectPath,
+      shell: false,
+      encoding: "utf-8",
+    });
+    finalStdout = toUtf8(finalResult.stdout);
+    finalStderr = toUtf8(finalResult.stderr);
+  }
 
   recordDispatchExecution(projectPath, {
     agent: dispatch.recommendedAgent,
     action: dispatch.recommendedAction,
-    exitCode: result.status ?? -1,
+    exitCode: finalResult.status ?? -1,
     prompt,
-    stdout: result.stdout || "",
-    stderr: result.stderr || "",
+    stdout: finalStdout,
+    stderr: finalStderr,
   });
 
-  return result;
+  return {
+    status: finalResult.status,
+    stdout: finalStdout,
+    stderr: finalStderr,
+    fallback: {
+      usedFallback,
+      finalModel: usedFallback ? currentModel : undefined,
+      attempts,
+    },
+  };
 }
 
 export function buildAutoContinueDispatch(

@@ -114,6 +114,29 @@ export interface TaskAnalysis {
   specialistCount: number;
 }
 
+/**
+ * Agent 量化能力卡片：用于 handoff packet 的"角色对比"段。
+ *
+ * 字段语义：
+ * - `speed` / `cost` / `quality`：相对于 pm_lead 主协调的相对值（multiplier），
+ *   纯文字描述（如 `"1x"` / `"2x faster"` / `"1/2 cost"`），方便 LLM 直接拿到
+ *   做"是否值得再委派"的对比。
+ * - `delegateWhen` / `dontDelegateWhen`：触发与禁忌条件，便于被 handoff 的角色
+ *   判断"我应不应该把当前任务再分派给这个角色"。
+ *
+ * 这套字段仅在 handoff 多候选时注入，单候选场景不会出现，避免无意义 token 消耗。
+ */
+export interface AgentStatsCard {
+  agent: DispatchAgent;
+  role: string;
+  speed: string;
+  cost: string;
+  quality: string;
+  delegateWhen: string[];
+  dontDelegateWhen: string[];
+  ruleOfThumb: string;
+}
+
 export interface HandoffPacket {
   mission: string;
   context: string[];
@@ -129,6 +152,11 @@ export interface HandoffPacket {
   deliverables: string[];
   responseFormat: string[];
   nextStepHint?: string;
+  /**
+   * 候选 agent 的量化对比卡片（仅在多候选场景注入）。
+   * 含 1-3 张卡片，按相关性优先排序。
+   */
+  agentStats?: AgentStatsCard[];
 }
 
 export type EvaluationStatus =
@@ -280,6 +308,16 @@ export type WorkflowConfig = {
     max_attempts: number;
     enabled_actions: DispatchAction[];
     agent_map: Partial<Record<string, string>>;
+    /**
+     * 运行时模型降级链（ForegroundFallback）。
+     *
+     * key 使用 semantic agent 名称（如 `pm_lead`、`pm_backend`）或具体 model id。
+     * value 为按优先级排列的备用模型 id 列表。
+     *
+     * 当上游模型出现限流（429 / rate-limit）、超时或上下文溢出错误时，
+     * dispatch runtime 会自动按链路切换到下一备选 model，避免循环重试浪费 token。
+     */
+    chains?: Partial<Record<string, string[]>>;
   };
   agents: {
     enabled: boolean;

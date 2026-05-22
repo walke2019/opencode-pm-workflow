@@ -5,6 +5,9 @@ import { REVIEW_MARKER_FILENAME, buildExecutablePrompt, buildDispatchPlan, build
 import { buildDispatchCommandStrings } from "../orchestrator/prompts.js";
 import { analyzeDispatchTask } from "../orchestrator/analyzer.js";
 import { buildHandoffPacket } from "../orchestrator/handoff.js";
+import { readWorkflowConfig } from "../core/config.js";
+import { buildForegroundFallbackPlan, } from "../core/fallback-runtime.js";
+import { appendHistory } from "../core/history.js";
 const NON_CODE_EXTENSIONS = new Set([
     ".md",
     ".txt",
@@ -73,22 +76,125 @@ const FEEDBACK_SIGNAL_PATTERNS = [
     /不用管/,
     /先不要/,
 ];
+function toUtf8(value) {
+    if (value == null)
+        return "";
+    if (typeof value === "string")
+        return value;
+    return value.toString("utf-8");
+}
+/**
+ * 在 commandArgs 中替换 model 参数。
+ *
+ * OpenCode 的 `run` / `task` 子命令支持 `--model <id>`；
+ * 旧的 commandArgs 可能没有携带该参数，因此既支持替换也支持追加。
+ */
+function replaceModelInCommandArgs(commandArgs, nextModel) {
+    const next = [...commandArgs];
+    const flagIndex = next.indexOf("--model");
+    if (flagIndex !== -1 && flagIndex + 1 < next.length) {
+        next[flagIndex + 1] = nextModel;
+        return next;
+    }
+    // 把 --model 插入到第一个非选项参数前（即 prompt 字符串前），
+    // 这样不会影响 prompt 自身。
+    const insertAt = (() => {
+        for (let i = 1; i < next.length; i += 1) {
+            if (!next[i - 1].startsWith("-") && !next[i].startsWith("-")) {
+                return i;
+            }
+        }
+        return next.length;
+    })();
+    next.splice(insertAt, 0, "--model", nextModel);
+    return next;
+}
+/**
+ * 提取当前 commandArgs 中显式指定的 model id。未指定则返回 resolvedAgent.model。
+ */
+function detectCurrentModel(commandArgs, resolvedModel) {
+    const flagIndex = commandArgs.indexOf("--model");
+    if (flagIndex !== -1 && flagIndex + 1 < commandArgs.length) {
+        return commandArgs[flagIndex + 1];
+    }
+    return resolvedModel;
+}
 export function executeDispatchCommand(projectPath, dispatch, prompt) {
     setLastAgent(projectPath, dispatch.recommendedAgent);
-    const result = spawnSync("opencode", dispatch.commandArgs, {
+    const config = readWorkflowConfig(projectPath);
+    let currentArgs = dispatch.commandArgs;
+    let currentModel = detectCurrentModel(currentArgs, dispatch.resolvedAgent?.model);
+    const attempts = [];
+    // 单次原始执行 + 至多 N 次降级重试。N 由 fallback.max_attempts 限制（≥1）。
+    const maxFallbackAttempts = Math.max(1, config.fallback.max_attempts || 1);
+    let finalResult = spawnSync("opencode", currentArgs, {
         cwd: projectPath,
         shell: false,
         encoding: "utf-8",
     });
+    let finalStdout = toUtf8(finalResult.stdout);
+    let finalStderr = toUtf8(finalResult.stderr);
+    let usedFallback = false;
+    let fallbackAttemptsUsed = 0;
+    while (fallbackAttemptsUsed < maxFallbackAttempts) {
+        const plan = buildForegroundFallbackPlan({
+            config,
+            semanticAgent: dispatch.recommendedAgent,
+            currentModel,
+            exitCode: finalResult.status ?? -1,
+            stdout: finalStdout,
+            stderr: finalStderr,
+        });
+        attempts.push({
+            model: currentModel,
+            exitCode: finalResult.status ?? -1,
+            plan,
+        });
+        if (!plan.triggered || !plan.nextModel) {
+            // 未触发降级，或链路耗尽：保留 finalResult，跳出循环。
+            break;
+        }
+        const fromModel = currentModel;
+        currentArgs = replaceModelInCommandArgs(currentArgs, plan.nextModel);
+        currentModel = plan.nextModel;
+        fallbackAttemptsUsed += 1;
+        usedFallback = true;
+        appendHistory(projectPath, {
+            type: "fallback.foreground_switch",
+            action: dispatch.recommendedAction,
+            agent: dispatch.recommendedAgent,
+            from_model: fromModel,
+            to_model: plan.nextModel,
+            trigger_kind: plan.signal?.kind,
+            trigger_pattern: plan.signal?.matchedPattern,
+            trigger_source: plan.signal?.source,
+        });
+        finalResult = spawnSync("opencode", currentArgs, {
+            cwd: projectPath,
+            shell: false,
+            encoding: "utf-8",
+        });
+        finalStdout = toUtf8(finalResult.stdout);
+        finalStderr = toUtf8(finalResult.stderr);
+    }
     recordDispatchExecution(projectPath, {
         agent: dispatch.recommendedAgent,
         action: dispatch.recommendedAction,
-        exitCode: result.status ?? -1,
+        exitCode: finalResult.status ?? -1,
         prompt,
-        stdout: result.stdout || "",
-        stderr: result.stderr || "",
+        stdout: finalStdout,
+        stderr: finalStderr,
     });
-    return result;
+    return {
+        status: finalResult.status,
+        stdout: finalStdout,
+        stderr: finalStderr,
+        fallback: {
+            usedFallback,
+            finalModel: usedFallback ? currentModel : undefined,
+            attempts,
+        },
+    };
 }
 export function buildAutoContinueDispatch(projectDir, prompt, evaluation) {
     if (!evaluation.canAutoContinue ||

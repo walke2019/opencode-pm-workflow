@@ -227,6 +227,24 @@ export function listPmWorkflowCommandSpecs(helpers) {
         },
     ];
 }
+/**
+ * 注册 pm-workflow 的 TUI 命令。
+ *
+ * 兼容策略（OpenCode 1.14.x → 1.15.7 → v2）：
+ * - 优先使用 `api.keymap.registerLayer({ commands })`（1.15.x 起的官方推荐 API，v2 唯一可用）。
+ * - 回退到 `api.command.register(...)`（1.14.x 路径，1.15.x 已 @deprecated，v2 移除）。
+ *
+ * 通过 runtime 检测选择路径，避免引入额外的 peer 依赖类型，同时保证不同 OpenCode 版本下都能正常工作。
+ */
 export function registerPmWorkflowCommands(api, helpers) {
-    api.command.register(() => listPmWorkflowCommandSpecs(helpers));
+    const buildCommands = () => listPmWorkflowCommandSpecs(helpers);
+    const keymap = api.keymap;
+    if (keymap && typeof keymap.registerLayer === "function") {
+        keymap.registerLayer({ commands: buildCommands() });
+        return;
+    }
+    if (api.command && typeof api.command.register === "function") {
+        api.command.register(buildCommands);
+        return;
+    }
 }

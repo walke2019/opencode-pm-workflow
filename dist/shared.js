@@ -20,3 +20,5 @@ export { buildSafetyReport } from "./orchestrator/safety.js";
 export { buildExecutablePrompt, getExecutableAgent, resolveAgentInvocationSemantics, } from "./orchestrator/prompts.js";
 export { isAutomationCapabilityEnabled } from "./core/automation.js";
 export { buildAutoContinueDispatch, executeDispatchCommand, } from "./server/runtime.js";
+export { AGENT_STATS_LIBRARY, pickAgentStats, } from "./core/agent-stats.js";
+export { buildForegroundFallbackPlan, detectFallbackTrigger, pickNextFallbackModel, resolveFallbackChain, } from "./core/fallback-runtime.js";
