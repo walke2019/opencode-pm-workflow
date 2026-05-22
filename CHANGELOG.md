@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.6.0
+
+### 新能力：插件启动健康检查 + Hook 注册去重
+
+- 新增 `src/server/hooks-health.ts` 模块：
+  - `evaluatePluginHealth`：按可配置阈值（默认 `minAgents: 1`、`minTools: 5`、`minMcps: 0`）评估插件装配，返回结构化 findings（severity / category / expected / actual）。失败仅 `warn` 不阻断启动，符合"安全优先 + 不打扰用户"的设计原则。
+  - `reportPluginHealth`：把 findings 写入 `ctx.client.app.log`，便于运维定位"为什么某个能力没生效"。
+  - `guardPluginActivation`：进程内 plugin id 去重哨兵，防止 OpenCode hot-reload 场景下事件回调被重复注册导致 `syncState` / `writeReviewMarker` 被多次执行。
+- `src/server/plugin.ts` 接入：
+  - 装配前先调 `guardPluginActivation`；返回 `duplicate` 时跳过 hooks 注册与 health 写入，但仍提供完整的 tool / config 集合（无副作用）。
+  - 装配完成后自动跑健康检查并通过 `app.log` 输出。
+  - `PmWorkflowPlugin` options 新增可选 `health: Partial<PluginHealthThresholds>` 字段，便于上游覆盖默认阈值。
+
+### 设计权衡
+
+- **不拆分 hooks.ts**：`hooks.ts` 仅 131 行 4 个简单 hook，盲目拆 4 个文件会引入冗余间接层；保留单文件结构更易维护。借鉴 oh-my-opencode-slim 的"hook 工厂模式"主要价值在健康检查与去重——这两点用独立模块实现即可，不需要重构既有结构。
+- **不向用户暴露 health 字段**：`PluginHealthThresholds` 是 plugin 装配级参数（通过 OpenCode plugin options 传入），不进入 `pm-workflow.config.json`；避免增加用户配置面，符合"少而稳"原则。
+
+### 测试
+
+- 新增 `test/hooks-health.test.mjs`：8 组用例，覆盖默认阈值通过、agents/tools/mcps 各类 finding、自定义阈值覆盖、`guardPluginActivation` 首次/重复/不同 id/reset 行为。
+- `npm test` 全套 11 个测试绿。
+
+### 文档
+
+- CHANGELOG 与 4 篇主文档底部 Change Log 同步。
+
 ## 0.5.0
 
 ### 新能力：Auto-continue 真自动化（Gate 之上的自动续跑）

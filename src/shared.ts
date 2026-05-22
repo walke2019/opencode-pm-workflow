@@ -145,6 +145,20 @@ export type {
   AutoContinueGuardDecision,
   AutoContinueGuardInput,
 } from "./core/auto-continue.js";
+export {
+  DEFAULT_HEALTH_THRESHOLDS,
+  _resetPluginActivationGuardForTesting,
+  evaluatePluginHealth,
+  guardPluginActivation,
+  reportPluginHealth,
+} from "./server/hooks-health.js";
+export type {
+  PluginActivationGuardResult,
+  PluginHealthFinding,
+  PluginHealthInputs,
+  PluginHealthReport,
+  PluginHealthThresholds,
+} from "./server/hooks-health.js";
 export type { WorkflowDocName } from "./core/project.js";
 export type {
   AgentDefinitionSource,

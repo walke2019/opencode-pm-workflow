@@ -4,7 +4,9 @@ export * from "./orchestrator/index.js";
 export * from "./shared.js";
 export declare const pmWorkflowServerPlugin: {
     id: string;
-    server: (ctx: import("./server/runtime.js").PluginContext, options?: Record<string, unknown>) => Promise<{
+    server: (ctx: import("./server/runtime.js").PluginContext, options?: Record<string, unknown> & {
+        health?: Partial<import("./shared.js").PluginHealthThresholds>;
+    }) => Promise<{
         event: ({ event }: {
             event?: {
                 type?: string;

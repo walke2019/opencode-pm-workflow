@@ -1,5 +1,8 @@
 import { type PluginContext } from "./runtime.js";
-export declare const PmWorkflowPlugin: (ctx: PluginContext, options?: Record<string, unknown>) => Promise<{
+import { type PluginHealthThresholds } from "./hooks-health.js";
+export declare const PmWorkflowPlugin: (ctx: PluginContext, options?: Record<string, unknown> & {
+    health?: Partial<PluginHealthThresholds>;
+}) => Promise<{
     event: ({ event }: {
         event?: {
             type?: string;
@@ -237,7 +240,9 @@ export declare const PmWorkflowPlugin: (ctx: PluginContext, options?: Record<str
 }>;
 declare const _default: {
     id: string;
-    server: (ctx: PluginContext, options?: Record<string, unknown>) => Promise<{
+    server: (ctx: PluginContext, options?: Record<string, unknown> & {
+        health?: Partial<PluginHealthThresholds>;
+    }) => Promise<{
         event: ({ event }: {
             event?: {
                 type?: string;
