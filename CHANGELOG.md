@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.1
+
+### 文档与 OpenCode 接入说明维护
+
+- README 当前版本从旧的 `0.2.0` 对齐到 `0.10.1`，并修正"4 篇主文档"为 README + 4 篇主文档。
+- README 与 `docs/03-使用与运维手册.md` 增加 OpenCode 官方 npm plugin 接入方式：在 `opencode.json` 中声明 `plugin: ["@walke/opencode-pm-workflow"]`；本地 server / TUI 子路径保留为调试方式。
+- `docs/04-待办与演进清单.md` 补充下一步治理建议：OpenCode 接口回归清单、文档版本同步检查、`permission.task` 官方 glob / last-match-wins 兼容性评估、`pmw docs check` 只读命令候选。
+
 ## 0.10.0
 
 ### 新能力：跨项目共享 agent 库（长期路线 §7.3 落地）

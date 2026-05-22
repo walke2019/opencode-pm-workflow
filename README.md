@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`0.2.0`。
+当前发布版本：`0.10.1`。
 
 ## 项目定位
 
@@ -48,7 +48,16 @@ npm install @walke/opencode-pm-workflow
 
 ## OpenCode 接入
 
-在 OpenCode 项目的插件入口中引用 server / TUI 包入口：
+推荐使用 OpenCode 官方 npm plugin 配置方式：
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["@walke/opencode-pm-workflow"]
+}
+```
+
+OpenCode 会在启动时自动安装并缓存 npm plugin。仅在需要本地调试包入口时，再使用本地插件文件引用 server / TUI 子路径：
 
 ```ts
 // plugins/pm-workflow-plugin.ts
@@ -64,10 +73,11 @@ export { default } from "@walke/opencode-pm-workflow/tui";
 
 ## 当前文档结构
 
-本项目的现行文档已收敛为以下 4 篇主文档：
+本项目的现行文档已收敛为 README + 4 篇主文档：
 
 | 文档 | 内容 |
 | --- | --- |
+| [`README.md`](README.md) | 项目入口、安装接入、发布验证 |
 | [`docs/01-技术架构.md`](docs/01-技术架构.md) | 核心任务域、分层职责、调度语义、agent 定义来源、架构图 |
 | [`docs/02-业务功能与任务流转.md`](docs/02-业务功能与任务流转.md) | 阶段模型、dispatch、lane 业务语义、auto-continue、业务流程图 |
 | [`docs/03-使用与运维手册.md`](docs/03-使用与运维手册.md) | 安装接入、配置、常用工具、诊断、发布、FAQ |
@@ -97,6 +107,7 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-22 | 0.10.1 | README 对齐当前版本、5 篇文档结构与 OpenCode npm plugin 接入方式 |
 | 2026-05-09 | 0.2.0 | Agent 命名简化：弃用三国角色名，统一为通用短名称；合并 QA+Writer 为 pm_reviewer；移除硬编码模型 ID |
 | 2026-05-09 | 0.1.18 | 文档收敛：将 30+ 篇分散文档合并为 5 篇主文档，删除历史 spec/plan/migration 文档，统一流程图到主文档正文 |
 | 2026-05-08 | 0.1.17 | 新增 researcher 路由、Agent Definition Registry、compact handoff、mode-aware dispatch |
