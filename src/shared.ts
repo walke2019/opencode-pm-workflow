@@ -174,6 +174,18 @@ export {
   renderHistoryReportHtml,
 } from "./core/report.js";
 export type { ReportSummary } from "./core/report.js";
+export {
+  doctorAgentLibrary,
+  listAgentLibrary,
+  promoteProjectAgentToGlobal,
+} from "./core/agent-library.js";
+export type {
+  AgentLibraryDoctorReport,
+  AgentLibraryEntry,
+  AgentLibraryFinding,
+  AgentLibraryReport,
+  PromoteAgentResult,
+} from "./core/agent-library.js";
 export type { WorkflowDocName } from "./core/project.js";
 export type {
   AgentDefinitionSource,

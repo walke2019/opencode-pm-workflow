@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.10.0
+
+### 新能力：跨项目共享 agent 库（长期路线 §7.3 落地）
+
+- 新增 `src/core/agent-library.ts` 模块（240+ 行）：
+  - `listAgentLibrary` — 列出项目级 + 全局级 agent，识别"项目覆盖全局"关系；同名时项目优先，不重复列。
+  - `promoteProjectAgentToGlobal` — 把项目级 agent 复制到 `~/.config/opencode/agents/`；默认拒绝覆盖、不删原文件，需显式 `overwrite: true` 才覆盖。
+  - `doctorAgentLibrary` — 检查所有 agent 的 frontmatter 完整性，返回 4 类 finding（缺 description / mode / model / primary 缺 permission.task），分级（warn / info）+ 聚合计数 + 明细。
+- `pmw` CLI 新增 `agents` 子命令：
+  - `pmw agents list [--json]` — 列 agent 库，标注 shadow 关系与 finding 数
+  - `pmw agents promote <id> [--overwrite] [--json]` — 复制项目级 agent 到全局
+  - `pmw agents doctor [--json]` — 跑完整性检查
+  - 全部支持 `--cwd <path>` 指定项目目录；`XDG_CONFIG_HOME` 环境变量隔离全局目录（测试与多账户场景友好）
+
+### 设计权衡
+
+- **不引入网络 marketplace**：这是本地工具增强，不是中心化分发。
+- **不实现 rename / delete**：删除是用户决定的事，工具只做安全的复制与诊断。
+- **promote 不删除项目级原文件**：用户可保留 project-level 覆盖版本；让 shadow 关系成为有意识的设计选择。
+- **findings 是建议而不是错误**：`doctor` 命令永远 exit=0，CI 用 `--json` 自行判断 severity 字段做门禁。
+
+### 测试
+
+- 新增 `test/agent-library.test.mjs`：13 组用例，覆盖
+  - `listAgentLibrary`：项目级识别 / shadow 关系 / 同名不重复
+  - `promoteProjectAgentToGlobal`：成功路径 / 项目级不存在 / 全局已有默认拒绝 / overwrite 强制
+  - `doctorAgentLibrary`：聚合计数与明细
+  - CLI 集成：`agents list` / `agents promote` / `agents promote` 缺参 / 未知子命令 / `agents doctor --json`
+- `npm test` 全套 15 个测试绿。
+
+### 修复
+
+- 修复 0.9.0 引入的 CLI 文件结构 bug（`runVerify` 函数体被前次 edit 误删，导致 `node --check` 解析失败）；`scripts/cli/index.mjs` 现已通过 syntax 校验。
+
+### 文档
+
+- CHANGELOG 与 5 篇主文档底部 Change Log 同步。
+- `docs/03-使用与运维手册.md` CLI 安装节增加 `pmw agents` 用法示例。
+- `docs/04-待办与演进清单.md` §7.3 标注为已落地；五个长期路线方向至此全部交付（§7.1 / §7.2 / §7.3）。
+
 ## 0.9.0
 
 ### 新能力：可视化执行回执 dashboard（长期路线 §7.2 落地）

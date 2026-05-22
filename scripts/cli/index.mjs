@@ -15,6 +15,9 @@
  *   pmw state [--json]               输出当前 state.json 摘要
  *   pmw history [--limit N] [--type T] 查询历史事件
  *   pmw report [--out path] [--json] 生成本地 HTML 执行回执 dashboard（默认输出到 .pm-workflow/report.html）
+ *   pmw agents list [--json]         列出项目级 + 全局级 agent，标注覆盖关系
+ *   pmw agents promote <id> [--overwrite]  把项目级 agent 复制到 ~/.config/opencode/agents
+ *   pmw agents doctor [--json]       检查所有 agent 的 frontmatter 完整性
  *   pmw verify                       本地 typecheck + build + smoke + pack-dry-run
  *   pmw --help                       命令一览
  *   pmw --version                    输出 npm 包版本
@@ -85,6 +88,9 @@ function printHelp() {
     "  state                 输出当前 state.json 摘要",
     "  history               查询 history.jsonl 事件",
     "  report                生成本地 HTML 执行回执 dashboard（默认 .pm-workflow/report.html）",
+    "  agents list           列出项目级 + 全局级 agent，标注覆盖关系",
+    "  agents promote <id>   把项目级 agent 复制到 ~/.config/opencode/agents（--overwrite 可覆盖）",
+    "  agents doctor         检查所有 agent 的 frontmatter 完整性",
     "  verify                本地跑 typecheck + build + smoke + pack-dry-run",
     "  --help                显示本帮助",
     "  --version             输出 npm 包版本",
@@ -99,6 +105,9 @@ function printHelp() {
     "  pmw dispatch dry-run '修复登录接口 401'",
     "  pmw history --limit 5 --type fallback.foreground_switch",
     "  pmw report --out ./report.html",
+    "  pmw agents list",
+    "  pmw agents promote pm_lead --overwrite",
+    "  pmw agents doctor --json",
     "  pmw verify",
   ];
   console.log(help.join("\n"));
@@ -260,6 +269,118 @@ async function runReport(args) {
   return 0;
 }
 
+async function runAgentsList(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const report = dist.listAgentLibrary(projectDir);
+
+  if (args.flags.json) {
+    emit(args, report);
+    return 0;
+  }
+
+  const lines = [
+    `pm-workflow agents — ${projectDir}`,
+    `- 项目级: ${report.projectAgents.length}`,
+    `- 全局级: ${report.globalAgents.length}`,
+    `- 项目覆盖全局: ${report.shadowedGlobals.length}${
+      report.shadowedGlobals.length > 0
+        ? ` (${report.shadowedGlobals.join(", ")})`
+        : ""
+    }`,
+    "",
+    "agents:",
+  ];
+  for (const agent of report.agents) {
+    const tags = [agent.source];
+    if (report.shadowedGlobals.includes(agent.id)) tags.push("shadows-global");
+    if (agent.findings.length > 0) tags.push(`${agent.findings.length} finding(s)`);
+    lines.push(
+      `  - ${agent.id} [${tags.join(", ")}] mode=${agent.mode ?? "?"} model=${agent.model ?? "(default)"} taskPerm=${agent.hasTaskPermission ? "yes" : "no"}`,
+    );
+    lines.push(`    ${agent.filePath}`);
+  }
+  console.log(lines.join("\n"));
+  return 0;
+}
+
+async function runAgentsPromote(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const agentId = args._[2];
+
+  if (!agentId) {
+    console.error("用法: pmw agents promote <agent-id> [--overwrite]");
+    return 2;
+  }
+
+  const result = dist.promoteProjectAgentToGlobal({
+    projectDir,
+    agentId,
+    overwrite: Boolean(args.flags.overwrite),
+  });
+
+  if (args.flags.json) {
+    emit(args, result);
+    return result.ok ? 0 : 1;
+  }
+
+  if (!result.ok) {
+    console.error(`pmw agents promote ${agentId} 失败：${result.reason}`);
+    return 1;
+  }
+  console.log(`pmw agents promote ${agentId} ✓`);
+  console.log(`- 来源: ${result.from}`);
+  console.log(`- 目标: ${result.to}`);
+  console.log(`- 覆盖已有: ${result.overwritten ? "是" : "否"}`);
+  return 0;
+}
+
+async function runAgentsDoctor(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const report = dist.doctorAgentLibrary(projectDir);
+
+  if (args.flags.json) {
+    emit(args, report);
+    return report.totalFindings === 0 ? 0 : 0; // findings 是建议，不是错误
+  }
+
+  const lines = [
+    `pm-workflow agents doctor — ${projectDir}`,
+    `- 总 agent 数: ${report.totalAgents}`,
+    `- 含 findings: ${report.agentsWithFindings}`,
+    `- findings 总数: ${report.totalFindings}`,
+  ];
+  if (Object.keys(report.byField).length > 0) {
+    lines.push(
+      `- 按字段: ${Object.entries(report.byField)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(", ")}`,
+    );
+    lines.push(
+      `- 按严重度: ${Object.entries(report.bySeverity)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(", ")}`,
+    );
+  }
+
+  if (report.details.length === 0) {
+    lines.push("", "✓ 所有 agent frontmatter 均完整");
+  } else {
+    lines.push("", "明细:");
+    for (const entry of report.details) {
+      lines.push(`  ${entry.id} (${entry.source})`);
+      for (const finding of entry.findings) {
+        lines.push(`    - [${finding.severity}] ${finding.field}: ${finding.message}`);
+      }
+    }
+  }
+
+  console.log(lines.join("\n"));
+  return 0;
+}
+
 function runVerify() {
   // 直接调用本包的 verify-release 脚本；保留 stdio 流式输出以便 CI 看清。
   try {
@@ -301,6 +422,15 @@ async function main() {
       return await runHistory(args);
     case "report":
       return await runReport(args);
+    case "agents": {
+      const sub = args._[1];
+      if (sub === "list") return await runAgentsList(args);
+      if (sub === "promote") return await runAgentsPromote(args);
+      if (sub === "doctor") return await runAgentsDoctor(args);
+      console.error(`未知 agents 子命令: ${sub ?? "<empty>"}`);
+      console.error("当前支持: pmw agents list | promote <id> | doctor");
+      return 2;
+    }
     case "verify":
       return runVerify();
     default:

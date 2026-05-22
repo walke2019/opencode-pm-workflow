@@ -26,3 +26,4 @@ export { detectFeedbackStopSignal, evaluateAutoContinueGuard, markAutoContinueAb
 export { DEFAULT_HEALTH_THRESHOLDS, _resetPluginActivationGuardForTesting, evaluatePluginHealth, guardPluginActivation, reportPluginHealth, } from "./server/hooks-health.js";
 export { isSubagentAllowedByDeclarativeRouting, parseFrontmatterTaskPermission, resolveAgentTaskRouting, } from "./core/agent-routing.js";
 export { buildHistoryReportSummary, renderHistoryReportHtml, } from "./core/report.js";
+export { doctorAgentLibrary, listAgentLibrary, promoteProjectAgentToGlobal, } from "./core/agent-library.js";
