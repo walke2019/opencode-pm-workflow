@@ -14,6 +14,7 @@
  *   pmw dispatch dry-run [prompt...] dispatch 预演（不执行）
  *   pmw state [--json]               输出当前 state.json 摘要
  *   pmw history [--limit N] [--type T] 查询历史事件
+ *   pmw report [--out path] [--json] 生成本地 HTML 执行回执 dashboard（默认输出到 .pm-workflow/report.html）
  *   pmw verify                       本地 typecheck + build + smoke + pack-dry-run
  *   pmw --help                       命令一览
  *   pmw --version                    输出 npm 包版本
@@ -24,6 +25,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
@@ -82,6 +84,7 @@ function printHelp() {
     "  dispatch dry-run [prompt]  dispatch 预演：不执行，输出推荐 agent / action / 命令",
     "  state                 输出当前 state.json 摘要",
     "  history               查询 history.jsonl 事件",
+    "  report                生成本地 HTML 执行回执 dashboard（默认 .pm-workflow/report.html）",
     "  verify                本地跑 typecheck + build + smoke + pack-dry-run",
     "  --help                显示本帮助",
     "  --version             输出 npm 包版本",
@@ -95,6 +98,7 @@ function printHelp() {
     "  pmw doctor --json",
     "  pmw dispatch dry-run '修复登录接口 401'",
     "  pmw history --limit 5 --type fallback.foreground_switch",
+    "  pmw report --out ./report.html",
     "  pmw verify",
   ];
   console.log(help.join("\n"));
@@ -223,6 +227,39 @@ async function runHistory(args) {
   return 0;
 }
 
+async function runReport(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const { summary, events } = dist.buildHistoryReportSummary(projectDir);
+  const pkg = loadPackageJson();
+  const html = dist.renderHistoryReportHtml({
+    summary,
+    events,
+    packageVersion: pkg.version,
+  });
+
+  if (args.flags.json) {
+    emit(args, summary);
+    return 0;
+  }
+
+  const outPath = args.options.out
+    ? resolve(String(args.options.out))
+    : join(projectDir, ".pm-workflow", "report.html");
+
+  writeFileSync(outPath, html, "utf-8");
+  console.log(`pm-workflow 执行回执 dashboard 已生成`);
+  console.log(`- 项目: ${projectDir}`);
+  console.log(`- 事件数: ${summary.totalEvents}`);
+  console.log(`- Dispatch: ${summary.dispatchCount}（失败 ${summary.dispatchFailures}）`);
+  console.log(`- Fallback 切换: ${summary.fallbackSwitches}`);
+  console.log(`- Auto-continue 链: ${summary.autoContinueChains} / 步: ${summary.autoContinueSteps} / 中止: ${summary.autoContinueAborted}`);
+  console.log(`- Routing 拒绝: ${summary.routingDenied}`);
+  console.log(`- 输出: ${outPath}`);
+  console.log(`  在浏览器中打开即可查看（不联网，不上传）`);
+  return 0;
+}
+
 function runVerify() {
   // 直接调用本包的 verify-release 脚本；保留 stdio 流式输出以便 CI 看清。
   try {
@@ -262,6 +299,8 @@ async function main() {
       return await runState(args);
     case "history":
       return await runHistory(args);
+    case "report":
+      return await runReport(args);
     case "verify":
       return runVerify();
     default:

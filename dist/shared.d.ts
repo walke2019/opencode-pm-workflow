@@ -31,6 +31,8 @@ export { DEFAULT_HEALTH_THRESHOLDS, _resetPluginActivationGuardForTesting, evalu
 export type { PluginActivationGuardResult, PluginHealthFinding, PluginHealthInputs, PluginHealthReport, PluginHealthThresholds, } from "./server/hooks-health.js";
 export { isSubagentAllowedByDeclarativeRouting, parseFrontmatterTaskPermission, resolveAgentTaskRouting, } from "./core/agent-routing.js";
 export type { AgentTaskPermission, ResolvedAgentRouting, TaskPermissionValue, } from "./core/agent-routing.js";
+export { buildHistoryReportSummary, renderHistoryReportHtml, } from "./core/report.js";
+export type { ReportSummary } from "./core/report.js";
 export type { WorkflowDocName } from "./core/project.js";
 export type { AgentDefinitionSource, AgentDirectoryKind, AgentStatsCard, AutomationCapability, AgentInvocationMode, AutomationMode, DispatchCommand, DispatchAction, DispatchAgent, DispatchInvocationSemantics, DispatchPlan, DocsStorageMode, HandoffPacket, ExecutionAggregationStrategy, ExecutionMode, ExecutionPlan, ExecutionPlanStep, ExecutableAgent, EvaluationResult, ExecutionReceipt, FallbackStatus, PermissionKey, PhaseStatus, ResolveWorkflowAgentInput, ReleaseStatus, ResolvedAgentDefinition, RetryStatus, ReviewStatus, TaskAnalysis, TaskStatus, WorkflowConfig, WorkflowHistoryEvent, WorkflowStage, WorkflowState, } from "./core/types.js";
 export type { ExecutionTopology, PmCommandLane, PmLaneContext, TodoPolicySummary, TopologySummary, } from "./commands/types.js";

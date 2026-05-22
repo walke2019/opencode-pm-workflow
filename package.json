@@ -1,6 +1,6 @@
 {
   "name": "@walke/opencode-pm-workflow",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "pm-workflow 的可发布 OpenCode 插件包实现（server + tui + shared package-first implementation）。",
   "type": "module",
   "private": false,
@@ -63,7 +63,7 @@
     "prepare-publish": "npm run typecheck && npm run build",
     "verify-release": "npm run prepare-publish && npm run smoke && npm run pack-dry-run",
     "prepublishOnly": "npm run verify-release",
-    "test": "node test/workflow-redesign.test.mjs && node test/dispatch-quality-loop.test.mjs && node test/model-inventory.test.mjs && node test/command-lane-analysis.test.mjs && node test/mode-aware-dispatch.test.mjs && node test/topology-summary.test.mjs && node test/fallback-runtime.test.mjs && node test/agent-stats.test.mjs && node test/auto-continue.test.mjs && node test/hooks-health.test.mjs && node test/permission-task-routing.test.mjs && node test/cli.test.mjs"
+    "test": "node test/workflow-redesign.test.mjs && node test/dispatch-quality-loop.test.mjs && node test/model-inventory.test.mjs && node test/command-lane-analysis.test.mjs && node test/mode-aware-dispatch.test.mjs && node test/topology-summary.test.mjs && node test/fallback-runtime.test.mjs && node test/agent-stats.test.mjs && node test/auto-continue.test.mjs && node test/hooks-health.test.mjs && node test/permission-task-routing.test.mjs && node test/cli.test.mjs && node test/report.test.mjs"
   },
   "keywords": [
     "opencode",

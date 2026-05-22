@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.9.0
+
+### 新能力：可视化执行回执 dashboard（长期路线 §7.2 落地）
+
+- 新增 `src/core/report.ts` 模块：
+  - `buildHistoryReportSummary` — 从 history.jsonl 计算关键指标（dispatch 总数 / 失败数 / fallback 切换 / auto-continue 链与步与中止 / routing 拒绝）+ 按类型分组。
+  - `renderHistoryReportHtml` — 生成单文件 HTML 报告。嵌入内联 CSS（深色主题）+ vanilla JS 筛选；不引外链字体、不引前端框架。
+  - 内置 XSS 转义：事件 JSON 嵌入 script 标签中时 `<` 自动 → `\u003c`，恶意 HTML 不会被解释。
+- `pmw` CLI 新增 `report` 子命令：
+  - 默认输出到 `.pm-workflow/report.html`
+  - `--out <path>` 自定义路径
+  - `--json` 仅输出 summary 不写文件，便于 CI 消费
+- 报告体积：~8 KB（空项目）/ 与事件数量线性相关。
+
+### 设计权衡
+
+- **不开本地 HTTP server / 不开端口 / 不实时刷新**：单文件静态 HTML 已够用，引入 server 增加运维面而无对应价值。
+- **不上传任何数据**：所有计算在本地完成；浏览器打开报告也不发任何外部请求。
+- **嵌入事件原文为 `<script>` 中常量**：与"上传到远端"严格区分；离线查看的最简形态。
+
+### 测试
+
+- 新增 `test/report.test.mjs`：6 组用例，覆盖空 history / 分类计数 / HTML 关键节点 / XSS 转义 / CLI 默认输出 / `--out` 自定义 / `--json` 不写文件。
+- `npm test` 全套 14 个测试绿。
+
+### 文档
+
+- CHANGELOG 与 5 篇主文档底部 Change Log 同步。
+- `docs/03-使用与运维手册.md` CLI 安装节增加 `pmw report` 用法示例。
+- `docs/04-待办与演进清单.md` §7.2 标注为已落地。
+
 ## 0.8.0
 
 ### 新能力：pmw CLI 子命令（长期路线 §7.1 落地）

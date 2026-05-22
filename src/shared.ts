@@ -169,6 +169,11 @@ export type {
   ResolvedAgentRouting,
   TaskPermissionValue,
 } from "./core/agent-routing.js";
+export {
+  buildHistoryReportSummary,
+  renderHistoryReportHtml,
+} from "./core/report.js";
+export type { ReportSummary } from "./core/report.js";
 export type { WorkflowDocName } from "./core/project.js";
 export type {
   AgentDefinitionSource,

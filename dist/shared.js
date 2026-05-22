@@ -25,3 +25,4 @@ export { buildForegroundFallbackPlan, detectFallbackTrigger, pickNextFallbackMod
 export { detectFeedbackStopSignal, evaluateAutoContinueGuard, markAutoContinueAborted, markAutoContinueChainStart, recordAutoContinueStep, } from "./core/auto-continue.js";
 export { DEFAULT_HEALTH_THRESHOLDS, _resetPluginActivationGuardForTesting, evaluatePluginHealth, guardPluginActivation, reportPluginHealth, } from "./server/hooks-health.js";
 export { isSubagentAllowedByDeclarativeRouting, parseFrontmatterTaskPermission, resolveAgentTaskRouting, } from "./core/agent-routing.js";
+export { buildHistoryReportSummary, renderHistoryReportHtml, } from "./core/report.js";
