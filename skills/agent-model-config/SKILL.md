@@ -31,6 +31,11 @@ Use this Skill when starting or onboarding a project and the user asks to config
 6. Before writing files, present the detected project type, proposed agents, and proposed model mapping. Ask whether the user wants changes unless the user has already explicitly requested automatic creation/update.
 7. Preserve existing user content. Edit/merge instead of overwriting when files already exist.
 8. If the user provides a model template (`pm-workflow.models.example.json`, `.pm-workflow/model-profile.json`, or pasted JSON with `default_model` / `agent_models`), treat it as the preferred source of intent. Read it, validate models, then merge into pm-workflow config.
+9. The template's `agent_profiles` block describes each agent's role, `model_traits`, `fallback_traits`, and `model_examples`. Use it to:
+   - Validate user-filled `agent_models` / `agent_fallback_models` against the trait expectations and the global OpenCode model inventory.
+   - When a field is empty or the chosen model clearly violates `model_traits` (e.g. picking a coding-only model for `pm_lead`), present 1-3 candidates from `model_examples` that exist in the global inventory and ask the user to confirm.
+   - Never silently substitute a different model. Always confirm with the user.
+10. `agent_profiles` is read-only metadata. Do not write it to `pm-workflow.config.json` or `agents.definitions.*`.
 
 ## Project type detection
 
@@ -48,6 +53,21 @@ Inspect the target project:
 | both `.opencode/` and `.claude/` | mixed OpenCode + Claude Code project |
 
 Classify as one of: `opencode-extension`, `opencode`, `claude-code`, `mixed`, or `plain`.
+
+## Built-in pm agent profiles
+
+The pm-workflow built-in agents have stable roles. When the user fills the model template, **always cross-check** the chosen model against these role requirements before writing config:
+
+| Agent | Mode | Role | Model traits to look for | Fallback traits |
+| --- | --- | --- | --- | --- |
+| `pm_lead` | primary | 主协调官：分析决策、规划分派、收敛验收 | 强推理、长上下文、决策稳健、中文优先 | 低成本但保留中文与结构化输出 |
+| `pm_advisor` | primary | 拆解顾问：把复杂任务拆成清晰步骤、识别风险 | 结构化拆解、风险识别、中文优先 | 低成本但结构化输出不丢 |
+| `pm_backend` | subagent | 后端执行：API、数据库、服务、性能 | 编码能力强、调试推理、理解复杂依赖 | 仍能写出可运行代码、保留类型/接口 |
+| `pm_frontend` | subagent | 前端执行：页面、组件、交互、响应式、可访问性 | UI 直觉、CSS/样式准确、组件拆分清晰 | 保留响应式与可访问性 |
+| `pm_reviewer` | subagent (hidden) | 审查与文档：测试、回归、code review、发布说明 | 细致审查、找 bug/安全问题、文档语感 | 仍能完成检查表与发布说明 |
+| `pm_researcher` | subagent (hidden) | 调研：资料检索、官方方案、事实核查 | 检索能力、概要提炼、中英双语 | 保留检索与提炼能力 |
+
+If the user picks a model that violates these traits (e.g. choosing a coding-only model for `pm_lead`, or a heavy reasoning model for `pm_researcher` when budget matters), surface 1-3 alternatives from the global inventory and ask the user to confirm. Never silently substitute.
 
 ## Default role mapping
 

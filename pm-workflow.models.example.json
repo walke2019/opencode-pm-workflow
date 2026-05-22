@@ -1,8 +1,68 @@
 {
   "$schema": "https://unpkg.com/@walke/opencode-pm-workflow@latest/pm-workflow.models.schema.json",
+  "_doc": "pm-workflow 模型配置模板。用户只需要按 agent_profiles 中的角色画像填好 agent_models / agent_fallback_models，然后让 AI 读取本文件，AI 会从 OpenCode 全局 provider.*.models 校验并合并到 pm-workflow 配置。",
+
   "write_target": "global",
   "default_model": "opencode/gpt-5",
   "default_fallback_model": "opencode/gpt-5-mini",
+
+  "agent_profiles": {
+    "pm_lead": {
+      "role": "主协调官（primary）",
+      "description": "分析决策、规划分派、收敛验收。是会话的主入口；其他 agent 都由它调度。",
+      "model_traits": ["强推理", "长上下文", "决策稳健", "中文优先"],
+      "fallback_traits": ["低成本", "保留中文", "至少能完成结构化输出"],
+      "model_examples": ["opencode/gpt-5", "kr/claude-sonnet-4.5", "cx/gpt-5.5"],
+      "fallback_examples": ["opencode/gpt-5-mini", "kr/claude-haiku-4.5"],
+      "tips": "不要选纯编码型模型；它要做需求压缩与跨角色编排。"
+    },
+    "pm_advisor": {
+      "role": "拆解顾问（primary）",
+      "description": "把复杂任务拆成清晰步骤，识别风险，给出推进顺序。比 pm_lead 更聚焦于'怎么拆'。",
+      "model_traits": ["结构化拆解", "风险识别", "中文优先"],
+      "fallback_traits": ["低成本", "结构化输出不丢"],
+      "model_examples": ["opencode/gpt-5", "kr/claude-sonnet-4.5"],
+      "fallback_examples": ["opencode/gpt-5-mini", "kr/claude-haiku-4.5"],
+      "tips": "可以与 pm_lead 共用同一模型；预算紧张时可降一档。"
+    },
+    "pm_backend": {
+      "role": "后端执行（subagent）",
+      "description": "API、数据库、服务逻辑、性能优化。代码质量是首要指标。",
+      "model_traits": ["编码能力强", "调试推理", "理解复杂依赖"],
+      "fallback_traits": ["仍能写出可运行代码", "回退后不丢类型/接口"],
+      "model_examples": ["opencode/gpt-5", "cx/gpt-5.3-codex", "kr/claude-sonnet-4.5"],
+      "fallback_examples": ["opencode/gpt-5-mini", "kr/claude-haiku-4.5"],
+      "tips": "优先选编码强化版（codex 类）；普通通用模型也可接受。"
+    },
+    "pm_frontend": {
+      "role": "前端执行（subagent）",
+      "description": "页面、组件、交互、响应式、安全区、可访问性。",
+      "model_traits": ["UI 直觉", "CSS / 样式准确", "组件拆分清晰"],
+      "fallback_traits": ["保留响应式与可访问性能力"],
+      "model_examples": ["opencode/gpt-5", "antigravity/gemini-3-flash-preview", "kr/claude-sonnet-4.5"],
+      "fallback_examples": ["opencode/gpt-5-mini", "kr/claude-haiku-4.5"],
+      "tips": "如果项目重视视觉与设计图理解，可优先 Gemini 系列（多模态）。"
+    },
+    "pm_reviewer": {
+      "role": "审查与文档（subagent，hidden）",
+      "description": "测试、回归风险、代码审查、发布说明、变更摘要、用户可读文档。",
+      "model_traits": ["细致审查", "找 bug / 安全问题", "文档语感"],
+      "fallback_traits": ["仍能完成检查表与发布说明"],
+      "model_examples": ["opencode/gpt-5-mini", "kr/claude-sonnet-4.5", "kr/claude-haiku-4.5"],
+      "fallback_examples": ["opencode/gpt-5", "kr/claude-sonnet-4.5"],
+      "tips": "可降一档省钱；review 与文档对推理深度要求低于 lead/backend。"
+    },
+    "pm_researcher": {
+      "role": "调研（subagent，hidden）",
+      "description": "资料检索、官方方案调研、事实核查、备选方案比较；不直接动代码。",
+      "model_traits": ["检索能力", "概要提炼", "中英双语"],
+      "fallback_traits": ["保留检索与提炼能力"],
+      "model_examples": ["opencode/gpt-5-mini", "kr/claude-haiku-4.5"],
+      "fallback_examples": ["opencode/gpt-5", "kr/claude-sonnet-4.5"],
+      "tips": "纯研究角色，token 消耗大但推理深度要求中等；省钱档优先。"
+    }
+  },
+
   "agent_models": {
     "pm_lead": "opencode/gpt-5",
     "pm_advisor": "opencode/gpt-5",
@@ -11,6 +71,7 @@
     "pm_reviewer": "opencode/gpt-5-mini",
     "pm_researcher": "opencode/gpt-5-mini"
   },
+
   "agent_fallback_models": {
     "pm_lead": "opencode/gpt-5-mini",
     "pm_advisor": "opencode/gpt-5-mini",
@@ -19,12 +80,17 @@
     "pm_reviewer": "opencode/gpt-5",
     "pm_researcher": "opencode/gpt-5"
   },
+
   "ai_apply_instructions": [
-    "读取本文件后，先从全局 OpenCode 配置 ~/.config/opencode/opencode.json 的 provider.*.models 获取可用模型清单。",
-    "校验 default_model、default_fallback_model、agent_models、agent_fallback_models 中的模型 ID，不要臆造模型。",
-    "write_target=global 时写入 ~/.config/opencode/pm-workflow.config.json；write_target=project 时写入当前项目 .pm-workflow/config.json。",
-    "把每个 agent 的主模型写入 agents.definitions.<agent>.model。",
-    "把每个 agent 的回退模型写入 agents.definitions.<agent>.fallback_models，同时同步到 fallback.chains.<agent>。",
-    "保留已有配置字段，只合并模型相关字段。"
+    "1. 读取本文件后，先从全局 OpenCode 配置 ~/.config/opencode/opencode.json 的 provider.*.models 获取可用模型清单。",
+    "2. 对照 agent_profiles 中每个 agent 的 model_traits 与 fallback_traits，校验 agent_models / agent_fallback_models 中的模型 ID 是否存在于全局清单。",
+    "3. 如果用户填的某个 agent 模型不存在或与 model_traits 严重不符，给出 1-3 个候选（基于 model_examples），让用户选；不要自己默默替换。",
+    "4. 如果某个 agent 模型字段为空，按 model_traits + 全局清单自动推荐 1 个最合适的；并向用户确认后再写入。",
+    "5. write_target=global 时写入 ~/.config/opencode/pm-workflow.config.json；write_target=project 时写入当前项目 .pm-workflow/config.json。",
+    "6. 把每个 agent 的主模型写入 agents.definitions.<agent>.model。",
+    "7. 把每个 agent 的回退模型写入 agents.definitions.<agent>.fallback_models（数组，仅含 1 项），同时同步到 fallback.chains.<agent>（数组，仅含 1 项）。",
+    "8. default_model / default_fallback_model 仅作为 agent_models / agent_fallback_models 中某个 agent 字段缺省时的兜底；不直接写顶层。",
+    "9. agent_profiles 是只读说明，不写入 pm-workflow 配置；其作用是帮助用户和 AI 选模型。",
+    "10. 保留已有配置字段，只合并模型相关字段；不要覆盖用户的 prompt / permission / mode 等定制。"
   ]
 }

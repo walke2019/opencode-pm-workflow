@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.11.3
+
+### 优化：模型配置模板补全 agent 角色画像
+
+- `pm-workflow.models.example.json` 新增 `agent_profiles` 段，对 6 个内置 pm agent 分别给出：
+  - `role`：角色一句话定位（含 mode 标识）
+  - `description`：职责边界
+  - `model_traits`：主模型应具备的能力标签（强推理 / 编码 / UI 直觉 / 检索 等）
+  - `fallback_traits`：回退模型应保留的最低能力
+  - `model_examples` / `fallback_examples`：可选模型示例（仅参考，仍以全局 OpenCode 清单为准）
+  - `tips`：选模型的提示，例如"不要给 pm_lead 选纯编码型模型"
+- `agent_profiles` 是只读元数据，AI 校验时使用，**不**写入 `pm-workflow.config.json`。
+- `ai_apply_instructions` 加强为 10 条规则，明确 AI 在 agent_models 缺失或模型不符 traits 时**给候选让用户确认、不静默替换**。
+- 同步更新：
+  - `skills/agent-model-config/SKILL.md`：新增 hard rule 9-10 与"Built-in pm agent profiles"说明表。
+  - `README.md`：模板段引用 `agent_profiles` 角色说明。
+  - `docs/03-使用与运维手册.md` "模型配置"FAQ：用 6 行表格描述每个 agent 的主模型 / 回退模型应具备的能力，替换原 JSON 示例。
+
+### 测试
+
+- `npm test` 全套 15 个测试文件继续全绿。
+- `pmw docs check` 22/22 通过。
+
 ## 0.11.2
 
 ### 新能力：对话式模型配置模板
