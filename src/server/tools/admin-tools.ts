@@ -11,7 +11,7 @@ import {
   type AutomationMode,
   type PermissionKey,
 } from "../../shared.js";
-import { buildReviewGateSummary, buildStageSummary } from "../runtime.js";
+import { buildReviewGateSummary, buildStageSummary, resolveSafeProjectDir } from "../runtime.js";
 
 const PERMISSION_KEYS: PermissionKey[] = [
   "allow_execute_tools",
@@ -33,7 +33,7 @@ export function createAdminTools() {
       args: {},
       async execute(_args, context) {
         const summary = buildStateSummary(
-          context.worktree || context.directory,
+          resolveSafeProjectDir(context.worktree, context.directory, process.cwd()),
         );
         return JSON.stringify(
           {
@@ -56,7 +56,7 @@ export function createAdminTools() {
       args: {},
       async execute(_args, context) {
         const summary = buildStageSummary(
-          context.worktree || context.directory,
+          resolveSafeProjectDir(context.worktree, context.directory, process.cwd()),
         );
         return [
           "pm-workflow 项目状态",
@@ -74,7 +74,7 @@ export function createAdminTools() {
       description: "检查 pm-workflow 的 spec/plan/review/release gate 状态。",
       args: {},
       async execute(_args, context) {
-        const projectPath = context.worktree || context.directory;
+        const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
         const gates = buildGateSummary(projectPath);
         return [
           "pm-workflow gates 状态",
@@ -93,7 +93,7 @@ export function createAdminTools() {
       args: {},
       async execute(_args, context) {
         const summary = buildReviewGateSummary(
-          context.worktree || context.directory,
+          resolveSafeProjectDir(context.worktree, context.directory, process.cwd()),
         );
         return [
           "pm-workflow review gate 状态",
@@ -109,7 +109,7 @@ export function createAdminTools() {
         sessionID: tool.schema.string().describe("要写入的 session_id"),
       },
       async execute(args, context) {
-        const projectPath = context.worktree || context.directory;
+        const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
         const state = setPreferredSession(projectPath, args.sessionID);
         return [
           "pm-workflow preferred session 已更新",
@@ -123,7 +123,7 @@ export function createAdminTools() {
       args: {},
       async execute(_args, context) {
         const summary = buildStageSummary(
-          context.worktree || context.directory,
+          resolveSafeProjectDir(context.worktree, context.directory, process.cwd()),
         );
         return [
           "pm-workflow 下一步建议",
@@ -137,7 +137,7 @@ export function createAdminTools() {
         "基于 pm-workflow 当前 state/gates 返回推荐 agent、动作和阻塞原因。",
       args: {},
       async execute(_args, context) {
-        const projectPath = context.worktree || context.directory;
+        const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
         const plan = buildDispatchPlan(projectPath);
         return [
           "pm-workflow 调度建议",
@@ -168,7 +168,7 @@ export function createAdminTools() {
           .describe("可选，返回条数，默认 20，最大 100"),
       },
       async execute(args, context) {
-        const projectPath = context.worktree || context.directory;
+        const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
         const events = queryHistory(projectPath, {
           type: args.type || undefined,
           action: args.action || undefined,
@@ -189,7 +189,7 @@ export function createAdminTools() {
       args: {},
       async execute(_args, context) {
         const config = readWorkflowConfig(
-          context.worktree || context.directory,
+          resolveSafeProjectDir(context.worktree, context.directory, process.cwd()),
         );
         return [
           "pm-workflow config",
@@ -203,7 +203,7 @@ export function createAdminTools() {
       description: "查看 pm-workflow permissions 策略当前状态。",
       args: {},
       async execute(_args, context) {
-        const projectPath = context.worktree || context.directory;
+        const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
         const permissions = readWorkflowConfig(projectPath).permissions;
         return [
           "pm-workflow permissions",
@@ -240,7 +240,7 @@ export function createAdminTools() {
           ].join("\n");
         }
 
-        const projectPath = context.worktree || context.directory;
+        const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
         const next = setPermission(
           projectPath,
           args.key as PermissionKey,
@@ -270,7 +270,7 @@ export function createAdminTools() {
           ].join("\n");
         }
 
-        const projectPath = context.worktree || context.directory;
+        const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
         const next = setAutomationMode(
           projectPath,
           args.mode as AutomationMode,

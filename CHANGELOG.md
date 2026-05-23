@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.0.0-rc.4
+
+### 修复：OpenCode 启动时插件加载失败（关键 bug）
+
+**根因**：1.0.0-rc.2 / rc.3 在 OpenCode 内启动时一直 abort，因为 `getProjectDir` 兜底逻辑不够强：
+
+```
+ERROR service=plugin path=@walke/opencode-pm-workflow@rc 
+      error=ENOENT: no such file or directory, mkdir '/.pm-workflow' 
+      failed to load plugin
+```
+
+OpenCode server 在 system service 模式下传给 plugin 的 `ctx.worktree` / `ctx.directory` 可能是空字符串，`process.cwd()` 也可能是 `/`。旧版 `ctx.worktree || ctx.directory || process.cwd()` 会得到 `/`，后续 `mkdir(join("/", ".pm-workflow"))` 在系统根目录写无权限，立刻 ENOENT。
+
+整个 plugin 完全没起来——dispatch / Gate / Auto-continue / 主题 badge 在 OpenCode 内全部失效（即便用户已经 npm install plugin）。
+
+**修复**：
+
+- **`getProjectDir` 替换为 `resolveSafeProjectDir`**（src/server/runtime.ts）：跳过空字符串、纯空白、`/`、`\`；候选都不可用时回退到 `~/.cache/pm-workflow/global`；HOME 也异常时回退到 `$TMPDIR/pm-workflow-global`。**永不返回 `/`**
+- **plugin 入口 try/catch 防御**（src/server/plugin.ts）：bootstrap（seedConfig / migrateLegacy / syncState）抛错时不让插件 abort，改用 fallback projectDir 重 seed config，保证 tools 注册 + skill 同步能完成
+- **Skill auto-install 移到激活判断之外**（src/server/plugin.ts）：之前在 `if (activation === "first")` 分支内，前置代码任何异常都让 skill 装不上；现在每次激活都跑（幂等，相同内容跳过；用户改过不覆盖）
+- **TUI plugin 同步修复**（src/tui/plugin.ts）：相同的兜底逻辑，避免 OpenCode TUI 在 cwd === "/" 时撞同问题
+- **28 处 tool 入口替换为 `resolveSafeProjectDir`**（src/server/tools/*.ts）：之前 `context.worktree || context.directory` 也有相同隐患，统一用 helper
+
+### 新增公开 API
+
+- `resolveSafeProjectDir(...candidates)`（server 内部使用）
+
+### 测试
+
+- `test/runtime-project-dir.test.mjs` 13 个用例覆盖：优先候选、跳过空字符串/根目录/无效字符、HOME 回退、TMPDIR 回退、永不返回 "/"
+- 总计 19 个测试文件，全部通过
+
+### 影响
+
+- **用户**：升级到 1.0.0-rc.4 + 清 OpenCode cache 后，OpenCode log 中应不再出现 `failed to load plugin`，`pm-workflow plugin loaded` 日志正常出现
+- **OpenCode 内对话式入口**：AI 真正能识别 skill 并调用 `pmw agents theme apply` 等命令（之前那次能用是因为我们手动复制了 skill md 文件）
+- **dispatch / Gate / Auto-continue / 主题 badge**：在 OpenCode 内**真正生效**
+
 ## 1.0.0-rc.3
 
 ### 新增：Skill auto-install

@@ -1,12 +1,13 @@
 import { tool } from "@opencode-ai/plugin";
 import { buildExecutionSummary, getExecutionReceiptById, getExecutionReceipts, getLastExecutionReceipt, } from "../../shared.js";
+import { resolveSafeProjectDir } from "../runtime.js";
 export function createExecutionTools() {
     return {
         "pm-get-last-execution": tool({
             description: "查询最近一次 execution receipt。",
             args: {},
             async execute(_args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const receipt = getLastExecutionReceipt(projectPath);
                 if (!receipt) {
                     return "pm-workflow 最近执行回执\n- 无 execution receipt";
@@ -40,7 +41,7 @@ export function createExecutionTools() {
                     .describe('可选，传 "true" 或 "false" 按成功/失败过滤'),
             },
             async execute(args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const receipts = getExecutionReceipts(projectPath, {
                     limit: Number.parseInt(args.limit || "10", 10) || 10,
                     action: args.action || undefined,
@@ -66,7 +67,7 @@ export function createExecutionTools() {
                     .describe("execution.receipt 的 execution_id"),
             },
             async execute(args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const receipt = getExecutionReceiptById(projectPath, args.execution_id);
                 if (!receipt) {
                     return [
@@ -92,7 +93,7 @@ export function createExecutionTools() {
                     .describe("可选，统计最近 N 条 receipt，默认 10，最大 100"),
             },
             async execute(args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const summary = buildExecutionSummary(projectPath, Number.parseInt(args.limit || "10", 10) || 10);
                 return [
                     "pm-workflow execution summary",

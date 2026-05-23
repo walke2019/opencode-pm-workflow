@@ -1,6 +1,6 @@
 import { tool } from "@opencode-ai/plugin";
 import { evaluateDispatchResult, buildConfirmGate, buildFallbackCommand, buildDispatchCommand, buildExecutionPlan, buildExecutionGate, buildFallbackPlan, buildPermissionGate, buildRetryPlan, buildStateSummary, recordExecutionReceipt, recordFallbackExecution, setLastAgent, } from "../../shared.js";
-import { buildAutoContinueDispatch, executeDispatchCommand, } from "../runtime.js";
+import { buildAutoContinueDispatch, executeDispatchCommand, resolveSafeProjectDir, } from "../runtime.js";
 import { readWorkflowConfig } from "../../core/config.js";
 import { detectFeedbackStopSignal, evaluateAutoContinueGuard, markAutoContinueAborted, markAutoContinueChainStart, recordAutoContinueStep, } from "../../core/auto-continue.js";
 export function collectAutoContinueDispatches({ projectPath, prompt, firstEvaluation, subsequentEvaluations = [], maxAutoSteps = 2, }) {
@@ -304,7 +304,7 @@ export function createDispatchTools() {
                     .describe("可选，自定义要交给推荐 agent 的任务描述"),
             },
             async execute(args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const dispatch = buildDispatchCommand(projectPath, args.prompt);
                 setLastAgent(projectPath, dispatch.recommendedAgent);
                 return [
@@ -333,7 +333,7 @@ export function createDispatchTools() {
                     .describe("可选，自定义 dry-run prompt"),
             },
             async execute(args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const dispatch = buildDispatchCommand(projectPath, args.prompt);
                 const executionPlan = buildExecutionPlan(projectPath, args.prompt);
                 const permission = buildPermissionGate(projectPath, {
@@ -390,7 +390,7 @@ export function createDispatchTools() {
                     .describe('执行确认；只有传入 "YES" 才会真正执行'),
             },
             async execute(args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const dispatch = buildDispatchCommand(projectPath, args.prompt);
                 const beforeState = buildStateSummary(projectPath);
                 const confirm = buildConfirmGate(projectPath, args.confirm);
@@ -496,7 +496,7 @@ export function createDispatchTools() {
                     .describe("可选，dry-run prompt"),
             },
             async execute(args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const maxSteps = Math.max(1, Math.min(5, Number.parseInt(args.steps, 10) || 1));
                 const outputs = [
                     "pm-workflow dry-run loop",
@@ -548,7 +548,7 @@ export function createDispatchTools() {
                     .describe('执行确认；只有传入 "YES" 才会真正执行'),
             },
             async execute(args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const confirm = buildConfirmGate(projectPath, args.confirm);
                 if (!confirm.allowed) {
                     return [

@@ -1,6 +1,6 @@
 import { tool } from "@opencode-ai/plugin";
 import { buildDispatchPlan, buildGateSummary, buildStateSummary, queryHistory, readWorkflowConfig, setAutomationMode, setPermission, setPreferredSession, } from "../../shared.js";
-import { buildReviewGateSummary, buildStageSummary } from "../runtime.js";
+import { buildReviewGateSummary, buildStageSummary, resolveSafeProjectDir } from "../runtime.js";
 const PERMISSION_KEYS = [
     "allow_execute_tools",
     "allow_repair_tools",
@@ -18,7 +18,7 @@ export function createAdminTools() {
             description: "返回 pm-workflow 当前状态文件中的核心状态快照。",
             args: {},
             async execute(_args, context) {
-                const summary = buildStateSummary(context.worktree || context.directory);
+                const summary = buildStateSummary(resolveSafeProjectDir(context.worktree, context.directory, process.cwd()));
                 return JSON.stringify({
                     stage: summary.stage,
                     stageLabel: summary.stageLabel,
@@ -35,7 +35,7 @@ export function createAdminTools() {
             description: "检查当前项目所处的 pm-workflow 阶段，并返回下一步建议。",
             args: {},
             async execute(_args, context) {
-                const summary = buildStageSummary(context.worktree || context.directory);
+                const summary = buildStageSummary(resolveSafeProjectDir(context.worktree, context.directory, process.cwd()));
                 return [
                     "pm-workflow 项目状态",
                     `- Product Spec: ${summary.productSpec}`,
@@ -52,7 +52,7 @@ export function createAdminTools() {
             description: "检查 pm-workflow 的 spec/plan/review/release gate 状态。",
             args: {},
             async execute(_args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const gates = buildGateSummary(projectPath);
                 return [
                     "pm-workflow gates 状态",
@@ -70,7 +70,7 @@ export function createAdminTools() {
             description: "检查当前项目是否仍有待 review 的代码变更。",
             args: {},
             async execute(_args, context) {
-                const summary = buildReviewGateSummary(context.worktree || context.directory);
+                const summary = buildReviewGateSummary(resolveSafeProjectDir(context.worktree, context.directory, process.cwd()));
                 return [
                     "pm-workflow review gate 状态",
                     `- 状态: ${summary.state}`,
@@ -85,7 +85,7 @@ export function createAdminTools() {
                 sessionID: tool.schema.string().describe("要写入的 session_id"),
             },
             async execute(args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const state = setPreferredSession(projectPath, args.sessionID);
                 return [
                     "pm-workflow preferred session 已更新",
@@ -98,7 +98,7 @@ export function createAdminTools() {
             description: "根据当前 pm-workflow 阶段返回下一步最合理的动作建议。",
             args: {},
             async execute(_args, context) {
-                const summary = buildStageSummary(context.worktree || context.directory);
+                const summary = buildStageSummary(resolveSafeProjectDir(context.worktree, context.directory, process.cwd()));
                 return [
                     "pm-workflow 下一步建议",
                     `- 当前阶段: ${summary.stage}`,
@@ -110,7 +110,7 @@ export function createAdminTools() {
             description: "基于 pm-workflow 当前 state/gates 返回推荐 agent、动作和阻塞原因。",
             args: {},
             async execute(_args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const plan = buildDispatchPlan(projectPath);
                 return [
                     "pm-workflow 调度建议",
@@ -140,7 +140,7 @@ export function createAdminTools() {
                     .describe("可选，返回条数，默认 20，最大 100"),
             },
             async execute(args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const events = queryHistory(projectPath, {
                     type: args.type || undefined,
                     action: args.action || undefined,
@@ -160,7 +160,7 @@ export function createAdminTools() {
             description: "读取当前 .pm-workflow/config.json 配置。",
             args: {},
             async execute(_args, context) {
-                const config = readWorkflowConfig(context.worktree || context.directory);
+                const config = readWorkflowConfig(resolveSafeProjectDir(context.worktree, context.directory, process.cwd()));
                 return [
                     "pm-workflow config",
                     "```json",
@@ -173,7 +173,7 @@ export function createAdminTools() {
             description: "查看 pm-workflow permissions 策略当前状态。",
             args: {},
             async execute(_args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const permissions = readWorkflowConfig(projectPath).permissions;
                 return [
                     "pm-workflow permissions",
@@ -206,7 +206,7 @@ export function createAdminTools() {
                         "- 原因: value 仅支持 true 或 false",
                     ].join("\n");
                 }
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const next = setPermission(projectPath, args.key, args.value === "true");
                 return [
                     "pm-workflow permission updated",
@@ -230,7 +230,7 @@ export function createAdminTools() {
                         "- 原因: mode 仅支持 off / observe / assist / strict",
                     ].join("\n");
                 }
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const next = setAutomationMode(projectPath, args.mode);
                 return [
                     "pm-workflow automation mode updated",

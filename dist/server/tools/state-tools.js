@@ -1,13 +1,13 @@
 import { tool } from "@opencode-ai/plugin";
 import { buildExecutionPlan } from "../../shared.js";
-import { buildFeedbackSignalSummary } from "../runtime.js";
+import { buildFeedbackSignalSummary, resolveSafeProjectDir } from "../runtime.js";
 export function createStateTools() {
     return {
         "pm-get-execution-plan": tool({
             description: "查看当前 ExecutionPlan v2 只读预览摘要。",
             args: {},
             async execute(_args, context) {
-                const projectPath = context.worktree || context.directory;
+                const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
                 const plan = buildExecutionPlan(projectPath);
                 return [
                     "pm-workflow execution plan",

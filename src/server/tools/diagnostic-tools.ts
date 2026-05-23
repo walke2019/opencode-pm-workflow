@@ -8,6 +8,7 @@ import {
   getMigrationReport,
   repairDoctorState,
 } from "../../shared.js";
+import { resolveSafeProjectDir } from "../runtime.js";
 
 export function createDiagnosticTools() {
   return {
@@ -21,7 +22,7 @@ export function createDiagnosticTools() {
           .describe("可选，用于 dry-run dispatch 的 prompt"),
       },
       async execute(args, context) {
-        const projectPath = context.worktree || context.directory;
+        const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
         const report = buildSafetyReport(projectPath, args.prompt);
         return [
           "pm-workflow safety report",
@@ -50,7 +51,7 @@ export function createDiagnosticTools() {
       description: "查询 pm-workflow 最近一次失败事件。",
       args: {},
       async execute(_args, context) {
-        const projectPath = context.worktree || context.directory;
+        const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
         const failure = getLastFailure(projectPath);
 
         if (!failure) {
@@ -70,7 +71,7 @@ export function createDiagnosticTools() {
         "汇总 pm-workflow dispatch/retry/fallback/recovery 历史状态。",
       args: {},
       async execute(_args, context) {
-        const projectPath = context.worktree || context.directory;
+        const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
         const summary = buildRecoverySummary(projectPath);
 
         return [
@@ -86,7 +87,7 @@ export function createDiagnosticTools() {
         "检查 pm-workflow runtime 状态、配置、历史、gate 和 recovery 健康度。",
       args: {},
       async execute(_args, context) {
-        const projectPath = context.worktree || context.directory;
+        const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
         const report = buildDoctorReport(projectPath);
         return [
           "pm-workflow doctor",
@@ -114,7 +115,7 @@ export function createDiagnosticTools() {
         "安全修复 pm-workflow 自身运行状态文件：state/config/history 与字段迁移。",
       args: {},
       async execute(_args, context) {
-        const projectPath = context.worktree || context.directory;
+        const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
         const permission = buildPermissionGate(projectPath, {
           kind: "repair",
         });
@@ -145,7 +146,7 @@ export function createDiagnosticTools() {
       description: "查看 pm-workflow 归档迁移报告（copied/conflicts）。",
       args: {},
       async execute(_args, context) {
-        const projectPath = context.worktree || context.directory;
+        const projectPath = resolveSafeProjectDir(context.worktree, context.directory, process.cwd());
         const report = getMigrationReport(projectPath);
         return [
           "pm-workflow migration report",

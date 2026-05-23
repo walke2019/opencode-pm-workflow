@@ -271,8 +271,50 @@ export function getConfigDir() {
     }
     return join(process.env.HOME || "", ".config", "opencode");
 }
+/**
+ * 推断 plugin 工作的"项目目录"。
+ *
+ * OpenCode 的 PluginInput 在以下场景里会传入空字符串或根目录：
+ * - 用户在非 git 目录启动 OpenCode（worktree 解析失败）
+ * - `ctx.project.id === "global"`（OpenCode 文档明说会发生）
+ * - OpenCode server 在系统服务模式下 cwd === "/"
+ *
+ * 简单 `ctx.worktree || ctx.directory || process.cwd()` 在以上场景里会得到 `/`，
+ * 然后 `join("/", ".pm-workflow")` = `/.pm-workflow`，mkdir 立刻 ENOENT，整个插件
+ * 装配 abort（参见 OpenCode log 中的 "mkdir '/.pm-workflow' failed to load plugin"）。
+ *
+ * 正确的兜底：
+ * 1. ctx.worktree（非空且非 "/"）
+ * 2. ctx.directory（非空且非 "/"）
+ * 3. process.cwd()（非 "/"）
+ * 4. fallback 到 ~/.cache/pm-workflow/global —— 这是个普通用户可写的目录，永不抛错
+ */
 export function getProjectDir(ctx) {
-    return ctx.worktree || ctx.directory || process.cwd();
+    return resolveSafeProjectDir(ctx.worktree, ctx.directory, process.cwd());
+}
+/**
+ * 通用安全 projectDir 解析。给 tool 入口（context.worktree / context.directory）
+ * 与其他需要 projectDir 兜底的地方使用。
+ *
+ * 跳过空字符串 / 纯空白 / "/" / "\"；都不可用时回退到 ~/.cache/pm-workflow/global。
+ * **永不返回 "/"**。
+ */
+export function resolveSafeProjectDir(...candidates) {
+    for (const candidate of candidates) {
+        if (typeof candidate !== "string")
+            continue;
+        const trimmed = candidate.trim();
+        if (!trimmed)
+            continue;
+        if (trimmed === "/" || trimmed === "\\")
+            continue;
+        return trimmed;
+    }
+    const home = process.env.HOME || process.env.USERPROFILE || "";
+    if (home && home !== "/") {
+        return join(home, ".cache", "pm-workflow", "global");
+    }
+    return join(process.env.TMPDIR || "/tmp", "pm-workflow-global");
 }
 export async function log(client, level, message, extra) {
     await client?.app?.log?.({

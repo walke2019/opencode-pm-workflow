@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.3`。
+当前发布版本：`1.0.0-rc.4`。
 
 ## 适用场景
 
@@ -124,6 +124,7 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-23 | 1.0.0-rc.4 | **修复 OpenCode 启动时插件加载失败**：getProjectDir 在 OpenCode server 进程（cwd === "/"）下返回 "/" 导致 mkdir('/.pm-workflow') ENOENT 让插件 abort；新增 resolveSafeProjectDir 跳过空字符串 / "/" / "\"，回退到 ~/.cache/pm-workflow/global；plugin 入口 try/catch 兜底 bootstrap；skill auto-install 移到激活判断之外；TUI plugin 与 28 处 tool 入口同步使用安全兜底 |
 | 2026-05-23 | 1.0.0-rc.3 | Skill auto-install：插件首次激活时自动把包内 `skills/<id>/SKILL.md` 同步到 `~/.config/opencode/skills/<id>.md`，无需用户手动复制；用户改过的目标文件不覆盖 |
 | 2026-05-23 | 1.0.0-rc.2 | 新增 Agent 主题（agent-theme）：5 套内置主题（default/sanguo/xiyou/marvel/workplace）+ `pmw agents theme list/preview/apply` CLI + 对话式入口模板/skill；修复 agent-registry 测试漏跑、Node 22+ 覆盖率守门假失败、SVG 三国残留 |
 | 2026-05-23 | 1.0.0-rc.1 | 顶部新增"适用场景"段：明确 OpenCode 内（dispatch/Auto-continue 等需 OpenCode 进程）与 OpenCode 外（pmw CLI 诊断/审计/配置子集）两种使用模式 |
