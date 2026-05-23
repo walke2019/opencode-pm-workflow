@@ -69,6 +69,8 @@ function runCoverage() {
   // 因此不能直接用 result.status 判定失败；改为：
   // - 如果 stdout 里出现 "end of coverage report"，说明 Node 至少完成了覆盖率收集；
   // - 同时 stderr 里没有真实 throw（AssertionError / uncaughtException 等），则视为成功。
+  // 注意：Node 22+ 起 test reporter 把信息行前缀从 "# " 改为 "ℹ "，所以
+  // "end of coverage report" 这个文本也会带上 "ℹ " 前缀，stdout.includes 仍可命中。
   const stdout = result.stdout || "";
   const stderr = result.stderr || "";
   const hasReport = stdout.includes("end of coverage report");
@@ -90,22 +92,26 @@ function runCoverage() {
 /**
  * 解析 Node test runner 的覆盖率输出。
  *
- * 输出格式（v22）：
- *   # ----...
- *   # file                | line% | branch% | funcs% | uncovered
- *   # core/foo.js         | 92.3  | 100     | 100    | 12-15
- *   # ----...
+ * 输出格式（v22 / v23 / v24 / v26）：
+ *   ℹ ----...
+ *   ℹ file                | line% | branch% | funcs% | uncovered
+ *   ℹ core/foo.js         | 92.3  | 100     | 100    | 12-15
+ *   ℹ ----...
+ *
+ * 注意：早期文档显示前缀是 "# "，但从 Node 22+ 起 test reporter 改用
+ * 信息符 "ℹ "（U+2139）作为前缀。我们同时兼容两种前缀以减少回归风险。
  *
  * 我们只取 line% 列，对每个匹配 CRITICAL_MODULES 的行做断言。
  */
 function parseCoverage(stdout) {
   const lines = stdout.split("\n");
   const fileEntries = [];
+  // 兼容 "# " 与 "ℹ "（包括前后可能的空格）。Node 26 输出形如 "ℹ  core/foo.js | ..."
+  const PREFIX_RE = /^(?:#|ℹ)\s+/;
   for (const line of lines) {
-    // 跳过表头与分隔行；只匹配像 "#   foo/bar.js  | 92.3 | 100 | 100 | ..." 的数据行
-    if (!line.startsWith("#")) continue;
+    if (!PREFIX_RE.test(line)) continue;
     const cells = line
-      .replace(/^#\s*/, "")
+      .replace(PREFIX_RE, "")
       .split("|")
       .map((c) => c.trim());
     if (cells.length < 5) continue;
@@ -119,12 +125,18 @@ function parseCoverage(stdout) {
 }
 
 function findEntry(fileEntries, moduleName) {
-  // 报告里的 file 列只有 basename（如 "agent-stats.js"），没有 core/ 前缀。
-  // 我们的 CRITICAL_MODULES 用 "core/agent-stats" 形式声明便于阅读，
-  // 实际匹配时只看末尾的 basename。
+  // 不同 Node 版本的报告里 file 列可能是 basename（agent-stats.js）也可能是
+  // 带路径前缀（dist/core/agent-stats.js / core/agent-stats.js）。我们先按完整
+  // 路径后缀匹配，再 fallback 到 basename。
   const baseName = moduleName.split("/").pop() + ".js";
-  return fileEntries.find(
-    (e) => e.path === baseName && !e.path.endsWith(".test.mjs"),
+  const suffix = moduleName + ".js";
+  return (
+    fileEntries.find(
+      (e) => (e.path === suffix || e.path.endsWith("/" + suffix)) && !e.path.endsWith(".test.mjs"),
+    ) ||
+    fileEntries.find(
+      (e) => e.path === baseName && !e.path.endsWith(".test.mjs"),
+    )
   );
 }
 

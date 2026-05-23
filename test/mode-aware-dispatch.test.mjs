@@ -189,6 +189,10 @@ async function testAutoContinuePrefersExternalFrontmatterAndExposesDiagnostics()
       mode: 'subagent',
       model: 'bestool-route-kr/kr/claude-haiku-4.5',
       description: 'QA 测试工程师：测试策略、自动化测试、回归与缺陷报告。',
+      // 1.0.0-rc.2 起 ResolvedAgentDefinition 增加 displayName / theme，
+      // 当 frontmatter 未声明这两个字段时为 undefined（仍出现在结构里）。
+      displayName: undefined,
+      theme: undefined,
       source: 'global',
       directoryKind: 'agents',
       filePath: join(globalAgentsDir, 'qa_engineer.md'),

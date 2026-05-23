@@ -18,6 +18,9 @@
  *   pmw agents list [--json]         列出项目级 + 全局级 agent，标注覆盖关系
  *   pmw agents promote <id> [--overwrite]  把项目级 agent 复制到 ~/.config/opencode/agents
  *   pmw agents doctor [--json]       检查所有 agent 的 frontmatter 完整性
+ *   pmw agents theme list [--json]   列出内置主题（default / sanguo / xiyou / marvel / workplace）
+ *   pmw agents theme preview <id> [--scope project|global]   预览主题渲染（不写盘）
+ *   pmw agents theme apply <id> [--scope project|global] [--no-preserve-model]   应用主题，写 6 个 md 到目标目录
  *   pmw models init --model <id> [--fallback <id>]  初始化 agent 模型与回退模型
  *   pmw docs check [--json]          检查 README / 主文档 / Change Log 治理规则
  *   pmw verify                       本地 typecheck + build + smoke + pack-dry-run
@@ -93,6 +96,9 @@ function printHelp() {
     "  agents list           列出项目级 + 全局级 agent，标注覆盖关系",
     "  agents promote <id>   把项目级 agent 复制到 ~/.config/opencode/agents（--overwrite 可覆盖）",
     "  agents doctor         检查所有 agent 的 frontmatter 完整性",
+    "  agents theme list     列出内置主题（default / sanguo / xiyou / marvel / workplace）",
+    "  agents theme preview <id>   预览主题渲染（不写盘，--scope project|global 决定目标目录）",
+    "  agents theme apply <id>     应用主题：把 6 个 agent 的 md 写入目标目录",
     "  models init           初始化 agent 主模型与回退模型（默认写全局配置）",
     "  docs check            检查 README 版本、主文档数量、Change Log 与旧路径引用",
     "  verify                本地跑 typecheck + build + smoke + pack-dry-run",
@@ -112,6 +118,10 @@ function printHelp() {
     "  pmw agents list",
     "  pmw agents promote pm_lead --overwrite",
     "  pmw agents doctor --json",
+    "  pmw agents theme list",
+    "  pmw agents theme preview sanguo",
+    "  pmw agents theme apply sanguo --scope global",
+    "  pmw agents theme apply default --scope project --agents pm_backend,pm_frontend",
     "  pmw models init --model opencode/gpt-5 --fallback opencode/gpt-5-mini",
     "  pmw models init --scope project --agent pm_backend --model cx/gpt-5.5 --fallback cx/gpt-5.4",
     "  pmw docs check",
@@ -388,6 +398,169 @@ async function runAgentsDoctor(args) {
   return 0;
 }
 
+async function runAgentsThemeList(args) {
+  const dist = await loadDist();
+  const themes = dist.listAgentThemes();
+  if (args.flags.json) {
+    emit(args, themes);
+    return 0;
+  }
+  const lines = [
+    `pm-workflow agent themes (${themes.length} 个内置主题)`,
+    "",
+  ];
+  for (const theme of themes) {
+    lines.push(`  ${theme.id} — ${theme.label}`);
+    lines.push(`    ${theme.summary}`);
+    lines.push(`    包含角色: ${theme.roleCount}`);
+    lines.push("");
+  }
+  lines.push("用法:");
+  lines.push("  pmw agents theme preview <id>   预览渲染（不写盘）");
+  lines.push("  pmw agents theme apply <id>     应用主题（写 6 个 md）");
+  console.log(lines.join("\n"));
+  return 0;
+}
+
+function parseThemePreserveOptions(args) {
+  // 默认全保留；--no-preserve-<field> 显式关闭。
+  const preserve = {};
+  for (const field of ["model", "mode", "permission", "fallback_models", "temperature"]) {
+    const flagKey = `no-preserve-${field}`;
+    if (args.flags[flagKey] || args.options[flagKey] !== undefined) {
+      preserve[field] = false;
+    }
+  }
+  return preserve;
+}
+
+function parseThemeAgents(args) {
+  const raw = args.options.agents;
+  if (!raw) return undefined;
+  return String(raw)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+async function runAgentsThemePreview(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const themeId = args._[3];
+  if (!themeId) {
+    console.error("用法: pmw agents theme preview <theme-id> [--scope project|global]");
+    return 2;
+  }
+  const scope = args.options.scope === "project" ? "project" : "global";
+  const result = (() => {
+    try {
+      return dist.previewAgentTheme({
+        projectDir,
+        themeId,
+        scope,
+        agents: parseThemeAgents(args),
+        preserveExisting: parseThemePreserveOptions(args),
+      });
+    } catch (err) {
+      console.error(`pmw agents theme preview 失败：${err.message}`);
+      return null;
+    }
+  })();
+  if (!result) return 1;
+
+  if (args.flags.json) {
+    emit(args, result);
+    return 0;
+  }
+
+  const lines = [
+    `pm-workflow agent theme preview — ${themeId}`,
+    `- scope: ${result.scope}`,
+    `- targetDir: ${result.targetDir}`,
+    `- 待写入: ${result.written.length} 个 agent`,
+    `- skipped: ${result.skipped.length}`,
+    "",
+  ];
+  for (const item of result.written) {
+    lines.push(`▼ ${item.agent} → ${item.filePath}${item.exists ? " (覆盖已有)" : ""}`);
+    lines.push(item.content.split("\n").map((l) => `  ${l}`).join("\n"));
+    lines.push("");
+  }
+  if (result.skipped.length > 0) {
+    lines.push("skipped:");
+    for (const s of result.skipped) lines.push(`  ${s.agent} — ${s.reason}`);
+  }
+  lines.push("（dry-run，未写入任何文件；用 apply 真正落盘）");
+  console.log(lines.join("\n"));
+  return 0;
+}
+
+async function runAgentsThemeApply(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const themeId = args._[3];
+  if (!themeId) {
+    console.error(
+      "用法: pmw agents theme apply <theme-id> [--scope project|global] [--agents pm_lead,pm_backend]",
+    );
+    return 2;
+  }
+  const scope = args.options.scope === "project" ? "project" : "global";
+
+  let result;
+  try {
+    result = dist.applyAgentTheme({
+      projectDir,
+      themeId,
+      scope,
+      agents: parseThemeAgents(args),
+      preserveExisting: parseThemePreserveOptions(args),
+    });
+  } catch (err) {
+    console.error(`pmw agents theme apply 失败：${err.message}`);
+    return 1;
+  }
+
+  if (args.flags.json) {
+    emit(args, result);
+    return result.skipped.length === 0 ? 0 : 1;
+  }
+
+  const lines = [
+    `pmw agents theme apply ✓ — ${themeId}`,
+    `- scope: ${result.scope}`,
+    `- targetDir: ${result.targetDir}`,
+    `- 已写入: ${result.written.length}`,
+    `- skipped: ${result.skipped.length}`,
+    "",
+    "written:",
+  ];
+  for (const item of result.written) {
+    const tag = item.exists ? "覆盖" : "新增";
+    const fallback = item.fellBackToDefault ? " [default 兜底]" : "";
+    lines.push(`  [${tag}] ${item.agent} → ${item.filePath}${fallback}`);
+  }
+  if (result.skipped.length > 0) {
+    lines.push("", "skipped:");
+    for (const s of result.skipped) lines.push(`  ${s.agent} — ${s.reason}`);
+  }
+  lines.push("");
+  lines.push("提示: 主题只换皮肤；语义 ID（pm_lead / pm_backend / ...）与路由不变。");
+  lines.push("      用户已配的 model / mode / permission 默认保留。");
+  console.log(lines.join("\n"));
+  return result.skipped.length === 0 ? 0 : 1;
+}
+
+async function runAgentsTheme(args) {
+  const sub = args._[2];
+  if (sub === "list") return await runAgentsThemeList(args);
+  if (sub === "preview") return await runAgentsThemePreview(args);
+  if (sub === "apply") return await runAgentsThemeApply(args);
+  console.error(`未知 agents theme 子命令: ${sub ?? "<empty>"}`);
+  console.error("当前支持: pmw agents theme list | preview <id> | apply <id>");
+  return 2;
+}
+
 async function runDocsCheck(args) {
   const dist = await loadDist();
   const projectDir = getProjectDir(args);
@@ -529,8 +702,9 @@ async function main() {
       if (sub === "list") return await runAgentsList(args);
       if (sub === "promote") return await runAgentsPromote(args);
       if (sub === "doctor") return await runAgentsDoctor(args);
+      if (sub === "theme") return await runAgentsTheme(args);
       console.error(`未知 agents 子命令: ${sub ?? "<empty>"}`);
-      console.error("当前支持: pmw agents list | promote <id> | doctor");
+      console.error("当前支持: pmw agents list | promote <id> | doctor | theme list|preview|apply");
       return 2;
     }
     case "models": {

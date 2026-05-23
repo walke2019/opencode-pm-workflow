@@ -190,7 +190,8 @@ function testFallbackOnlyFillsMissingFields() {
   assert.strictEqual(resolved.id, 'pm_frontend');
   assert.strictEqual(resolved.model, 'custom-frontend-model');
   assert.strictEqual(resolved.description, 'Frontend from frontmatter');
-  assert.strictEqual(resolved.mode, 'all');
+  // 0.2.0 起 pm_frontend 内置 fallback mode 为 subagent，不再是 'all'。
+  assert.strictEqual(resolved.mode, 'subagent');
   assert.strictEqual(resolved.usedFallback, true);
   assert.strictEqual(resolved.fallbackReason, 'missing-mode');
 }
@@ -279,7 +280,8 @@ function testMissingDescriptionUsesFallbackReason() {
     assert.strictEqual(resolved.id, 'pm_frontend');
     assert.strictEqual(resolved.model, 'custom-frontend-model');
     assert.strictEqual(resolved.mode, 'subagent');
-    assert.strictEqual(resolved.description, '你是 pm-workflow 的前端 agent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。');
+    // 0.2.0 起 description 收敛为短句；prompt 仍是原长描述。
+    assert.strictEqual(resolved.description, '前端执行，负责 UI、交互、组件、响应式。');
     assert.strictEqual(resolved.usedFallback, true);
     assert.strictEqual(resolved.fallbackReason, 'missing-description');
   } finally {
@@ -298,4 +300,4 @@ testFrontmatterFieldsAreNotOverriddenByFallbackDefinition();
 testFallbackOnlyFillsMissingFields();
 testMissingAgentUsesExecutableFallbackId();
 testMissingDescriptionUsesFallbackReason();
-console.log('agent registry tests passed');
+console.log('agent-registry tests passed');

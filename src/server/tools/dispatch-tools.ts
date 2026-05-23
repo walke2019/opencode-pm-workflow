@@ -414,8 +414,12 @@ export function formatLaneDispatchLines(
   }
 
   if (dispatch.resolvedAgent) {
+    const themeBadge =
+      dispatch.resolvedAgent.displayName || dispatch.resolvedAgent.theme
+        ? ` theme=${dispatch.resolvedAgent.theme || "(custom)"} display=${dispatch.resolvedAgent.displayName || "(none)"}`
+        : "";
     lines.push(
-      `- resolved agent: source=${dispatch.resolvedAgent.source} directory=${dispatch.resolvedAgent.directoryKind || "unknown"} fallback=${dispatch.resolvedAgent.usedFallback ? "yes" : "no"}`,
+      `- resolved agent: source=${dispatch.resolvedAgent.source} directory=${dispatch.resolvedAgent.directoryKind || "unknown"} fallback=${dispatch.resolvedAgent.usedFallback ? "yes" : "no"}${themeBadge}`,
     );
   }
 

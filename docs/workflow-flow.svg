@@ -102,7 +102,7 @@
   <rect class="lane" x="40" y="760" width="1320" height="240"/>
   <text class="lane-title" x="70" y="796">4. Agent 分工与完成闭环</text>
   <rect class="box box-blue" x="75" y="830" width="205" height="54"/>
-  <text class="label" x="100" y="853">曹操</text>
+  <text class="label" x="100" y="853">pm_lead</text>
   <text class="small" x="100" y="873">主协调 agent</text>
   <rect class="box" x="305" y="830" width="205" height="54"/>
   <text class="label" x="330" y="853">OpenCode plan</text>

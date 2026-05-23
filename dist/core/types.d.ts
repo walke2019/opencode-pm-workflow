@@ -10,6 +10,77 @@ export type DocsStorageMode = "legacy" | "project_scoped";
 export type AutomationCapability = "event_sync" | "prompt_inject" | "commit_gate" | "review_marker";
 export type DispatchAgent = "pm_lead" | "pm_advisor" | "pm_backend" | "pm_frontend" | "pm_reviewer" | "pm_researcher";
 export type ExecutableAgent = string;
+/**
+ * Agent 主题：把 6 个固定语义 agent 包装成不同"皮肤"显示名。
+ *
+ * 关键约束（与"稳定任务域"治理原则一致）：
+ * - 主题只影响 frontmatter `description` / `display_name` / `theme` 与 body 的角色称呼；
+ * - 永不影响语义 ID（pm_lead / pm_backend / ...）、dispatch 路由、history 记录、permission 规则；
+ * - 用户配置的 `model` / `mode` / `permission` / `fallback_models` 字段在 apply 时默认保留（preserve_existing）。
+ */
+export type AgentThemeId = string;
+export interface AgentThemeRoleSkin {
+    /** 该 agent 在该主题下的展示名（如"诸葛亮"），不超过 12 字。 */
+    display_name: string;
+    /** 主题化后的角色一句话描述，进 frontmatter description。不超过 60 字。 */
+    description: string;
+    /** 主题化后的 body 正文。保留原职责语义，仅替换称呼与语气。 */
+    body: string;
+}
+export interface AgentThemeDefinition {
+    id: AgentThemeId;
+    /** 主题中文名（如"三国"）。 */
+    label: string;
+    /** 给用户的一句话主题简介。 */
+    summary: string;
+    /** 6 个固定 agent 的皮肤映射；缺漏即为该 agent 走 default 兜底。 */
+    roles: Partial<Record<DispatchAgent, AgentThemeRoleSkin>>;
+}
+/**
+ * apply 时需要保留的"已有用户配置"字段集合。
+ * 默认全部为 true，避免主题切换覆盖用户的模型/权限。
+ */
+export interface AgentThemePreserveExisting {
+    model: boolean;
+    mode: boolean;
+    permission: boolean;
+    fallback_models: boolean;
+    temperature: boolean;
+}
+export type AgentThemeWriteScope = "global" | "project";
+export interface ApplyAgentThemeInput {
+    projectDir: string;
+    themeId: AgentThemeId;
+    scope: AgentThemeWriteScope;
+    /** 默认 6 个全部应用；可指定子集只主题化部分 agent。 */
+    agents?: DispatchAgent[];
+    preserveExisting?: Partial<AgentThemePreserveExisting>;
+    /** dry-run 模式下不写文件，只返回渲染结果。 */
+    dryRun?: boolean;
+    /** 覆盖目标目录（测试用，正式调用应从 scope 推导）。 */
+    targetDirOverride?: string;
+}
+export interface RenderedAgentMd {
+    agent: DispatchAgent;
+    filePath: string;
+    /** 完整 md 文本（含 frontmatter + body）。 */
+    content: string;
+    /** 目标文件已存在；apply 会写入并覆盖（保留 preserve 字段）。 */
+    exists: boolean;
+    /** 该 agent 在主题里没定义皮肤，走的 default 兜底。 */
+    fellBackToDefault: boolean;
+}
+export interface ApplyAgentThemeResult {
+    themeId: AgentThemeId;
+    scope: AgentThemeWriteScope;
+    targetDir: string;
+    written: RenderedAgentMd[];
+    skipped: Array<{
+        agent: DispatchAgent;
+        reason: string;
+    }>;
+    dryRun: boolean;
+}
 export type AgentDefinitionSource = "project" | "global" | "fallback";
 export type AgentDirectoryKind = "agents" | "agent" | "fallback";
 export interface ResolvedAgentDefinition {
@@ -17,6 +88,10 @@ export interface ResolvedAgentDefinition {
     model?: string;
     mode?: string;
     description?: string;
+    /** 主题展示名（来自 frontmatter `display_name`）。pm-workflow 自定义字段，OpenCode 忽略。 */
+    displayName?: string;
+    /** 主题 ID（来自 frontmatter `theme`）。pm-workflow 自定义字段，仅供展示与诊断。 */
+    theme?: string;
     source: AgentDefinitionSource;
     directoryKind?: AgentDirectoryKind;
     filePath?: string;

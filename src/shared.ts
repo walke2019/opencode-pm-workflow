@@ -185,6 +185,19 @@ export {
   listAgentLibrary,
   promoteProjectAgentToGlobal,
 } from "./core/agent-library.js";
+export {
+  applyAgentTheme,
+  listAgentThemes,
+  previewAgentTheme,
+  renderAgentMdForTheme,
+  resolveThemeTargetDir,
+} from "./core/agent-theme.js";
+export {
+  FIXED_AGENT_IDS,
+  getBuiltinTheme,
+  getDefaultTheme,
+  listBuiltinThemes,
+} from "./core/agent-theme-data.js";
 export { buildDocsCheckReport } from "./core/docs-check.js";
 export type {
   DocsCheckSeverity,
@@ -198,6 +211,16 @@ export type {
   AgentLibraryReport,
   PromoteAgentResult,
 } from "./core/agent-library.js";
+export type {
+  AgentThemeDefinition,
+  AgentThemeId,
+  AgentThemePreserveExisting,
+  AgentThemeRoleSkin,
+  AgentThemeWriteScope,
+  ApplyAgentThemeInput,
+  ApplyAgentThemeResult,
+  RenderedAgentMd,
+} from "./core/types.js";
 export type { WorkflowDocName } from "./core/project.js";
 export type {
   AgentDefinitionSource,

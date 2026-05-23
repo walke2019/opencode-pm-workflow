@@ -108,6 +108,10 @@ export function resolveWorkflowAgentDefinition(input) {
             model: normalizeResolvedField(frontmatter.model || fallbackDefinition?.model),
             mode: normalizeResolvedField(frontmatter.mode || fallbackDefinition?.mode),
             description: normalizeResolvedField(frontmatter.description || fallbackDefinition?.description),
+            // display_name / theme 是 pm-workflow 自定义字段，仅当 frontmatter 显式声明时才回填。
+            // OpenCode 自身忽略这两个字段，所以 fallback 时不强行填值。
+            displayName: normalizeResolvedField(frontmatter.display_name),
+            theme: normalizeResolvedField(frontmatter.theme),
             source: resolved.source,
             directoryKind: resolved.directoryKind,
             filePath: resolved.filePath,

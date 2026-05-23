@@ -1,0 +1,45 @@
+{
+  "$schema": "https://unpkg.com/@walke/opencode-pm-workflow@latest/pm-workflow.schema.json",
+  "_doc": "pm-workflow agent 主题配置模板。用户填 theme + scope，AI 读取后调用 pmw agents theme apply（或直接 import applyAgentTheme）把 6 个固定 agent 的 md 写到目标目录。语义 ID（pm_lead / pm_advisor / pm_backend / pm_frontend / pm_reviewer / pm_researcher）永不可改；主题只换 display_name + description + body 文案。",
+
+  "theme": "default",
+  "_theme_choices": [
+    "default — 默认（中性）：通用专业表述；适合企业项目与跨团队协作。",
+    "sanguo — 三国：诸葛亮 / 司马懿 / 吕布 / 貂蝉 / 赵云 / 鲁肃。",
+    "xiyou — 西游：唐僧 / 观音 / 孙悟空 / 猪八戒 / 沙僧 / 白龙马。",
+    "marvel — 漫威：美国队长 / 奇异博士 / 钢铁侠 / 蜘蛛侠 / 黑寡妇 / 鹰眼。",
+    "workplace — 现代职场：项目经理 / 技术顾问 / 资深后端 / 资深前端 / QA 与发布 / 调研专家。"
+  ],
+
+  "scope": "global",
+  "_scope_choices": [
+    "global — 写到 ~/.config/opencode/agents/（XDG_CONFIG_HOME 优先）；跨项目复用主题。",
+    "project — 写到 <projectDir>/.opencode/agents/；团队项目内部主题约定，进 git。"
+  ],
+
+  "agents": null,
+  "_agents_doc": "默认 null = 主题化全部 6 个固定 agent；可填字符串数组指定子集，例如 [\"pm_backend\", \"pm_frontend\"]。",
+
+  "preserve_existing": {
+    "model": true,
+    "mode": true,
+    "permission": true,
+    "fallback_models": true,
+    "temperature": true
+  },
+  "_preserve_existing_doc": "目标 md 已存在时是否保留这些字段。默认全部 true，避免主题切换覆盖你已配的模型与权限。把对应字段设为 false 才会让主题清空它。",
+
+  "_apply_steps": [
+    "1) 用户填好 theme / scope（必要时 agents / preserve_existing）。",
+    "2) AI 读取本模板后先跑 dry-run：`pmw agents theme preview <theme>` 或调用 `previewAgentTheme(...)`，把 6 个 md 的渲染结果展示给用户确认。",
+    "3) 用户确认后才执行 `pmw agents theme apply <theme>`（或 `applyAgentTheme(...)`）真正落盘。",
+    "4) 写入后 OpenCode 与 pmw doctor 都能看到 display_name；语义 ID、dispatch 路由、history 记录与 permission 规则都不变。"
+  ],
+
+  "_invariants": [
+    "agent 文件名 = 语义 ID = 路由锚点，永不可改。",
+    "主题只影响 frontmatter description / display_name / theme 与 body 文案。",
+    "主题切换不写 history.jsonl，不影响回执统计。",
+    "preserve_existing 默认全保留；仅当用户明确把字段设为 false 才清空对应字段。"
+  ]
+}

@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.0.0-rc.2
+
+### 新增：Agent 主题（agent-theme）—— 对话式 agent 皮肤配置
+
+把 6 个固定语义 agent（pm_lead / pm_advisor / pm_backend / pm_frontend / pm_reviewer / pm_researcher）包装成不同"皮肤"显示名（默认 / 三国 / 西游 / 漫威 / 现代职场）。语义 ID、dispatch 路由、history、permission 全部不变；只换 frontmatter `description` / `display_name` / `theme` 与 body 文案。
+
+- **5 套内置主题**：`default` / `sanguo` / `xiyou` / `marvel` / `workplace`，每套包含 6 个固定 agent 完整皮肤
+- **核心模块** `src/core/agent-theme.ts`：`applyAgentTheme` / `previewAgentTheme` / `renderAgentMdForTheme` / `resolveThemeTargetDir` / `listAgentThemes`；frontmatter 解析保留嵌套 `permission` / `permission.task` 块
+- **preserveExisting 默认全保留** `model` / `mode` / `permission` / `fallback_models` / `temperature`，避免主题切换覆盖用户已配的模型与权限
+- **CLI 三件套**：
+  - `pmw agents theme list` 列出内置主题
+  - `pmw agents theme preview <id>` 预览渲染（dry-run，不写盘）
+  - `pmw agents theme apply <id> [--scope project|global] [--agents pm_backend,pm_frontend] [--no-preserve-model]` 真正落盘
+- **scope 路由**：`global` → `~/.config/opencode/agents/`（XDG_CONFIG_HOME 优先）；`project` → `<projectDir>/.opencode/agents/`
+- **`agent-registry` 扩展**：解析 frontmatter `display_name` / `theme` 字段，回填到 `ResolvedAgentDefinition`；OpenCode 自身忽略不识别的字段，无副作用
+- **dispatch 输出渲染**：`resolved agent` 行附加 `theme=xxx display=xxx` badge，dispatch 与 doctor 都能看到当前主题
+- **对话式入口**：`pm-workflow.agents.example.json` 模板 + `skills/agent-theme-config/SKILL.md`，AI 读取模板按用户主题选择 + scope 调用 `applyAgentTheme`
+- **测试**：`test/agent-theme.test.mjs` 16 个用例，覆盖列表、渲染、apply（project / global）、preserveExisting、嵌套 permission 保留、dry-run、unknown theme、subset apply、registry 解析
+
+### 设计原则（与"稳定任务域"治理一致）
+
+- agent 文件名 = 语义 ID = 路由锚点，永不可改
+- 主题永不影响 dispatch 路由 / history.jsonl / permission 规则 / retry/fallback 链路
+- `preserveExisting` 默认全保留；用户必须明确把字段设为 false 才会清空对应字段
+- 不引入运行时动态加载用户 JSON 主题（避免 prompt 注入与不一致）
+
+### 修复
+
+- **agent-registry.test.mjs 漏跑 + 断言过时**：该测试 0.2.0 后从未在 `npm test` 中运行；其内部 `'all'` → `'subagent'` 与 fallback description 短句对齐；现已加回 npm test 序列
+- **scripts/test-coverage.mjs Node 22+ 输出前缀**：Node test reporter 从 `# ` 改为 `ℹ `，旧解析逻辑导致 6 个关键模块全部"未找到覆盖率数据"假失败；同时兼容两种前缀
+- **test:coverage 接入 verify-release**：守门工具复活后并入发布前置检查
+- **docs/workflow-flow.svg 残留"曹操"**：0.2.0 三国清理时漏掉的 SVG 文本节点，改为中性 `pm_lead`
+- **test/workflow-redesign.test.mjs 三国变量名**：`zhuge` / `lvbu` / `zhaoyun` / `chenlin` 改名为中性 `advisorPrompt` / `backendPrompt` / `reviewerPrompt` / `reviewerDocPrompt`
+- **mode-aware-dispatch.test.mjs deepStrictEqual**：补上新字段 `displayName: undefined` / `theme: undefined`
+- **公开 API 快照同步**：从 120 → 129 个符号，新增 9 个主题相关导出（`FIXED_AGENT_IDS` / `applyAgentTheme` / `getBuiltinTheme` / `getDefaultTheme` / `listAgentThemes` / `listBuiltinThemes` / `previewAgentTheme` / `renderAgentMdForTheme` / `resolveThemeTargetDir`）
+
+### 影响的文档
+
+- `README.md`、`docs/01-技术架构.md`、`docs/03-使用与运维手册.md`、`docs/04-待办与演进清单.md` 同步主题能力与边界
+- `pm-workflow.agents.example.json`（新增）
+- `skills/agent-theme-config/SKILL.md`（新增）
+
 ## 1.0.0-rc.1
 
 ### 文档：明确"OpenCode 内 / 外两种使用模式"边界

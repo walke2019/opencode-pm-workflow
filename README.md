@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.1`。
+当前发布版本：`1.0.0-rc.2`。
 
 ## 适用场景
 
@@ -124,6 +124,7 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-23 | 1.0.0-rc.2 | 新增 Agent 主题（agent-theme）：5 套内置主题（default/sanguo/xiyou/marvel/workplace）+ `pmw agents theme list/preview/apply` CLI + 对话式入口模板/skill；修复 agent-registry 测试漏跑、Node 22+ 覆盖率守门假失败、SVG 三国残留 |
 | 2026-05-23 | 1.0.0-rc.1 | 顶部新增"适用场景"段：明确 OpenCode 内（dispatch/Auto-continue 等需 OpenCode 进程）与 OpenCode 外（pmw CLI 诊断/审计/配置子集）两种使用模式 |
 | 2026-05-23 | 1.0.0-rc.0 | 真实环境端到端验收框架（docs/sandbox/e2e-checklist.md + scripts/e2e-headless.mjs）；1.0.0 路线第 3 步 |
 | 2026-05-23 | 0.13.0 | node_modules 从 git track 移除；测试覆盖率守门工具（Node 22 内置，6 个关键模块 ≥ 85%）（1.0.0 路线第 2 步） |

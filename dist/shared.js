@@ -28,4 +28,6 @@ export { DEFAULT_HEALTH_THRESHOLDS, _resetPluginActivationGuardForTesting, evalu
 export { isSubagentAllowedByDeclarativeRouting, parseFrontmatterTaskPermission, resolveAgentTaskRouting, } from "./core/agent-routing.js";
 export { buildHistoryReportSummary, renderHistoryReportHtml, } from "./core/report.js";
 export { doctorAgentLibrary, listAgentLibrary, promoteProjectAgentToGlobal, } from "./core/agent-library.js";
+export { applyAgentTheme, listAgentThemes, previewAgentTheme, renderAgentMdForTheme, resolveThemeTargetDir, } from "./core/agent-theme.js";
+export { FIXED_AGENT_IDS, getBuiltinTheme, getDefaultTheme, listBuiltinThemes, } from "./core/agent-theme-data.js";
 export { buildDocsCheckReport } from "./core/docs-check.js";

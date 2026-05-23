@@ -259,7 +259,10 @@ export function formatLaneDispatchLines(dispatch) {
         lines.push(`- invocation: mode=${dispatch.invocation.mode} directRun=${dispatch.invocation.supportsDirectRun ? "yes" : "no"} taskPermission=${dispatch.invocation.requiresTaskPermission ? "yes" : "no"}`);
     }
     if (dispatch.resolvedAgent) {
-        lines.push(`- resolved agent: source=${dispatch.resolvedAgent.source} directory=${dispatch.resolvedAgent.directoryKind || "unknown"} fallback=${dispatch.resolvedAgent.usedFallback ? "yes" : "no"}`);
+        const themeBadge = dispatch.resolvedAgent.displayName || dispatch.resolvedAgent.theme
+            ? ` theme=${dispatch.resolvedAgent.theme || "(custom)"} display=${dispatch.resolvedAgent.displayName || "(none)"}`
+            : "";
+        lines.push(`- resolved agent: source=${dispatch.resolvedAgent.source} directory=${dispatch.resolvedAgent.directoryKind || "unknown"} fallback=${dispatch.resolvedAgent.usedFallback ? "yes" : "no"}${themeBadge}`);
     }
     return lines;
 }

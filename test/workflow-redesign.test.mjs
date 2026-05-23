@@ -113,26 +113,26 @@ async function testDefaults() {
 
 async function testPrompts() {
   console.log('\nTesting prompts and character mapping...');
-  const zhuge = buildExecutablePrompt('pm_advisor', '测试任务');
-  assert.ok(zhuge.includes('拆解顾问'), 'Advisor prompt should include 拆解顾问');
-  assert.ok(zhuge.includes('【核心任务】'), 'Prompt should be structured');
-  assert.ok(zhuge.includes('顾问'), 'Commander prompt should describe advisor role');
+  const advisorPrompt = buildExecutablePrompt('pm_advisor', '测试任务');
+  assert.ok(advisorPrompt.includes('拆解顾问'), 'Advisor prompt should include 拆解顾问');
+  assert.ok(advisorPrompt.includes('【核心任务】'), 'Prompt should be structured');
+  assert.ok(advisorPrompt.includes('顾问'), 'Commander prompt should describe advisor role');
   assert.ok(
-    !zhuge.includes('总指挥'),
+    !advisorPrompt.includes('总指挥'),
     'Commander prompt should no longer describe commander as the primary coordinator',
   );
   console.log('✓ Advisor prompt correctly mapped to 拆解顾问');
 
-  const lvbu = buildExecutablePrompt('pm_backend', '修复 Bug');
-  assert.ok(lvbu.includes('后端'), 'Backend prompt should include 后端');
+  const backendPrompt = buildExecutablePrompt('pm_backend', '修复 Bug');
+  assert.ok(backendPrompt.includes('后端'), 'Backend prompt should include 后端');
   console.log('✓ Backend prompt correctly mapped to 后端角色');
 
-  const zhaoyun = buildExecutablePrompt('pm_reviewer', '执行代码审查');
-  assert.ok(zhaoyun.includes('审查'), 'Reviewer prompt should include 审查');
+  const reviewerPrompt = buildExecutablePrompt('pm_reviewer', '执行代码审查');
+  assert.ok(reviewerPrompt.includes('审查'), 'Reviewer prompt should include 审查');
   console.log('✓ Reviewer prompt correctly mapped to 审查职责');
 
-  const chenlin = buildExecutablePrompt('pm_reviewer', '整理发布说明');
-  assert.ok(chenlin.includes('文档'), 'Reviewer prompt should include 文档');
+  const reviewerDocPrompt = buildExecutablePrompt('pm_reviewer', '整理发布说明');
+  assert.ok(reviewerDocPrompt.includes('文档'), 'Reviewer prompt should include 文档');
   console.log('✓ Reviewer prompt correctly mapped to 文档职责');
 }
 
