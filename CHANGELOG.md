@@ -1,5 +1,53 @@
 # Changelog
 
+## 1.0.0-rc.12
+
+### 修复：commander 自己揽下任务不分派给子代理
+
+之前的实测发现：用户问"做一个登录页"时，commander 直接开始写 HTML/CSS/JS，**不分派给 designer**。这违背了 pm-workflow 的核心设计——commander 是协调员，不该亲自动代码。
+
+### 根因
+
+之前 commander 配置：
+- `tools.write: true` / `tools.edit: true` ← 允许 commander 写文件
+- `permission.edit: ask` ← 仅询问，不阻止
+- body "边界" 段写"不直接做大块代码实现" ← 软约束，强模型容易自己揽下
+
+### 修复（双重约束）
+
+**A. 物理约束**（OpenCode 层面阻止）：
+
+```yaml
+tools:
+  write: false    # commander 工具集里直接没有 write
+  edit: false     # commander 工具集里直接没有 edit
+  task: true      # 唯一能调度子代理的工具
+permission:
+  edit: deny      # 即使不知怎么绕过 tools，permission 也强制 deny
+```
+
+OpenCode 看到 commander 不能 write/edit 文件，**物理上**就只能 task→subagent。
+
+**B. Prompt 强约束**（让 LLM 自己理解）：
+
+body 第一段加 `## 强制约束（不可违反）`：
+- "你绝不亲自写代码"
+- "任何涉及代码生成、UI 实现、API 实现、文档撰写、测试编写、部署的任务必须 task 委派"
+- "简单任务也必须分派——'用户请求做 HTML 登录页'看起来简单但**这是 designer 的工作**"
+
+任务路由原则改成 `→ task → designer`（明确写出动词），不再是 `→ designer`（容易被理解为"我作为 designer 思考方式"）。
+
+### 影响
+
+- **现有用户升级**：清 plugin cache + 重启 OpenCode 后，新版 commander.md 自动写入，commander 物理上不能写代码，必须分派
+- **行为变化**：用户请求"做登录页"时 commander 应该 task→designer，由 designer 输出代码
+- **commander 边界**：现在只能跑 bash（且 bash 仍是 ask）+ webfetch + task 子代理
+
+### 测试
+
+- 19 个测试全过
+- 主题约束测试自动验证 commander 的新 tools/permission
+
 ## 1.0.0-rc.11
 
 ### skill 子目录组织（按 OpenCode/Claude Code 标准）
