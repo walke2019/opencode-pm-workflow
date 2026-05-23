@@ -1,5 +1,71 @@
 # Changelog
 
+## 1.0.0-rc.9
+
+### 新增：`pm-workflow-config` skill — 插件全场景帮手
+
+之前 rc.7 修了 skill 子目录结构、rc.8 修了 agent md 规范，但用户在 OpenCode 内遇到 pm-workflow 相关问题（怎么装/怎么升/为什么没生效）时，没有一个统一的"AI 入口"来帮忙。rc.9 补上这块。
+
+### 新 skill：`skills/pm-workflow-config/`
+
+完整目录结构（OpenCode/Claude Code 标准 skill 形态）：
+
+```
+skills/pm-workflow-config/
+├── SKILL.md              主入口（200+ 行）— 触发词 + 流程导航
+├── reference.md          完整规范参考 — agent / skill / config 字段
+├── troubleshooting.md    错误诊断目录 — 12 种常见问题诊断树
+├── upgrade.md            升级流程详解
+├── uninstall.md          完全卸载流程
+└── scripts/              可执行脚本（带详细日志输出）
+    ├── check.sh          综合健康检查（Node/CLI/cache/skills/agents/log）
+    ├── upgrade.sh        互动式升级（quit + 清 cache + 升 CLI + 验证）
+    ├── reset-agents.sh   重置 6 个 agent md 到当前主题最新版（自动备份）
+    └── full-clean.sh     完全清理（带 --confirm 守护，每步备份）
+```
+
+### 触发场景（10 种用户原话）
+
+skill description 包含全部触发词，AI 在用户提到下列任一场景时主动加载：
+
+- "怎么装 pm-workflow" / "升级到最新版" / "pmw doctor 报错"
+- "切三国主题" / "给 commander 配 Opus" / "切换列表显示太多"
+- "writer 跑不了 git log" / "AI 不知道有什么主题"
+- "彻底卸载 pm-workflow" / 任何含 "pm-workflow" / "pmw" / "@walke" 的报错
+
+### 行为约束
+
+- **委派而非揽**：主题问题转 `agent-theme-config` skill，模型问题转 `agent-model-config`
+- **先 dry-run**：所有写盘操作先预览，破坏性操作必须备份
+- **输出过程日志**：每个脚本都输出详细步骤，便于 AI/用户追溯
+- **不假设环境**：先跑 `check.sh` 看真实状态再下结论
+
+### Skill auto-install 升级为递归同步
+
+之前（rc.7-rc.8）只把 `skills/<id>/SKILL.md` 同步到目标。rc.9 起递归同步整个 skill 目录：
+
+- **`SKILL.md`**：主入口（保留原有逻辑）
+- **`reference.md` / `troubleshooting.md` / 等顶层文档**：递归同步
+- **`scripts/` 子目录**：递归处理子文件与孙子目录
+- **脚本类文件**（`.sh` / `.bash` / `.zsh` / `.py` / `.mjs` / `.js`）：自动赋可执行权限（0o755）
+- **用户改过的文件**：保留不覆盖（user-modified outcome）
+- **目标比源多的文件**：保留（不删用户自加的脚本）
+- **chmod 失败**：记录但不阻断主流程（容器环境可能没 chmod 权限）
+
+### 测试
+
+- `test/skill-installer.test.mjs` 新增 3 个用例：
+  - `testRecursivelyCopiesSupportingFiles`：reference.md / scripts/ / 嵌套子目录都被同步 + 脚本可执行权限
+  - `testSupportingFilesPreserveUserChanges`：用户改过的 reference.md 不被覆盖
+  - `testSupportingFilesSkipIdentical`：内容相同时跳过，不报错
+- 19 个测试文件全过
+
+### 影响
+
+- **新用户**：装完 plugin 后，OpenCode 会自动同步 `pm-workflow-config` 完整目录到 `~/.config/opencode/skills/pm-workflow-config/`
+- **AI 行为**：在 OpenCode 内问"怎么装 pm-workflow"等问题，AI 会自动加载 skill 并按流程执行（含跑诊断脚本）
+- **现有用户升级**：完全 quit + 重启 OpenCode，plugin auto-install 会写入新 skill；现有用户改过的 SKILL.md / reference.md 等不会被覆盖
+
 ## 1.0.0-rc.8
 
 ### agent md 完全符合 OpenCode 规范

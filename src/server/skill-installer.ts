@@ -17,12 +17,14 @@
  */
 
 import {
+  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
   statSync,
+  writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -188,11 +190,32 @@ export function syncPackagedSkillsToOpenCode(input?: {
       const parent = dirname(target);
       if (!existsSync(parent)) mkdirSync(parent, { recursive: true });
       copyFileSync(source, target);
+
+      // 1.0.0-rc.9 起：递归同步 supporting files（reference.md / scripts/ 等）。
+      // OpenCode skill 规范支持子文件 + 子目录（参见 SKILL.md 引用 reference.md /
+      // scripts/check.sh 等场景）。我们这里把整个 skill 源目录里除 SKILL.md 之外
+      // 的所有内容复制到目标目录（保留权限，递归）。
+      //
+      // 同步规则与 SKILL.md 相同：
+      // - 不存在 → 复制
+      // - 内容相同 → 跳过
+      // - 已存在但内容不同 → 保留用户版本（user-modified）
+      // - 失败 → 记录到 finding（但不中断 SKILL.md 主流程）
+      const supportingDelta = syncSupportingFiles({
+        sourceDir: join(skillsSourceDir, id),
+        targetDir: join(skillsTargetDir, id),
+      });
+      const message =
+        supportingDelta.installed > 0 || supportingDelta.userModified > 0
+          ? `+ ${supportingDelta.installed} 支持文件 / ${supportingDelta.userModified} 保留用户版`
+          : undefined;
+
       findings.push({
         skillId: id,
         source,
         target,
         outcome: "installed",
+        message,
       });
     } catch (err) {
       findings.push({
@@ -219,4 +242,116 @@ export function syncPackagedSkillsToOpenCode(input?: {
     failed,
     findings,
   };
+}
+
+/**
+ * 递归同步 skill supporting files（reference.md / scripts/ 等子文件与子目录）。
+ *
+ * 规则：
+ * - 跳过 SKILL.md（已由主流程单独处理）
+ * - 子文件：内容相同跳过；不存在则复制；已存在不同则保留用户版本
+ * - 子目录：递归处理
+ * - 脚本（.sh / .bash / .zsh / .py / .mjs）：复制后赋可执行权限
+ *
+ * 失败不抛错，只在返回值里记录数量。主流程会把信息合并到 SKILL.md 的 finding 里。
+ *
+ * 注意：本函数不删除目标目录里源目录没有的文件——避免把用户自己加的脚本
+ * 或文档误删。如果源目录删了某个 supporting file，目标里会保留旧文件。
+ */
+function syncSupportingFiles(input: {
+  sourceDir: string;
+  targetDir: string;
+}): { installed: number; skipped: number; userModified: number; failed: number } {
+  const result = { installed: 0, skipped: 0, userModified: 0, failed: 0 };
+
+  if (!existsSync(input.sourceDir)) return result;
+
+  let entries: string[] = [];
+  try {
+    entries = readdirSync(input.sourceDir);
+  } catch {
+    return result;
+  }
+
+  for (const entry of entries) {
+    if (entry === "SKILL.md") continue; // 主流程已处理
+
+    const srcPath = join(input.sourceDir, entry);
+    const dstPath = join(input.targetDir, entry);
+
+    let srcStat: ReturnType<typeof statSync>;
+    try {
+      srcStat = statSync(srcPath);
+    } catch {
+      result.failed += 1;
+      continue;
+    }
+
+    if (srcStat.isDirectory()) {
+      // 递归子目录（如 scripts/）
+      try {
+        if (!existsSync(dstPath)) mkdirSync(dstPath, { recursive: true });
+      } catch {
+        result.failed += 1;
+        continue;
+      }
+      const sub = syncSupportingFiles({
+        sourceDir: srcPath,
+        targetDir: dstPath,
+      });
+      result.installed += sub.installed;
+      result.skipped += sub.skipped;
+      result.userModified += sub.userModified;
+      result.failed += sub.failed;
+      continue;
+    }
+
+    if (!srcStat.isFile()) continue; // 忽略 symlink 等
+
+    let srcContent = "";
+    try {
+      srcContent = readFileSync(srcPath, "utf-8");
+    } catch {
+      result.failed += 1;
+      continue;
+    }
+
+    if (existsSync(dstPath)) {
+      let dstContent = "";
+      try {
+        dstContent = readFileSync(dstPath, "utf-8");
+      } catch {
+        result.userModified += 1; // 不可读视为用户修改过
+        continue;
+      }
+      if (dstContent === srcContent) {
+        result.skipped += 1;
+      } else {
+        result.userModified += 1;
+      }
+      continue;
+    }
+
+    // 不存在 → 复制
+    try {
+      const parent = dirname(dstPath);
+      if (!existsSync(parent)) mkdirSync(parent, { recursive: true });
+      writeFileSync(dstPath, srcContent, "utf-8");
+
+      // 脚本类文件赋可执行权限（rwxr-xr-x = 0o755）
+      if (/\.(sh|bash|zsh|py|mjs|js)$/.test(entry)) {
+        try {
+          chmodSync(dstPath, 0o755);
+        } catch {
+          // chmod 失败不影响安装本身（OpenCode 可能在没有 chmod 权限的容器里）
+        }
+      }
+
+      result.installed += 1;
+    } catch {
+      result.failed += 1;
+    }
+  }
+
+  return result;
 }

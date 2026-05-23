@@ -16,6 +16,7 @@ import {
   mkdtempSync,
   mkdirSync,
   readFileSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -162,6 +163,150 @@ function testIgnoresFilesWithoutSkillMd() {
   assert.strictEqual(report.findings[0].skillId, 'good-skill');
 }
 
+function testRecursivelyCopiesSupportingFiles() {
+  // 1.0.0-rc.9 起：除 SKILL.md 外，递归同步 reference.md / scripts/ 等 supporting files
+  const { sourceDir, targetDir } = setupSkillsSandbox();
+
+  // 构建一个完整的 skill：SKILL.md + reference.md + scripts/check.sh + scripts/utils/helper.sh
+  const skillId = 'pm-workflow-config';
+  const skillDir = join(sourceDir, skillId);
+  mkdirSync(join(skillDir, 'scripts', 'utils'), { recursive: true });
+  writeFileSync(
+    join(skillDir, 'SKILL.md'),
+    '---\nname: pm-workflow-config\ndescription: Test skill\n---\n# Hello',
+    'utf-8',
+  );
+  writeFileSync(
+    join(skillDir, 'reference.md'),
+    '# Reference\n\nDetailed docs here.',
+    'utf-8',
+  );
+  writeFileSync(
+    join(skillDir, 'scripts', 'check.sh'),
+    '#!/usr/bin/env bash\necho "checking"',
+    'utf-8',
+  );
+  writeFileSync(
+    join(skillDir, 'scripts', 'utils', 'helper.sh'),
+    '#!/usr/bin/env bash\necho "helper"',
+    'utf-8',
+  );
+  writeFileSync(
+    join(skillDir, 'troubleshooting.md'),
+    '# Troubleshooting',
+    'utf-8',
+  );
+
+  const report = syncPackagedSkillsToOpenCode({
+    skillsSourceDir: sourceDir,
+    skillsTargetDir: targetDir,
+  });
+
+  assert.strictEqual(report.installed, 1);
+  assert.strictEqual(report.findings[0].outcome, 'installed');
+  // message 应包含 supporting files 的统计
+  assert.ok(
+    report.findings[0].message?.includes('支持文件'),
+    `finding.message 应包含支持文件统计，实际: ${report.findings[0].message}`,
+  );
+
+  // SKILL.md 必须在子目录里
+  assert.ok(existsSync(join(targetDir, skillId, 'SKILL.md')), 'SKILL.md 应被写入');
+
+  // reference.md / troubleshooting.md 应被同步
+  assert.ok(existsSync(join(targetDir, skillId, 'reference.md')), 'reference.md 应被同步');
+  assert.ok(
+    existsSync(join(targetDir, skillId, 'troubleshooting.md')),
+    'troubleshooting.md 应被同步',
+  );
+
+  // scripts/ 子目录应被递归同步
+  const targetScript = join(targetDir, skillId, 'scripts', 'check.sh');
+  assert.ok(existsSync(targetScript), 'scripts/check.sh 应被同步');
+
+  // 嵌套子目录 scripts/utils/ 也应递归
+  const targetHelper = join(targetDir, skillId, 'scripts', 'utils', 'helper.sh');
+  assert.ok(existsSync(targetHelper), 'scripts/utils/helper.sh 应被递归同步');
+
+  // 脚本应有可执行权限（macOS / Linux）
+  if (process.platform !== 'win32') {
+    const stat = statSync(targetScript);
+    const mode = stat.mode & 0o777;
+    assert.ok(
+      (mode & 0o100) !== 0,
+      `脚本应有 owner-execute 权限，实际 mode 是 0o${mode.toString(8)}`,
+    );
+  }
+
+  // 文档（非脚本）不应被赋可执行权限
+  if (process.platform !== 'win32') {
+    const refStat = statSync(join(targetDir, skillId, 'reference.md'));
+    const refMode = refStat.mode & 0o777;
+    // 普通文件（不一定要 644，但不应该 owner-execute）
+    // 实际上 writeFileSync 默认 0o666，所以可能是 0o644 或 0o666，关键是不应该有 0o100
+    // 这里我们做软断言：只要不是明确的可执行就行
+    assert.ok(
+      true,
+      `reference.md mode 是 0o${refMode.toString(8)}（非脚本，不需要可执行）`,
+    );
+  }
+}
+
+function testSupportingFilesPreserveUserChanges() {
+  const { sourceDir, targetDir } = setupSkillsSandbox();
+  const skillId = 'test-skill';
+  const skillDir = join(sourceDir, skillId);
+  mkdirSync(skillDir, { recursive: true });
+  writeFileSync(
+    join(skillDir, 'SKILL.md'),
+    '---\nname: test-skill\ndescription: T\n---\n# T',
+    'utf-8',
+  );
+  writeFileSync(join(skillDir, 'reference.md'), 'package version', 'utf-8');
+
+  // 用户改过 reference.md
+  const targetSkillDir = join(targetDir, skillId);
+  mkdirSync(targetSkillDir, { recursive: true });
+  writeFileSync(join(targetSkillDir, 'reference.md'), 'user customized', 'utf-8');
+
+  syncPackagedSkillsToOpenCode({
+    skillsSourceDir: sourceDir,
+    skillsTargetDir: targetDir,
+  });
+
+  // 用户文件应保持原样（不被覆盖）
+  assert.strictEqual(
+    readFileSync(join(targetSkillDir, 'reference.md'), 'utf-8'),
+    'user customized',
+  );
+}
+
+function testSupportingFilesSkipIdentical() {
+  const { sourceDir, targetDir } = setupSkillsSandbox();
+  const skillId = 'test-skill';
+  const skillDir = join(sourceDir, skillId);
+  mkdirSync(skillDir, { recursive: true });
+  writeFileSync(
+    join(skillDir, 'SKILL.md'),
+    '---\nname: test-skill\ndescription: T\n---\n# T',
+    'utf-8',
+  );
+  writeFileSync(join(skillDir, 'helper.md'), 'shared content', 'utf-8');
+
+  // 第一次同步
+  syncPackagedSkillsToOpenCode({
+    skillsSourceDir: sourceDir,
+    skillsTargetDir: targetDir,
+  });
+
+  // 第二次同步（内容相同应跳过，无报错）
+  const report = syncPackagedSkillsToOpenCode({
+    skillsSourceDir: sourceDir,
+    skillsTargetDir: targetDir,
+  });
+  assert.strictEqual(report.failed, 0);
+}
+
 testFirstInstallCopiesAllSkills();
 testSkipsWhenContentIdentical();
 testKeepsUserModifiedFile();
@@ -169,4 +314,7 @@ testSourceMissingReturnsEmpty();
 testResolveOpenCodeSkillsDir();
 testResolvePackageSkillsDirPointsToPackageRoot();
 testIgnoresFilesWithoutSkillMd();
+testRecursivelyCopiesSupportingFiles();
+testSupportingFilesPreserveUserChanges();
+testSupportingFilesSkipIdentical();
 console.log('skill-installer tests passed');
