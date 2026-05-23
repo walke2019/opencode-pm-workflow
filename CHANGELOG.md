@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.0.0-rc.5
+
+### 修复：跨平台兼容性（macOS / Linux / Windows）
+
+1.0.0-rc.4 在 macOS 上工作正常，但代码里有几处硬编码 POSIX 假设，在 Windows 上会失败：
+
+- **`/tmp` 硬编码**：`resolveSafeProjectDir` 与 `plugin.ts` / `tui/plugin.ts` fallback 用 `process.env.TMPDIR || "/tmp"`。Windows 没有 `/tmp` 目录，且 `TMPDIR` 是 macOS/Linux 环境变量名，Windows 用 `TMP` / `TEMP`
+- **`process.env.HOME || process.env.USERPROFILE`**：手工拼接 home 探测，逻辑虽对但脆弱；不如直接用 Node `os.homedir()`
+- **`getConfigDir` 在 Windows 上用 `%APPDATA%`**：但 OpenCode 官方文档明确 Windows 上配置目录是 `%USERPROFILE%\.config\opencode\`，不是 `%APPDATA%`。这个函数当前没被调用（死代码），但仍要修对避免后续误用
+
+**修复**：
+
+- `src/server/runtime.ts`：`resolveSafeProjectDir` 改用 `os.homedir()` + `os.tmpdir()`；`getConfigDir` 改用 `homedir() + ".config/opencode"`，与 OpenCode 官方规范对齐
+- `src/server/plugin.ts`：bootstrap fallback 路径同样改用 `homedir()` / `tmpdir()`
+- `src/tui/plugin.ts`：相同改造
+
+**跨平台路径示例**（fallback 触发时）：
+
+| 平台 | fallback projectDir |
+|---|---|
+| macOS | `/Users/<user>/.cache/pm-workflow/global` |
+| Linux | `/home/<user>/.cache/pm-workflow/global` |
+| Windows | `C:\Users\<user>\.cache\pm-workflow\global` |
+| 极端 sandbox（无 home） | macOS: `/var/folders/.../T/pm-workflow-global`; Linux: `/tmp/pm-workflow-global`; Windows: `C:\Users\<user>\AppData\Local\Temp\pm-workflow-global` |
+
+### 测试
+
+- `test/runtime-project-dir.test.mjs` 13 个用例（新增 1 个跨平台 fallback 路径结构验证）
+- 测试用 `os.homedir()` 与 `process.platform` 自动适配运行环境，而不是 mock 环境变量
+
+### 影响
+
+- **macOS 用户**：行为不变（`os.tmpdir()` 在 macOS 返回 `/var/folders/...`，但 fallback 几乎不会触发，因为 home 永远存在）
+- **Linux 用户**：行为不变（`os.tmpdir()` 返回 `/tmp`，fallback 几乎不会触发）
+- **Windows 用户**：现在能正常工作；之前如果触发 fallback 会因为 `/tmp` 不存在而失败
+
 ## 1.0.0-rc.4
 
 ### 修复：OpenCode 启动时插件加载失败（关键 bug）

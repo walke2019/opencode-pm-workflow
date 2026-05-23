@@ -1,4 +1,6 @@
 import { tool } from "@opencode-ai/plugin";
+import { homedir, tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   getAutomationMode,
   buildOpenCodeAgentConfig,
@@ -51,13 +53,14 @@ export const PmWorkflowPlugin = async (
     bootstrapError = err instanceof Error ? err.message : String(err);
     // 提供降级 config / state，让插件仍能注册 tool 与 hooks。
     config = seedWorkflowConfig(
-      // 强制 fallback 到 ~/.cache/pm-workflow/global，避开异常路径
+      // 强制 fallback 到 <home>/.cache/pm-workflow/global，避开异常路径。
+      // 跨平台用 Node `os.homedir()` 与 `os.tmpdir()`，不依赖 HOME/TMPDIR 环境变量。
       (() => {
-        const home = process.env.HOME || process.env.USERPROFILE || "";
-        if (home && home !== "/") {
-          return `${home}/.cache/pm-workflow/global`;
+        const home = homedir();
+        if (home && home !== "/" && home !== "\\") {
+          return join(home, ".cache", "pm-workflow", "global");
         }
-        return `${process.env.TMPDIR || "/tmp"}/pm-workflow-global`;
+        return join(tmpdir(), "pm-workflow-global");
       })(),
       options,
     );

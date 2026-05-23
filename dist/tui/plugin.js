@@ -1,9 +1,15 @@
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { registerPmWorkflowCommands } from "./commands.js";
 import { createToastHelpers } from "./toasts.js";
 /**
  * 推断 TUI plugin 的项目目录。与 server runtime.getProjectDir 同样的兜底策略：
- * 跳过空字符串 / "/" / "\"，最终回退到 ~/.cache/pm-workflow/global，**永不返回 `/`**。
+ * 跳过空字符串 / "/" / "\"，最终回退到 `<home>/.cache/pm-workflow/global`，
+ * **永不返回 `/`**。跨平台用 Node `os.homedir()` 与 `os.tmpdir()`：
+ *
+ *   macOS:   /Users/<user>/.cache/pm-workflow/global
+ *   Linux:   /home/<user>/.cache/pm-workflow/global
+ *   Windows: C:\Users\<user>\.cache\pm-workflow\global
  *
  * 必要性：OpenCode TUI 在 system service 模式下 cwd 也可能是 `/`，旧版
  * `worktree || directory || process.cwd()` 会让所有依赖 projectDir 的 IO 操作
@@ -25,11 +31,11 @@ function getProjectDir(api) {
             continue;
         return trimmed;
     }
-    const home = process.env.HOME || process.env.USERPROFILE || "";
-    if (home && home !== "/") {
+    const home = homedir();
+    if (home && home !== "/" && home !== "\\") {
         return join(home, ".cache", "pm-workflow", "global");
     }
-    return join(process.env.TMPDIR || "/tmp", "pm-workflow-global");
+    return join(tmpdir(), "pm-workflow-global");
 }
 export const plugin = {
     id: "pm-workflow-plugin-tui",

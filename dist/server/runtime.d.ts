@@ -62,6 +62,19 @@ export type DispatchExecutionResult = {
 };
 export declare function executeDispatchCommand(projectPath: string, dispatch: ReturnType<typeof buildDispatchCommand>, prompt: string): DispatchExecutionResult;
 export declare function buildAutoContinueDispatch(projectDir: string, prompt: string, evaluation: EvaluationResult): DispatchCommand | undefined;
+/**
+ * OpenCode 全局配置目录。
+ *
+ * 跨平台统一规则（与 OpenCode 官方文档对齐）：
+ * - macOS/Linux: `~/.config/opencode/`
+ * - Windows:    `%USERPROFILE%\.config\opencode\`
+ *
+ * 注意：OpenCode 在 Windows 上**不用** `%APPDATA%`，而是统一用 `%USERPROFILE%\.config\`，
+ * 跟 Linux 风格一致。这与传统 Windows 应用习惯不同。
+ *
+ * 实现策略：用 Node `os.homedir()` 跨平台拿 home 目录（macOS = "/Users/...", Linux =
+ * "/home/...", Windows = "C:\Users\..."），再 join `.config/opencode`，无需平台分支。
+ */
 export declare function getConfigDir(): string;
 /**
  * 推断 plugin 工作的"项目目录"。
@@ -86,8 +99,14 @@ export declare function getProjectDir(ctx: PluginContext): string;
  * 通用安全 projectDir 解析。给 tool 入口（context.worktree / context.directory）
  * 与其他需要 projectDir 兜底的地方使用。
  *
- * 跳过空字符串 / 纯空白 / "/" / "\"；都不可用时回退到 ~/.cache/pm-workflow/global。
- * **永不返回 "/"**。
+ * 跨平台兼容：
+ * - 跳过空字符串 / 纯空白 / "/"（POSIX 根） / "\"（Windows 根的早期形式） / 单字符
+ * - 正常路径直接返回
+ * - 都不可用时回退到 `<home>/.cache/pm-workflow/global`（Node `os.homedir()` 跨平台）
+ * - 极端无 home 时用 `os.tmpdir()`（macOS = `/var/folders/...`, Linux = `/tmp`,
+ *   Windows = `C:\Users\<user>\AppData\Local\Temp` 等系统标准临时目录）
+ *
+ * **永不返回 `/` 或 `\`**。
  */
 export declare function resolveSafeProjectDir(...candidates: Array<string | undefined | null>): string;
 export declare function log(client: OpenCodeClient | undefined, level: LogLevel, message: string, extra?: Record<string, unknown>): Promise<void>;
