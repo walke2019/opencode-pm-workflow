@@ -137,14 +137,15 @@ function testResolveOpenCodeSkillsDir() {
 
 function testResolvePackageSkillsDirPointsToPackageRoot() {
   const dir = resolvePackageSkillsDir();
-  // 默认应指向包内 skills/ 目录；当前包确实有 agent-theme-config 和 agent-model-config
+  // 默认应指向包内 skills/ 目录；rc.10 起合并为单一 pm-workflow skill
   assert.ok(dir.endsWith('/skills'), `应以 /skills 结尾: ${dir}`);
   assert.ok(existsSync(dir), `包内 skills 目录应存在: ${dir}`);
-  // 至少应能看到两个 skill
-  const skillThemeMd = join(dir, 'agent-theme-config', 'SKILL.md');
-  const skillModelMd = join(dir, 'agent-model-config', 'SKILL.md');
-  assert.ok(existsSync(skillThemeMd), '应找到 agent-theme-config/SKILL.md');
-  assert.ok(existsSync(skillModelMd), '应找到 agent-model-config/SKILL.md');
+  // 应能看到 pm-workflow skill（rc.10 起的唯一 skill）
+  const pmWorkflowSkillMd = join(dir, 'pm-workflow', 'SKILL.md');
+  assert.ok(existsSync(pmWorkflowSkillMd), '应找到 pm-workflow/SKILL.md');
+  // 应能看到 supporting files
+  const refMd = join(dir, 'pm-workflow', 'reference.md');
+  assert.ok(existsSync(refMd), '应找到 pm-workflow/reference.md');
 }
 
 function testIgnoresFilesWithoutSkillMd() {

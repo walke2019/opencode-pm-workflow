@@ -1,10 +1,3 @@
----
-name: agent-model-config
-description: Analyze a new project and configure Claude Code/OpenCode agents with models selected only from the global OpenCode provider model list.
-license: MIT
-compatibility: opencode
----
-
 # Agent Model Config
 
 Use this Skill when starting or onboarding a project and the user asks to configure agents, subagents, model routing, or OpenCode/Claude Code project-local agent files.

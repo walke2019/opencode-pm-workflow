@@ -1,10 +1,3 @@
----
-name: agent-theme-config
-description: 对话式 agent 主题配置入口。用户给一个主题名（三国 / 西游 / 漫威 / 现代职场 / 默认），AI 读取此 skill 后调用 pmw agents theme 命令为 6 个固定 agent（commander / advisor / backendcoder / designer / fixer / writer）生成主题化 display_name + description + body，写到 ~/.config/opencode/agents/ 或 <projectDir>/.opencode/agents/。
-license: MIT
-compatibility: opencode
----
-
 # Agent Theme Config
 
 ## 任务定位

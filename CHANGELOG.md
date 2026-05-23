@@ -1,5 +1,96 @@
 # Changelog
 
+## 1.0.0-rc.10
+
+### 重大变更：3 个 skill 合并为单一 `pm-workflow` skill
+
+之前 rc.9 引入的 3 个独立 skill：
+
+```
+skills/
+├── pm-workflow-config/   ← 全场景帮手
+├── agent-theme-config/   ← 主题专项
+└── agent-model-config/   ← 模型专项
+```
+
+设计冗余且分散触发词。当用户问"pm-workflow 怎么用"时 AI 可能命中 pm-workflow-config，但说"切三国主题"又要切到 agent-theme-config，跨 skill 跳转 OpenCode 不一定能可靠完成。
+
+rc.10 合并为唯一 skill：
+
+```
+skills/
+└── pm-workflow/
+    ├── SKILL.md            ← 唯一入口（全部触发词都在 description）
+    ├── reference.md        ← 完整规范参考
+    ├── theme.md            ← 主题工作流（合并自旧 agent-theme-config）
+    ├── model.md            ← 模型工作流（合并自旧 agent-model-config）
+    ├── troubleshooting.md  ← 12 种错误诊断
+    ├── upgrade.md          ← 升级流程
+    ├── uninstall.md        ← 卸载流程
+    └── scripts/
+        ├── check.sh
+        ├── upgrade.sh
+        ├── reset-agents.sh
+        └── full-clean.sh
+```
+
+### 触发词集中
+
+`pm-workflow/SKILL.md` 的 description 包含全部触发场景：
+
+- pm-workflow / pmw / @walke
+- 6 个固定 agent ID（commander / advisor / backendcoder / designer / fixer / writer）
+- 主题切换（"切三国" / "回滚到默认主题"）
+- 模型分配（"给 commander 配 Opus"）
+- 切换列表 / 权限 / skill 加载等问题
+- 安装 / 升级 / 卸载
+
+AI 在用户提到任一关键词时主动加载这一个 skill，按 SKILL.md 流程导航分发到 supporting file（theme.md / model.md / troubleshooting.md 等）。
+
+### 不再跨 skill 跳转
+
+之前"AI 在 pm-workflow-config 里调 agent-theme-config"是间接触发，OpenCode 不保证可靠。现在主题问题直接读 supporting file，AI 加载 SKILL.md 时已经知道 theme.md 的存在与位置，按需 Read 即可，不依赖二次 skill 触发。
+
+### 旧 skill 目录处理
+
+| 用户来源 | 旧 skill 目录 | rc.10 plugin 行为 |
+|---|---|---|
+| rc.6 ~ rc.8 用户 | `agent-theme-config/` + `agent-model-config/` | 不再生成；用户旧目录留在 `~/.config/opencode/skills/`，需手动清 |
+| rc.9 用户 | + `pm-workflow-config/` | 同上 |
+
+清理建议（在 rc.10 升级后）：
+
+```bash
+rm -rf ~/.config/opencode/skills/{agent-theme-config,agent-model-config,pm-workflow-config}
+```
+
+不清理也不影响 rc.10 工作（OpenCode 仍会加载它们但不再被 plugin 维护）。
+
+### 测试更新
+
+- `test/skill-installer.test.mjs`：`testResolvePackageSkillsDirPointsToPackageRoot` 改为期望 `pm-workflow/SKILL.md` 而非旧的 `agent-theme-config/` + `agent-model-config/`
+- 19 个测试文件全过
+
+### 迁移建议
+
+```bash
+# 1. 升级
+npm install -g @walke/opencode-pm-workflow@rc
+
+# 2. 完全 quit + 重启 OpenCode
+pkill -9 -f OpenCode
+rm -rf ~/.cache/opencode/packages/@walke/opencode-pm-workflow@rc
+
+# 3. （可选）清旧 skill 目录
+rm -rf ~/.config/opencode/skills/{agent-theme-config,agent-model-config,pm-workflow-config}
+
+# 4. 双击启动 OpenCode（plugin auto-install 会写入新的 pm-workflow skill）
+
+# 5. 验证
+ls ~/.config/opencode/skills/pm-workflow/
+# 应看到 SKILL.md / theme.md / model.md / reference.md / troubleshooting.md / upgrade.md / uninstall.md / scripts/
+```
+
 ## 1.0.0-rc.9
 
 ### 新增：`pm-workflow-config` skill — 插件全场景帮手
