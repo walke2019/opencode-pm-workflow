@@ -1,143 +1,259 @@
-# Agent Model Config
+# 为 6 个 agent 分配模型
 
-Use this Skill when starting or onboarding a project and the user asks to configure agents, subagents, model routing, or OpenCode/Claude Code project-local agent files.
+## 触发场景
 
-## Trigger phrases
+用户提到以下任何一条都加载本文档：
 
-- “初始化 agent 和模型”
-- “帮这个项目配置 Claude/OpenCode agents”
-- “新项目 agent-model-config”
-- “按前端/后端/测试/文档分配模型”
-- “自动识别项目类型并配置 agents”
-- “从全局 OpenCode 模型配置里选择模型”
-- “读取模型模板并配置 pm-workflow”
-- “我填好了 pm-workflow.models.example.json”
+- "给 commander 配 Opus" / "designer 用 GPT-5"
+- "为 6 个 agent 分配模型"
+- "初始化 agent 模型 / pmw models init"
+- "我填好了 pm-workflow.models.example.json"
+- "从全局 OpenCode 模型列表选择模型"
+- "切换某个 agent 的模型 / fallback 模型"
 
-## Hard rules
+## ⚠ 关键概念：模型配置写在哪里
 
-1. Ask the user for the target project path if it is not already clear.
-2. The authoritative model inventory is only:
-   `/Users/walke-mac/.config/opencode/opencode.json`
-3. Extract models from `provider.*.models` and write the model key only.
-   - Correct: `cx/gpt-5.5`
-   - Wrong unless explicitly requested: `bestool-route-cx/cx/gpt-5.5`
-4. Do not invent model IDs.
-5. Project `.opencode/opencode.json` or `.opencode/opencode.jsonc` may define plugins, permissions, commands, and project overrides, but must not be treated as the authoritative model inventory.
-6. Before writing files, present the detected project type, proposed agents, and proposed model mapping. Ask whether the user wants changes unless the user has already explicitly requested automatic creation/update.
-7. Preserve existing user content. Edit/merge instead of overwriting when files already exist.
-8. If the user provides a model template (`pm-workflow.models.example.json`, `.pm-workflow/model-profile.json`, or pasted JSON with `default_model` / `agent_models`), treat it as the preferred source of intent. Read it, **resolve keywords (see "Keyword resolution rules" below)**, present the resolved mapping to the user for confirmation, then merge into pm-workflow config.
-9. The template's `agent_profiles` block describes each agent's role, `model_traits`, `fallback_traits`. Use it to:
-   - Validate the resolved model against the trait expectations.
-   - When the resolved model clearly violates `model_traits` (e.g. a coding-only model resolved for `commander`), surface the issue with 1-3 alternative candidates from the global inventory and ask the user to confirm.
-   - Never silently substitute a different model. Always confirm with the user.
-10. `agent_profiles` and `_resolve_strategy` are read-only metadata. Do not write them to `pm-workflow.config.json` or `agents.definitions.*`.
+**OpenCode 读取 agent 模型的唯一权威位置**：
 
-## Keyword resolution rules
+```
+~/.config/opencode/opencode.json 的 agent 段
+```
 
-Each agent's `model` / `fallback_models` field in the template can be:
+格式：
 
-- A full model ID (e.g. `bestool-route-cx/cx/gpt-5.5`) — used as-is if present in global `provider.*.models`.
-- A short keyword (e.g. `gpt-5.5`, `claude-opus`, `gemini-3.1-`) — resolved via substring match against full model IDs.
-- An array of strings (e.g. `["claude-opus", "gpt-5.5", "gpt-5.4"]`) — tried in order; **the first keyword that matches at least one global model wins**, then keyword resolution stops.
+```json
+{
+  "agent": {
+    "commander": {
+      "model": "bestool/claude-opus-4.x",
+      "fallback_models": ["cx/gpt-5.5", "cx/gpt-5.4"]
+    },
+    "designer": { "model": "antigravity/gemini-3.1-pro-low" },
+    ...
+  }
+}
+```
 
-### Resolution order
+**绝不要写到这些位置**（OpenCode 不读，写了无效）：
 
-For each keyword, follow `_resolve_strategy.match_order` from the template:
+- ❌ `~/.config/opencode/pm-workflow.config.json` 的 `agents.definitions[*].model`
+- ❌ `~/.config/opencode/agents/<id>.md` 的 frontmatter `model` 字段（rc.8 起 pm-workflow 主题不写这个，让用户全局配置统一管理）
+- ❌ `<projectDir>/.pm-workflow/config.json`
 
-1. **Exact full-ID match** wins immediately (`opencode/gpt-5` → exact `provider.opencode.models["gpt-5"]`).
-2. **Substring match** otherwise (`claude-opus` → all global models whose ID contains `claude-opus`).
-3. If a keyword matches **multiple sources** (e.g. `claude-opus` matches both `bestool-anthropic/...` and `bestool-route-kr/kr/...`), break ties using `_resolve_strategy.provider_priority` from front to back. Default priority order:
-   - `bestool-route-` → `bestool-` → `antigravity-manager/` → `antigravity/` → `opencode/` → `kr/` → `kg/` → `gh/` → `cx/`
-4. Down-weight candidates whose ID contains any of `_resolve_strategy.exclude_keywords_default` (`preview`, `deprecated`, `experimental`); they may still serve as a last-resort fallback.
-5. If **all keywords in the array** have zero matches, record the field as **unresolved** and report it to the user with the full candidate list — do not invent a model ID.
-6. Unresolved keywords are tolerated (e.g. user listed `gpt-5.4-mini` before that provider is wired up): keep the template entry untouched and skip the write for that single agent — the user can re-run resolution later when new providers are added.
+如果之前的 AI 错误地写到这些位置，要：
+1. 提示用户它们对 OpenCode 完全无效
+2. 把配置移到正确位置（`opencode.json` agent 段）
+3. 清理错误位置的残留（清掉 pm-workflow.config.json 里的 model 字段）
 
-### Mandatory user confirmation
+## 模型来源（唯一权威清单）
 
-Before writing any merged config, present the resolution result as a table and ask the user to confirm:
+只能用 `~/.config/opencode/opencode.json` 的 `provider.*.models` 列表里**已存在**的模型 ID。
 
-| Agent | Template (keywords) | Resolved model ID | Source provider |
-| --- | --- | --- | --- |
-| `commander` | `["claude-opus", "gpt-5.5"]` | `bestool-route-kr/kr/claude-opus-4.7` | `bestool-route-kr` |
-| ... | ... | ... | ... |
+查询方法：
 
-Wait for explicit user confirmation. Do not assume "no objection = confirmation".
+```bash
+python3 -c "
+import json
+d = json.load(open('/Users/walkemac/.config/opencode/opencode.json'))
+for prov_id, prov in d.get('provider', {}).items():
+    for m in prov.get('models', {}):
+        print(f'{prov_id}/{m}')"
+```
 
-## Built-in pm agent profiles
+或更简单：
 
-The pm-workflow built-in agents have stable roles. When the user fills the model template, **always cross-check** the chosen model against these role requirements before writing config:
+```bash
+jq -r '.provider | to_entries[] | .key as $p | .value.models | keys[] | "\($p)/\(.)"' ~/.config/opencode/opencode.json
+```
 
-| Agent | Mode | Role | Model traits to look for | Fallback traits |
-| --- | --- | --- | --- | --- |
-| `commander` | primary | 主协调官：分析决策、规划分派、收敛验收 | 强推理、长上下文、决策稳健、中文优先 | 低成本但保留中文与结构化输出 |
-| `advisor` | primary | 拆解顾问：把复杂任务拆成清晰步骤、识别风险 | 结构化拆解、风险识别、中文优先 | 低成本但结构化输出不丢 |
-| `backendcoder` | subagent | 后端执行：API、数据库、服务、性能 | 编码能力强、调试推理、理解复杂依赖 | 仍能写出可运行代码、保留类型/接口 |
-| `designer` | subagent | 前端执行：页面、组件、交互、响应式、可访问性 | UI 直觉、CSS/样式准确、组件拆分清晰 | 保留响应式与可访问性 |
-| `fixer` | subagent (hidden) | 审查与文档：测试、回归、code review、发布说明 | 细致审查、找 bug/安全问题、文档语感 | 仍能完成检查表与发布说明 |
-| `advisor` | subagent (hidden) | 调研：资料检索、官方方案、事实核查 | 检索能力、概要提炼、中英双语 | 保留检索与提炼能力 |
+## 模型 ID 格式
 
-If the user picks a model that violates these traits (e.g. choosing a coding-only model for `commander`, or a heavy reasoning model for `advisor` when budget matters), surface 1-3 alternatives from the global inventory and ask the user to confirm. Never silently substitute.
+OpenCode 的 model 字段接受两种形式：
 
-## Default role mapping
+| 形式 | 示例 | 何时用 |
+|---|---|---|
+| `provider/model_id` | `bestool/claude-opus-4.x` | 推荐：明确指定 provider |
+| 直接 `model_id`（OpenCode 自动找匹配 provider） | `claude-opus-4.x` | 简洁但有歧义风险 |
 
-Choose from available global OpenCode model keys. Prefer these mappings when present:
+**绝不要发明 model ID**。如果用户说"用 Opus"但 inventory 没 Opus，明确告诉用户没有 + 列出实际可用的近似选项。
 
-| Role | Preferred model |
-| --- | --- |
-| main/orchestrator | `cx/gpt-5.5` |
-| backend/plugin/API | `cx/gpt-5.3-codex` |
-| frontend/UI | `antigravity/gemini-3-flash-preview` |
-| docs/light work | `kr/claude-haiku-4.5` |
-| testing/QA/review | `kr/claude-sonnet-4.5` |
-| architecture/review | `cx/gpt-5.4` |
+## 6 个 pm-workflow agent 推荐模型分配
 
-If a preferred model is not in the global inventory, pick the closest available model and explain why.
+按"成本 / 质量平衡"原则：
 
-## Files to create/update
+| Agent | 推荐模型类型 | 理由 |
+|---|---|---|
+| `commander` | **强模型**（Opus 级 / GPT-5 级 / Gemini Pro 级） | 决策错误代价大 |
+| `backendcoder` | **强模型** | 后端架构判断需要顶级推理 |
+| `designer` | 中等以上（Sonnet / GPT-5 / Gemini Pro） | UI 代码生成中等模型够用 |
+| `fixer` | 中等以上 | 测试/修复需要确定性 |
+| `advisor` | **轻量**（Haiku / GPT-5-mini / DeepSeek Flash） | 调研类大量 token 但不深推理 |
+| `writer` | **轻量** | 文档创作不需要深推理 |
 
-### pm-workflow template-first configuration
+## 工作流程
 
-When a user fills a model template, merge it into one of:
+### Step 1：澄清
 
-- Global: `~/.config/opencode/pm-workflow.config.json` when `write_target` is `global` or omitted.
-- Project: `.pm-workflow/config.json` when `write_target` is `project`.
+向用户确认（最多 3 个澄清问题）：
 
-Apply fields as follows:
+1. 全局还是项目级？（默认全局：`~/.config/opencode/opencode.json`）
+2. 6 个 agent 都配，还是只配某几个？
+3. 需要 fallback 链吗？
 
-| Template field | Target config |
-| --- | --- |
-| `default_model` | `agents.definitions.<agent>.model` for any built-in pm agent without explicit `agent_models` override |
-| `default_fallback_model` | `agents.definitions.<agent>.fallback_models[0]` and `fallback.chains.<agent>[0]` when no explicit fallback override exists |
-| `agent_models.<agent>` | `agents.definitions.<agent>.model` |
-| `agent_fallback_models.<agent>` | `agents.definitions.<agent>.fallback_models[0]` and `fallback.chains.<agent>[0]` |
+### Step 2：探索 inventory
 
-Supported built-in pm agents: `commander`, `advisor`, `backendcoder`, `designer`, `fixer`, `writer`.
+```bash
+# 列出所有可用模型
+jq -r '.provider | to_entries[] | .key as $p | .value.models | keys[] | "\($p)/\(.)"' ~/.config/opencode/opencode.json
+```
 
-Do not require the user to run a CLI command for this flow. The CLI can be mentioned only as an optional fallback for scripted setup.
+### Step 3：建议分配
 
-### Claude Code
+根据上面的"推荐分配"原则 + 用户实际可用模型，给出建议表给用户确认。**不要直接写文件**，先问用户：
 
-- `.claude/agents/dev-orchestrator.md`
-- `.claude/agents/backend-dev.md`
-- `.claude/agents/frontend-dev.md`
-- `.claude/agents/test-engineer.md`
-- `.claude/agents/docs-writer.md`
-- `.claude/agents/architect-reviewer.md`
-- `.claude/settings.local.json` for local default agent/model and `modelOverrides` if needed.
+```
+基于你的模型 inventory，建议分配如下：
 
-### OpenCode
+| Agent | 主模型 | Fallback |
+|---|---|---|
+| commander    | bestool/claude-opus-4.x        | cx/gpt-5.5 → cx/gpt-5.4 |
+| backendcoder | cx/gpt-5.4                     | opencode-go/qwen3.6-plus |
+| designer     | antigravity/gemini-3.1-pro-low | gemini-3-flash-preview |
+| advisor      | bestool/claude-haiku-4.5       | cx/gpt-5.5-low |
+| writer       | bestool/claude-haiku-4.5       | cx/gpt-5.5-low |
+| fixer        | bestool/claude-sonnet-4.5      | opencode-go/deepseek-v4-pro |
 
-- `.opencode/agent/<agent>.md` or `.opencode/agents/<agent>.md`, following the project’s existing convention.
-- Project OpenCode config only when needed to reference plugins or enable local project behavior.
-- Do not copy provider secrets into project files.
+确认后写入 ~/.config/opencode/opencode.json 的 agent 段？
+```
 
-## Execution standard
+### Step 4：写入正确位置
 
-Generated orchestrator prompts must make the main agent a decision/command expert. Subagents are dispatched by role and trait. Workflow is the execution standard:
+**用户确认后**，按以下方式写入。强烈建议用 Python 脚本而不是 jq（jq 不擅长 in-place merge 复杂嵌套）：
 
-1. requirements compression
-2. development implementation
-3. testing verification
-4. release summary
+```bash
+python3 <<'EOF'
+import json
 
-Todo completion is the task termination standard: every todo must be completed or marked blocked with a reason.
+p = '/Users/walkemac/.config/opencode/opencode.json'
+with open(p) as f:
+    d = json.load(f)
+
+# 备份建议先做：cp $p $p.backup-$(date +%Y%m%d-%H%M%S)
+
+# 直接合并（保留其他 agent 配置，覆盖指定的 6 个）
+agent_config = {
+    'commander': {
+        'model': 'bestool/claude-opus-4.x',
+        'fallback_models': ['cx/gpt-5.5', 'cx/gpt-5.4'],
+    },
+    'backendcoder': {
+        'model': 'cx/gpt-5.4',
+        'fallback_models': ['opencode-go/qwen3.6-plus'],
+    },
+    # ... 等
+}
+
+if 'agent' not in d:
+    d['agent'] = {}
+for k, v in agent_config.items():
+    d['agent'][k] = v
+
+with open(p, 'w') as f:
+    json.dump(d, f, indent=2, ensure_ascii=False)
+    f.write('\n')
+
+# 验证 JSON 合法
+print('✓ 已写入')
+EOF
+```
+
+### Step 5：验证
+
+```bash
+# JSON 合法性
+jq empty ~/.config/opencode/opencode.json
+
+# 实际配置
+jq '.agent' ~/.config/opencode/opencode.json
+```
+
+### Step 6：让用户重启 OpenCode
+
+```
+✓ 配置已写入 ~/.config/opencode/opencode.json 的 agent 段。
+
+请完全 quit + 重启 OpenCode 让新配置生效：
+1. ⌘+Q 完全退出 OpenCode（菜单 OpenCode → Quit）
+2. 双击 OpenCode 重新启动
+
+启动后开新对话，让某个 agent 做事，看是否真用了你期望的模型。
+```
+
+## 关于 pm-workflow.config.json 的 agents.definitions
+
+⚠ **这个段落里的 model 字段对 OpenCode 完全无效，绝不要往这里写。**
+
+`pm-workflow.config.json` 是 pm-workflow plugin 自己的内部 metadata，存的是：
+
+- agent ID、mode、description、prompt（plugin 内 fallback，OpenCode md 文件优先）
+- permission（plugin 自己的权限规则，与 OpenCode permission 不同）
+- dispatch_map / fallback / retry 策略（pm-workflow 内部行为）
+
+**`agents.definitions[*].model` 即使写了，OpenCode 也不会读它分配模型给 agent**——它只是 plugin 内 fallback 时尝试用的 metadata，但实际路由仍由 OpenCode 的 agent 段决定。
+
+如果发现 `pm-workflow.config.json` 里有 `model` / `fallback_models` 字段（之前 AI 误写的产物），告诉用户：
+
+```bash
+python3 -c "
+import json
+p = '/Users/walkemac/.config/opencode/pm-workflow.config.json'
+d = json.load(open(p))
+for k, v in d.get('agents', {}).get('definitions', {}).items():
+    v.pop('model', None)
+    v.pop('fallback_models', None)
+json.dump(d, open(p, 'w'), indent=2, ensure_ascii=False)
+print('✓ 已清理 pm-workflow.config.json 中无效的 model 字段')
+"
+```
+
+## Fallback 模型机制
+
+OpenCode 的 fallback：
+
+```json
+"agent": {
+  "commander": {
+    "model": "bestool/claude-opus-4.x",
+    "fallback_models": ["cx/gpt-5.5", "cx/gpt-5.4"]
+  }
+}
+```
+
+行为：
+- 主模型不可用（API 失败 / 超时 / 限流）→ 自动尝试 `cx/gpt-5.5`
+- 仍失败 → 尝试 `cx/gpt-5.4`
+- 全部失败 → 报错给用户
+
+`fallback_models` 是数组，按顺序尝试。每项也必须在 `provider.*.models` 里存在。
+
+## 用户模板（pm-workflow.models.example.json）
+
+如果用户在项目根目录下提供了 `pm-workflow.models.example.json` 或类似模板，可以用它作为 intent，但**仍要按上述工作流写到 opencode.json**。
+
+模板里的 `agent_models` / `default_model` / `agent_profiles` 是用户偏好声明，不是直接的 OpenCode 配置。AI 读模板 → 生成 OpenCode agent 段 → 用户确认 → 写入。
+
+## 错误处理
+
+| 症状 | 处理 |
+|---|---|
+| 用户说"模型不识别 / 报错" | 先 `jq '.agent' opencode.json` 看是否有 agent 段；没有就要先建。检查模型 ID 是否在 `provider.*.models` 里 |
+| 用户提到 `claude-opus-4.x` 不识别 | 这是 bestool 路由器的合法通配符（路由到 4.x 系列最新版）。**前提是它在 `provider.bestool.models` 里有声明** |
+| 模型 ID 含 `/` 是合法的 | OpenCode 接受 `provider/model_id` 形式 |
+| 用户已有 `agent` 段不想覆盖 | 用 merge 而不是覆盖（Python 脚本里 `for k, v in agent_config.items(): d['agent'][k] = v`） |
+| `provider` 段缺 apiKey | 检查 `provider.*.options.apiKey` 是否存在；缺了 OpenCode 调 API 会鉴权失败 |
+
+## 关联
+
+- [theme.md](theme.md) — 应用主题（agent display_name / body）
+- [../reference/agent-frontmatter.md](../reference/agent-frontmatter.md) — agent md 完整规范
+- [../troubleshooting/general.md](../troubleshooting/general.md) — T11 子代理模型继承问题

@@ -88,6 +88,7 @@ pm-workflow 永远只有这 6 个语义 agent，ID 永不可改：
 
 | 约束 | 验证 | 引入版本 |
 |---|---|---|
+| **模型配置写在 `opencode.json` 的 `agent` 段** | OpenCode 只读这里的 model 字段；写到 pm-workflow.config.json 的 agents.definitions[*].model 完全无效 | rc.12 强调 |
 | **CLI 版本对齐** | `pmw --version` ≡ plugin cache 版本 | rc.4 |
 | **Skill 子目录结构** | `~/.config/opencode/skills/<id>/SKILL.md` | rc.7 |
 | **Agent md 完整字段** | 含 description / mode / temperature / tools / permission | rc.8 |

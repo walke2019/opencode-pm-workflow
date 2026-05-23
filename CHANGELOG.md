@@ -1,5 +1,56 @@
 # Changelog
 
+## 1.0.0-rc.13
+
+### 修复：skill 引导漏洞——model 配置写到了错误位置
+
+实测发现：用户让 OpenCode 内的 AI 配模型，AI 报告"已写入 pm-workflow.config.json"，但 OpenCode 内实际还在用旧模型。原因是 **rc.7-rc.12 的 `workflows/model.md` 引导 AI 写到了 OpenCode 不读的位置**。
+
+### 真相
+
+OpenCode 读 agent 模型只认一个权威位置：
+
+```
+~/.config/opencode/opencode.json 的 agent 段
+```
+
+`pm-workflow.config.json` 的 `agents.definitions[*].model` 是 plugin 内部 metadata，**OpenCode 完全不读它**。之前 model.md 教 AI 写到这里，导致用户的"已配置"是假成功。
+
+### 修复
+
+**重写 `skills/pm-workflow/workflows/model.md`**：
+
+- 新增"⚠ 关键概念"段，明确"模型配置写在哪里"+ "绝不要写到这些位置"
+- "Step 4：写入正确位置" 用 Python 脚本写到 `opencode.json` 的 `agent` 段（不是 jq，jq 不擅长 in-place merge）
+- "关于 pm-workflow.config.json 的 agents.definitions" 段警告：写到这里完全无效
+- 提供"清理无效配置残留"的 Python 命令
+
+**SKILL.md 核心约束表新增**：
+
+| 约束 | 说明 | 引入 |
+|---|---|---|
+| 模型配置写在 `opencode.json` 的 `agent` 段 | OpenCode 只读这里；写到 pm-workflow.config.json 的 agents.definitions[*].model 完全无效 | rc.12 强调 |
+
+把这条作为最高优先级约束放在表头。
+
+**`troubleshooting/general.md` T11 重写**：
+
+- 新增"诊断步骤"：先 `jq '.agent' opencode.json` 看是否有 agent 段
+- 新增"无效配置残留检测"：扫 pm-workflow.config.json 看是否有 model 残留
+- 提供完整的"备份 → 写到 opencode.json → 清理 pm-workflow.config.json"修复脚本
+
+### 影响
+
+- AI 在用户请求"配模型"时不再写错位置
+- 已经被 AI 错误写过的用户：T11 给出诊断 + 清理流程
+- model 配置只走 `opencode.json` 一条路径
+
+### 不修代码（仅文档/skill 调整）
+
+- 不动 plugin 源码
+- 不动 6 个 agent 定义
+- 不变更测试
+
 ## 1.0.0-rc.12
 
 ### 修复：commander 自己揽下任务不分派给子代理

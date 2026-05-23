@@ -69,42 +69,115 @@ ${CLAUDE_SKILL_DIR}/scripts/check.sh | grep -A 3 "plugin cache"
 
 ### 症状
 
-用户期望 backendcoder 用 Opus，advisor 用 Haiku 省成本，但全部都用了 commander 的模型。
+用户期望 backendcoder 用 Opus，advisor 用 Haiku 省成本，但全部都用了 commander 的模型。或者：之前 AI 报告"已写入"模型配置，但 OpenCode 内实际还是用全局默认模型。
 
 ### 根因
 
-agent md **不写 model 字段**是 rc.8+ 的设计。OpenCode 默认行为：subagent 继承调用它的 primary 模型。
+模型配置可能被写到了**错误的位置**。OpenCode 读 agent 模型只认一个权威位置：
 
-要让子代理用不同模型，需要在 `~/.config/opencode/opencode.json` 里**单独配置每个 agent**。
+```
+~/.config/opencode/opencode.json 的 agent 段
+```
+
+如果之前 AI 写到了：
+
+| 错误位置 | OpenCode 是否读 | 修复 |
+|---|---|---|
+| `~/.config/opencode/pm-workflow.config.json` 的 `agents.definitions[*].model` | ❌ 不读 | 配置移到 opencode.json，清掉这里的 model 字段 |
+| `~/.config/opencode/agents/<id>.md` frontmatter 的 model 字段 | ⚠ rc.8+ pm-workflow 主题不写 model | 手动加上或改主题，或写到 opencode.json |
+| `<projectDir>/.pm-workflow/config.json` | ❌ 不读 | 同上，移到 opencode.json |
+
+agent md **不写 model 字段**是 rc.8+ 的设计。OpenCode 默认行为：subagent 继承调用它的 primary 模型——除非 `opencode.json` 的 `agent` 段明确指定。
+
+### 诊断
+
+```bash
+# 看 OpenCode 实际读的位置（agent 段）
+jq '.agent' ~/.config/opencode/opencode.json
+```
+
+如果 `agent: {}` 或没有这个段，OpenCode 就在用全局默认模型给所有 agent。
+
+```bash
+# 看是否有"无效配置"残留
+python3 -c "
+import json
+p = '/Users/walkemac/.config/opencode/pm-workflow.config.json'
+try:
+    d = json.load(open(p))
+    found = False
+    for k, v in d.get('agents', {}).get('definitions', {}).items():
+        if 'model' in v or 'fallback_models' in v:
+            print(f'⚠ {k} 在 pm-workflow.config.json 有 model 字段（OpenCode 不读，无效）')
+            found = True
+    if not found:
+        print('✓ pm-workflow.config.json 干净')
+except Exception as e:
+    print(f'(读不到 {p}: {e})')
+"
+```
 
 ### 修复
 
-调用 `agent-model-config` skill，或手动：
+调用 model 工作流（详见 [../workflows/model.md](../workflows/model.md)）。核心步骤：
 
 ```bash
-pmw models init --commander opencode/gpt-5 --backendcoder opencode/gpt-5 --advisor opencode/gpt-5-mini --writer opencode/gpt-5-mini
+# 1. 备份
+cp ~/.config/opencode/opencode.json ~/.config/opencode/opencode.json.backup-$(date +%Y%m%d-%H%M%S)
+
+# 2. 写到 opencode.json 的 agent 段
+python3 <<'EOF'
+import json
+p = '/Users/walkemac/.config/opencode/opencode.json'
+with open(p) as f:
+    d = json.load(f)
+
+if 'agent' not in d:
+    d['agent'] = {}
+
+# 按用户需求合并（不覆盖现有其他 agent）
+d['agent']['commander']    = {'model': 'bestool/claude-opus-4.x'}
+d['agent']['backendcoder'] = {'model': 'cx/gpt-5.4'}
+d['agent']['designer']     = {'model': 'antigravity/gemini-3.1-pro-low'}
+d['agent']['advisor']      = {'model': 'bestool/claude-haiku-4.5'}
+d['agent']['writer']       = {'model': 'bestool/claude-haiku-4.5'}
+d['agent']['fixer']        = {'model': 'bestool/claude-sonnet-4.5'}
+
+with open(p, 'w') as f:
+    json.dump(d, f, indent=2, ensure_ascii=False)
+    f.write('\n')
+
+print('✓ 已写入 opencode.json 的 agent 段')
+EOF
+
+# 3. 清掉 pm-workflow.config.json 里无效的 model 残留（如果有）
+python3 <<'EOF'
+import json
+p = '/Users/walkemac/.config/opencode/pm-workflow.config.json'
+d = json.load(open(p))
+cleaned = []
+for k, v in d.get('agents', {}).get('definitions', {}).items():
+    if v.pop('model', None) is not None:
+        cleaned.append(f'{k}.model')
+    if v.pop('fallback_models', None) is not None:
+        cleaned.append(f'{k}.fallback_models')
+if cleaned:
+    json.dump(d, open(p, 'w'), indent=2, ensure_ascii=False)
+    print(f'✓ 已清理: {cleaned}')
+else:
+    print('✓ pm-workflow.config.json 已干净')
+EOF
+
+# 4. 完全 quit + 重启 OpenCode
+pkill -9 -f OpenCode && sleep 2
+# 用户双击启动 OpenCode
 ```
-
-会写到 `opencode.json` 的 agent 段：
-
-```json
-{
-  "agent": {
-    "commander": { "model": "opencode/gpt-5" },
-    "backendcoder": { "model": "opencode/gpt-5" },
-    "advisor": { "model": "opencode/gpt-5-mini" },
-    "writer": { "model": "opencode/gpt-5-mini" },
-    "designer": { "model": "opencode/gpt-5" },
-    "fixer": { "model": "opencode/gpt-5" }
-  }
-}
-```
-
-注意：`opencode.json` 的 model 配置 **会被** agent md 里的 model 字段覆盖（如果 md 里也写了）。pm-workflow 主题不写 model 字段（rc.8 起），所以 `opencode.json` 配置是唯一来源。
 
 ### 验证
 
-完全 quit + 重启 OpenCode，让某个子代理跑任务，看用的什么模型。OpenCode 会在响应中标注。
+启动后让 backendcoder 做一个明显需要 Opus 的任务，看响应里它自报的模型是不是 opus（强模型通常会自报）。或者直接问 commander：「你现在用的什么模型？」
+
+`opencode.json` 的 `agent` 段是 OpenCode 唯一读 model 的位置。pm-workflow 主题不写 model 字段（rc.8 起），所以 `opencode.json` 配置是唯一来源。
 
 ---
 
