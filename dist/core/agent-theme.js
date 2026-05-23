@@ -238,6 +238,24 @@ function renderAgentMd(input) {
     // 这个边界。如果用户想把某个 subagent 改成 primary，应该是手动改 md 文件，
     // 而不是通过主题切换实现。
     topLevel.mode = skin.mode;
+    // 1.0.0-rc.8 起：写入 temperature / tools / permission 字段，使 agent md
+    // 完全符合 OpenCode 官方 agent 规范（参见 https://opencode.ai/docs/agents）。
+    //
+    // - temperature：按角色调优（commander/backendcoder=0.2，advisor/writer=0.3，designer=0.4，fixer=0.1）
+    // - tools：控制工具集合（advisor 关 edit/write，writer 关 bash 等）
+    // - permission：细粒度权限（commander 用 task 白名单约束 dispatch 链路）
+    //
+    // 这三个字段都由主题数据强制写入，preserveExisting 不影响——理由同 mode：
+    // 主题对它们的语义约束是强约束，不允许用户自定义破坏（特别是 permission.task
+    // 白名单是 pm-workflow 路由设计的核心）。
+    topLevel.temperature = String(skin.temperature);
+    // tools 是嵌套对象 → 渲染成 YAML 嵌套块
+    nestedRaw.tools = renderToolsBlock(skin.tools);
+    // permission 是嵌套对象 → 渲染成 YAML 嵌套块
+    // 注意：rc.7 之前 permission 嵌套块由 preserveExisting 守护，可能保留用户旧
+    // permission。rc.8 起主题强制写入 permission，确保 commander 的 task 白名单
+    // 不被旧文件残留覆盖。
+    nestedRaw.permission = renderPermissionBlock(skin.permission);
     const frontmatter = renderFrontmatter({ topLevel, nestedRaw });
     const content = `${frontmatter}\n\n${skin.body}\n`;
     return {
@@ -247,6 +265,90 @@ function renderAgentMd(input) {
         exists,
         fellBackToDefault,
     };
+}
+/**
+ * 渲染 tools 字段为 YAML 嵌套块。
+ *
+ * 输入：{ write: true, edit: true, bash: false }
+ * 输出：
+ *   tools:
+ *     write: true
+ *     edit: true
+ *     bash: false
+ */
+function renderToolsBlock(tools) {
+    const lines = ["tools:"];
+    // 固定顺序，便于人工 diff
+    const order = [
+        "write",
+        "edit",
+        "bash",
+        "webfetch",
+        "task",
+    ];
+    for (const key of order) {
+        const value = tools[key];
+        if (value === undefined)
+            continue;
+        lines.push(`  ${key}: ${value}`);
+    }
+    return lines.join("\n");
+}
+/**
+ * 渲染 permission 字段为 YAML 嵌套块。
+ *
+ * 支持三种值形态：
+ * - 字符串："allow" | "ask" | "deny"
+ * - 嵌套对象（bash 的 glob 模式 / task 的白名单）：{ "*": "deny", "advisor": "allow", ... }
+ *
+ * 输出示例：
+ *   permission:
+ *     edit: ask
+ *     bash:
+ *       "*": deny
+ *       "git log*": allow
+ *     webfetch: allow
+ *     task:
+ *       "*": deny
+ *       advisor: allow
+ *       backendcoder: allow
+ */
+function renderPermissionBlock(permission) {
+    const lines = ["permission:"];
+    // 固定字段顺序
+    const fieldOrder = [
+        "edit",
+        "bash",
+        "webfetch",
+        "task",
+    ];
+    for (const key of fieldOrder) {
+        const value = permission[key];
+        if (value === undefined)
+            continue;
+        if (typeof value === "string") {
+            // 简单形式：edit: ask
+            lines.push(`  ${key}: ${value}`);
+        }
+        else {
+            // 嵌套对象：bash glob / task 白名单
+            // YAML 子缩进 4 空格，键名带引号防止 glob 字符冲突
+            lines.push(`  ${key}:`);
+            // 保持插入顺序——OpenCode 文档说"最后匹配的规则优先"，所以 "*" 应该在前
+            const subKeys = Object.keys(value);
+            // 把 "*" 放最前（如果存在）
+            const ordered = ["*", ...subKeys.filter((k) => k !== "*")];
+            for (const sk of ordered) {
+                if (!(sk in value))
+                    continue;
+                const sv = value[sk];
+                // 含 glob 字符或冒号或纯 "*" 时加引号
+                const quotedKey = /[*?:#"\s]/.test(sk) ? `"${sk}"` : sk;
+                lines.push(`    ${quotedKey}: ${sv}`);
+            }
+        }
+    }
+    return lines.join("\n");
 }
 /**
  * 应用主题：渲染 6 个 agent 的 md 文件，按 scope 写入目标目录。

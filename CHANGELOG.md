@@ -1,5 +1,100 @@
 # Changelog
 
+## 1.0.0-rc.8
+
+### agent md 完全符合 OpenCode 规范
+
+之前 rc.6/rc.7 写出的 agent md 过于简洁——OpenCode 官方规范支持的 `temperature` / `tools` / `permission` 字段全部缺失，body 也只有 10 行左右。rc.8 全面重写。
+
+### 新增 frontmatter 字段（按 [OpenCode 官方规范](https://opencode.ai/docs/agents)）
+
+```yaml
+---
+description: <30-60 字>            # 必填
+mode: primary | subagent           # commander=primary，其他=subagent
+temperature: 0.1 ~ 0.4             # 按角色调优
+tools:                             # 工具集合
+  write: bool
+  edit: bool
+  bash: bool
+  webfetch: bool
+  task: bool                       # 仅 commander
+permission:                        # 细粒度权限
+  edit: allow | ask | deny
+  bash: allow | ask | deny | { glob: action }
+  webfetch: allow | ask | deny
+  task: { ... }                    # 仅 commander
+display_name: <展示名>             # pm-workflow 自定义
+theme: <theme-id>                  # pm-workflow 自定义
+---
+```
+
+**不写 `model` 字段**——让 `pmw models init` 单独管 `opencode.json`，主题切换不影响模型配置（OpenCode 默认行为：subagent 自动继承 primary 的模型）。
+
+### 6 个 agent 的标准配置
+
+| Agent | mode | temp | edit | bash | webfetch | task |
+|---|---|---|---|---|---|---|
+| **commander** | primary | 0.2 | ask | ask | allow | 严格白名单 |
+| **advisor** | subagent | 0.3 | deny | allow | allow | — |
+| **backendcoder** | subagent | 0.2 | allow | allow | ask | — |
+| **designer** | subagent | 0.4 | allow | allow | ask | — |
+| **fixer** | subagent | 0.1 | allow | allow | ask | — |
+| **writer** | subagent | 0.3 | allow | 细粒度 | allow | — |
+
+**commander 的 task 严格白名单**（保证 pm-workflow 路由设计不被 LLM 临时起意破坏）：
+
+```yaml
+task:
+  "*": deny
+  advisor: allow
+  backendcoder: allow
+  designer: allow
+  fixer: allow
+  writer: allow
+  explore: allow      # OpenCode 内置只读探索
+  scout: allow        # OpenCode 内置只读调研
+```
+
+**writer 的 bash 细粒度**（writer 只动文档，但偶尔需要整理材料）：
+
+```yaml
+bash:
+  "*": deny
+  "git log*": allow
+  "git diff*": allow
+  "git status*": allow
+  "npm run docs:*": allow
+```
+
+### body 重写为完整系统 prompt
+
+每个 agent body ≥ 60 行，含 5 段：
+- **核心职责**：5-6 个具体任务
+- **工作流程**：4 步执行模板（理解 → 拆解 → 执行 → 反馈）
+- **输出格式**（5 个子代理强制）：summary / verification / risk 三段反馈，commander 自动收敛
+- **边界**：不该做什么 + 必交场景
+- **错误处理**：常见错误的应对模式
+
+### 主题强制约束的字段
+
+`mode` / `temperature` / `tools` / `permission` 都由主题强制写入，不受 `preserveExisting` 影响。理由：
+
+- 这些是 OpenCode UI 行为（mode 控切换列表）和 pm-workflow 路由设计（task 白名单）的核心
+- 用户自定义这些字段会破坏整体设计
+- 如真要改，应该手动改 md 文件，而非通过主题切换
+
+### 测试改进
+
+- `testApplyPreservesNestedPermissionBlock` 改为 `testApplyForcesThemePermissionOverUserCustom`：验证主题**覆盖**用户原 permission（包括移除用户自定义 task 白名单条目）
+- 已有的 model / mode 保留测试更新：mode 仍保留（用户主动选 primary/subagent 是合理的），temperature 改为强制覆盖
+
+### 影响
+
+- **用户**：升级 rc.8 + 重启 OpenCode 后，6 个 agent 的工具能力按官方规范配置；commander 不会乱调用第三方 agent；writer 不会乱跑 bash 命令；OpenCode UI 切换列表只显示 commander
+- **agent 行为**：每个 agent 的系统 prompt 完整，子代理会按"summary / verification / risk"三段格式回报，commander 容易自动评估
+- **不兼容**：用户已 apply 过的 agent md 里手动改的 permission（如 commander 的 task 白名单）会被覆盖；如需保留自定义 permission，请在 apply 后再手动改
+
 ## 1.0.0-rc.7
 
 ### 修复：OpenCode skill 规范不符合官方标准

@@ -194,20 +194,25 @@ function testApplyPreservesExistingModelAndMode() {
   assert.ok(after.includes('display_name: 吕布'), 'display_name 应被主题覆盖');
   assert.ok(after.includes('theme: sanguo'), 'theme 应被写入');
   assert.ok(after.includes('description: 吕布 — 后端攻坚'), 'description 应被主题覆盖');
-  // 关键：用户的 model / mode / temperature 必须保留
+  // 关键：用户的 model / mode 必须保留（preserveExisting 守护）
   assert.ok(after.includes('mode: subagent'), 'mode 应被保留');
   assert.ok(after.includes('model: bestool/claude-opus-4.x'), 'model 应被保留');
-  assert.ok(after.includes('temperature: 0.3'), 'temperature 应被保留');
+  // 1.0.0-rc.8 起 temperature 由主题强制写入，不再受 preserveExisting 影响
+  // backendcoder 主题强制 temperature=0.2，旧值 0.3 会被覆盖
+  assert.ok(after.includes('temperature: 0.2'), 'temperature 应被主题强制写为 0.2');
   // body 应被替换为主题 body
   assert.ok(after.includes('吕布'), '主题 body 应替换旧 body');
   assert.ok(!after.includes('旧 body 内容'), '旧 body 应被替换');
 }
 
-function testApplyPreservesNestedPermissionBlock() {
+function testApplyForcesThemePermissionOverUserCustom() {
+  // 1.0.0-rc.8 起：主题强制写入 permission，不再受 preserveExisting 影响。
+  // 这是 OpenCode UI 与 task 白名单的核心约束——不允许用户自定义破坏。
   const sandbox = mkdtempSync(join(tmpdir(), 'agent-theme-perm-'));
   const targetDir = join(sandbox, '.opencode', 'agents');
   mkdirSync(targetDir, { recursive: true });
 
+  // 用户已有的 commander.md 配了"宽松"的 permission（edit: allow，task 没白名单）
   const existingPath = join(targetDir, 'commander.md');
   writeFileSync(
     existingPath,
@@ -216,11 +221,10 @@ function testApplyPreservesNestedPermissionBlock() {
       'description: 旧描述',
       'mode: primary',
       'permission:',
-      '  edit: allow',
-      '  bash: ask',
+      '  edit: allow',     // 用户配的宽松值
+      '  bash: allow',     // 用户配的宽松值
       '  task:',
-      '    backendcoder: allow',
-      '    designer: allow',
+      '    custom-agent: allow',  // 用户曾经允许的第三方 agent
       '---',
       '',
       '旧 body',
@@ -238,14 +242,34 @@ function testApplyPreservesNestedPermissionBlock() {
   assert.strictEqual(result.skipped.length, 0);
 
   const after = readFileSync(existingPath, 'utf-8');
+
+  // 主题字段被覆盖
   assert.ok(after.includes('display_name: 诸葛亮'));
-  assert.ok(after.includes('mode: primary'), 'mode 应保留');
-  // 嵌套 permission 块整段保留
-  assert.ok(after.includes('permission:'), 'permission 块应保留');
-  assert.ok(after.includes('edit: allow'));
-  assert.ok(after.includes('task:'));
-  assert.ok(after.includes('backendcoder: allow'));
-  assert.ok(after.includes('designer: allow'));
+  assert.ok(after.includes('mode: primary'), 'commander mode 应是 primary');
+
+  // 主题强制 commander 的 permission：edit/bash 都是 ask（防止误操作）
+  assert.ok(after.includes('edit: ask'), 'commander permission.edit 应被主题强制为 ask');
+  assert.ok(after.includes('bash: ask'), 'commander permission.bash 应被主题强制为 ask');
+  // 用户原本的 edit/bash: allow 应被覆盖
+  assert.ok(!after.match(/edit: allow/), '用户原 edit:allow 应被主题覆盖');
+
+  // 主题强制 task 严格白名单
+  assert.ok(after.includes('webfetch: allow'), 'commander permission.webfetch 应是 allow');
+  assert.ok(after.includes('task:'), 'task 块应存在');
+  assert.ok(after.match(/"\*": deny/) || after.match(/'\*': deny/), 'task "*" 应是 deny');
+  assert.ok(after.includes('advisor: allow'), 'task.advisor 应允许');
+  assert.ok(after.includes('backendcoder: allow'), 'task.backendcoder 应允许');
+  assert.ok(after.includes('designer: allow'), 'task.designer 应允许');
+  assert.ok(after.includes('fixer: allow'), 'task.fixer 应允许');
+  assert.ok(after.includes('writer: allow'), 'task.writer 应允许');
+  assert.ok(after.includes('explore: allow'), 'task.explore 应允许（OpenCode 内置只读）');
+  assert.ok(after.includes('scout: allow'), 'task.scout 应允许（OpenCode 内置只读）');
+
+  // 用户原本的 custom-agent 不在主题白名单里，应该被移除
+  assert.ok(
+    !after.includes('custom-agent: allow'),
+    '用户自定义 task.custom-agent 应被主题覆盖移除',
+  );
 }
 
 function testPreserveOptOutDropsExistingFields() {
@@ -389,7 +413,7 @@ testApplyThemeToProjectScopeWritesFiles();
 testApplyThemeToGlobalScopeRespectsXdgConfigHome();
 testDryRunDoesNotWriteFiles();
 testApplyPreservesExistingModelAndMode();
-testApplyPreservesNestedPermissionBlock();
+testApplyForcesThemePermissionOverUserCustom();
 testPreserveOptOutDropsExistingFields();
 testApplyOnUnknownThemeThrows();
 testResolveThemeTargetDirRoutes();

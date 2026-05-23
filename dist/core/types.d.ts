@@ -38,7 +38,7 @@ export interface AgentThemeRoleSkin {
     display_name: string;
     /** 主题化后的角色一句话描述，进 frontmatter description。不超过 60 字。 */
     description: string;
-    /** 主题化后的 body 正文。保留原职责语义，仅替换称呼与语气。 */
+    /** 主题化后的 body 正文。完整系统 prompt：核心职责 / 工作流程 / 输出格式 / 边界 / 错误处理。 */
     body: string;
     /**
      * OpenCode mode 字段。
@@ -50,6 +50,50 @@ export interface AgentThemeRoleSkin {
      * 这是核心 UX 修复——之前主题不写 mode 导致 OpenCode 默认当作 `all`，6 个 agent 全部出现在切换列表。
      */
     mode: "primary" | "subagent";
+    /**
+     * OpenCode temperature 字段。0.0-1.0，控制 LLM 响应的随机性。
+     *
+     * 1.0.0-rc.8 起按角色调优：
+     * - commander 0.2（决策类，确定性优先）
+     * - advisor 0.3（调研类，平衡）
+     * - backendcoder 0.2（代码类，确定性）
+     * - designer 0.4（设计类，需要创造力）
+     * - fixer 0.1（测试类，最高确定性）
+     * - writer 0.3（文档类，平衡可读性）
+     */
+    temperature: number;
+    /**
+     * OpenCode tools 字段。控制 agent 可用的工具集合。
+     *
+     * 1.0.0-rc.8 起按角色配置（参见 `permission` 进一步细化）：
+     * - commander：全 true（含 task）
+     * - advisor：edit/write false（不动代码），bash/webfetch true
+     * - backendcoder/designer/fixer：全 true
+     * - writer：edit/write true（动文档），bash false（不跑命令）
+     */
+    tools: {
+        write?: boolean;
+        edit?: boolean;
+        bash?: boolean;
+        webfetch?: boolean;
+        /** 仅 commander 设为 true，让其能调用 task tool 编排 subagent */
+        task?: boolean;
+    };
+    /**
+     * OpenCode permission 字段。比 tools 更细粒度。
+     *
+     * - commander：edit/bash ask，webfetch allow，task 严格白名单
+     * - advisor：edit deny（不动代码），bash/webfetch allow
+     * - backendcoder/designer/fixer：edit/bash allow，webfetch ask
+     * - writer：edit allow（仅文档），bash 细粒度（git log/diff/npm run docs:* allow，其他 deny），webfetch allow
+     */
+    permission: {
+        edit?: "allow" | "ask" | "deny";
+        bash?: "allow" | "ask" | "deny" | Record<string, "allow" | "ask" | "deny">;
+        webfetch?: "allow" | "ask" | "deny";
+        /** 仅 commander 设；按 OpenCode glob 模式控制可调用的 subagent 白名单 */
+        task?: Record<string, "allow" | "ask" | "deny">;
+    };
 }
 export interface AgentThemeDefinition {
     id: AgentThemeId;
