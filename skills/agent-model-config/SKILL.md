@@ -1,6 +1,8 @@
 ---
+name: agent-model-config
 description: Analyze a new project and configure Claude Code/OpenCode agents with models selected only from the global OpenCode provider model list.
-allowed-tools: Read, Write, Edit, Bash
+license: MIT
+compatibility: opencode
 ---
 
 # Agent Model Config
@@ -116,7 +118,7 @@ Apply fields as follows:
 | `agent_models.<agent>` | `agents.definitions.<agent>.model` |
 | `agent_fallback_models.<agent>` | `agents.definitions.<agent>.fallback_models[0]` and `fallback.chains.<agent>[0]` |
 
-Supported built-in pm agents: `commander`, `advisor`, `backendcoder`, `designer`, `fixer`, `advisor`.
+Supported built-in pm agents: `commander`, `advisor`, `backendcoder`, `designer`, `fixer`, `writer`.
 
 Do not require the user to run a CLI command for this flow. The CLI can be mentioned only as an optional fallback for scripted setup.
 

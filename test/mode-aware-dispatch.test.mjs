@@ -132,10 +132,10 @@ async function testAutoContinueDispatchUsesInvocationSemantics() {
 }
 
 async function testAutoContinuePrefersExternalFrontmatterAndExposesDiagnostics() {
-  const originalHome = process.env.HOME;
+  const originalXdg = process.env.XDG_CONFIG_HOME;
   withTempProject((projectDir) => {
     const configHome = join(projectDir, 'config-home');
-    const globalAgentsDir = join(configHome, '.config', 'opencode', 'agents');
+    const globalAgentsDir = join(configHome, 'opencode', 'agents');
     createWorkflowConfig(projectDir, {
       retry: { max_attempts: 1, retryable_actions: [] },
       fallback: { max_attempts: 1, enabled_actions: [], agent_map: {} },
@@ -169,7 +169,7 @@ async function testAutoContinuePrefersExternalFrontmatterAndExposesDiagnostics()
       mode: 'subagent',
       model: 'bestool-route-kr/kr/claude-haiku-4.5',
     });
-    process.env.HOME = configHome;
+    process.env.XDG_CONFIG_HOME = configHome;
 
     const dispatch = buildAutoContinueDispatch(
       projectDir,
@@ -201,7 +201,8 @@ async function testAutoContinuePrefersExternalFrontmatterAndExposesDiagnostics()
       fallbackReason: undefined,
     });
   }, () => undefined);
-  process.env.HOME = originalHome;
+  if (originalXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+  else process.env.XDG_CONFIG_HOME = originalXdg;
 }
 
 await testInvocationSemantics();

@@ -1,6 +1,6 @@
 {
   "name": "@walke/opencode-pm-workflow",
-  "version": "1.0.0-rc.6",
+  "version": "1.0.0-rc.7",
   "description": "pm-workflow 的可发布 OpenCode 插件包实现（server + tui + shared package-first implementation）。",
   "type": "module",
   "private": false,

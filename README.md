@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.6`。
+当前发布版本：`1.0.0-rc.7`。
 
 ## 适用场景
 
@@ -124,6 +124,7 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-23 | 1.0.0-rc.7 | **修复 OpenCode skill 规范**：rc.3-rc.6 错误地把 SKILL.md 复制成扁平 `<id>.md`（OpenCode 不识别），rc.7 改为正确的子目录结构 `<id>/SKILL.md`；同时补全 skill frontmatter `name` 字段（OpenCode 必填）；agent-theme-config skill 内容更新对齐 6 个新 agent ID + mode 字段约束 |
 | 2026-05-23 | 1.0.0-rc.6 | **6 个固定 agent 重命名 + 角色合并/拆分**：commander / advisor / backendcoder / designer / fixer / writer 替代旧 ID；advisor 合并旧 advisor + researcher；designer 合并旧 frontend + 新增设计/原型/图像生成；fixer 合并旧 reviewer 测试侧 + 新增 deployer 职责；writer 独立为文档撰写专门 agent。**修复 OpenCode UI bug**：主题渲染强制写 mode 字段（commander=primary，其他=subagent），切换列表只显示 commander |
 | 2026-05-23 | 1.0.0-rc.5 | **跨平台兼容性修复**：fallback 路径从硬编码 `/tmp` 改为 Node `os.tmpdir()`（macOS/Linux/Windows 自动适配）；从 `process.env.HOME \|\| process.env.USERPROFILE` 改为 `os.homedir()`；`getConfigDir` 在 Windows 上改用 `%USERPROFILE%\.config\opencode` 与 OpenCode 官方规范对齐（不再用 `%APPDATA%`） |
 | 2026-05-23 | 1.0.0-rc.4 | **修复 OpenCode 启动时插件加载失败**：getProjectDir 在 OpenCode server 进程（cwd === "/"）下返回 "/" 导致 mkdir('/.pm-workflow') ENOENT 让插件 abort；新增 resolveSafeProjectDir 跳过空字符串 / "/" / "\"，回退到 ~/.cache/pm-workflow/global；plugin 入口 try/catch 兜底 bootstrap；skill auto-install 移到激活判断之外；TUI plugin 与 28 处 tool 入口同步使用安全兜底 |

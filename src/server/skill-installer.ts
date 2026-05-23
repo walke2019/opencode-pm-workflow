@@ -126,8 +126,12 @@ export function syncPackagedSkillsToOpenCode(input?: {
 
   for (const id of skillIds) {
     const source = join(skillsSourceDir, id, "SKILL.md");
-    // OpenCode 约定：skills 目录下每个 skill 是 <id>.md（扁平），所以把 SKILL.md 落成 <id>.md
-    const target = join(skillsTargetDir, `${id}.md`);
+    // OpenCode 官方 skill 规范（参见 https://opencode.ai/docs/skills）：
+    // 每个 skill 必须是子目录 + SKILL.md（**大写、子目录**）：
+    //   ~/.config/opencode/skills/<id>/SKILL.md
+    // 之前 1.0.0-rc.3 至 1.0.0-rc.6 错误地写成扁平 <id>.md，OpenCode 不识别。
+    // 1.0.0-rc.7 起改为正确的子目录结构。
+    const target = join(skillsTargetDir, id, "SKILL.md");
 
     let sourceContent = "";
     try {

@@ -1,19 +1,22 @@
 ---
 name: agent-theme-config
-description: 对话式 agent 主题配置入口。用户给一个主题名（三国 / 西游 / 漫威 / 现代职场 / 默认）或自定义主题，AI 读取此 skill 后用 pmw agents theme 命令为 6 个固定 agent 生成主题化 display_name + description + body，写到 ~/.config/opencode/agents/ 或 <projectDir>/.opencode/agents/。
+description: 对话式 agent 主题配置入口。用户给一个主题名（三国 / 西游 / 漫威 / 现代职场 / 默认），AI 读取此 skill 后调用 pmw agents theme 命令为 6 个固定 agent（commander / advisor / backendcoder / designer / fixer / writer）生成主题化 display_name + description + body，写到 ~/.config/opencode/agents/ 或 <projectDir>/.opencode/agents/。
+license: MIT
+compatibility: opencode
 ---
 
 # Agent Theme Config
 
 ## 任务定位
 
-用户希望把 pm-workflow 的 6 个固定 agent（commander / advisor / backendcoder / designer / fixer / advisor）包装成不同"皮肤"——比如三国谋士、西游师徒、漫威英雄。
+用户希望把 pm-workflow 的 6 个固定 agent（commander / advisor / backendcoder / designer / fixer / writer）包装成不同"皮肤"——比如三国谋士、西游师徒、漫威英雄。
 
 这是 **UX 层** 的能力：
 
 - 永不改语义 ID。
 - 永不改 dispatch 路由 / history 记录 / permission 规则。
-- 只换 frontmatter 的 `description` / `display_name` / `theme` 与 body 的称呼与语气。
+- 只换 frontmatter 的 `description` / `display_name` / `theme` / `mode` 与 body 的称呼与语气。
+- `mode` 字段强制：commander = primary（唯一在 OpenCode 切换列表），其他 = subagent。
 
 ## 你能做什么
 
@@ -39,8 +42,8 @@ import {
 
 1. **主题** ID（必填）：`default` / `sanguo` / `xiyou` / `marvel` / `workplace` 之一，或者用户用中文表达（"三国" → `sanguo`，"现代职场" → `workplace`）。
 2. **写入范围** scope：`global`（默认）= `~/.config/opencode/agents/`；`project` = `<projectDir>/.opencode/agents/`。
-3. **是否限定 agent 子集**：默认全部 6 个；用户可指定例如 "只换前端" → `agents: ["designer"]`。
-4. **是否保留已有配置**：默认全部保留（model / mode / permission / fallback_models / temperature）；除非用户明确说"重置我的模型配置"才把对应字段设为 false。
+3. **是否限定 agent 子集**：默认全部 6 个；用户可指定例如 "只换 designer" → `agents: ["designer"]`。
+4. **是否保留已有配置**：默认全部保留（model / permission / fallback_models / temperature）。注意 mode 由主题强制写入，不受 preserveExisting 影响。
 
 ### Step 2 — 强制 dry-run 给用户看
 
@@ -70,7 +73,18 @@ pmw agents list   # 确认目标目录里出现 6 个 md
 pmw doctor        # 检查整体健康度
 ```
 
-或在 OpenCode 内重启会话，`commander` 等 agent 在 UI 中应能看到新的 description；pm-workflow dispatch 输出会渲染 `display_name`（如"诸葛亮"）。
+或在 OpenCode 内重启会话，6 个 agent 在 dispatch 输出中应能看到主题化的 `display_name`（如"诸葛亮"）；UI 切换列表只显示 commander。
+
+## 6 个固定 agent 的职责（rc.6 起）
+
+| ID | 职责 | mode |
+|---|---|---|
+| `commander` | 主控、决策、协调、分派 | primary |
+| `advisor` | 调研、分析、拆解、决策顾问 | subagent |
+| `backendcoder` | 后端代码（API、数据库、服务、性能） | subagent |
+| `designer` | 设计 + 前端代码 + 交互原型 + 图像生成 | subagent |
+| `fixer` | 测试 + 修复 + 打包 + 部署 + CI/CD | subagent |
+| `writer` | 文档撰写 + 发布说明 + 注释 + ADR | subagent |
 
 ## 不可破坏的约束
 
@@ -81,6 +95,7 @@ pmw doctor        # 检查整体健康度
 | 不能跳过 preview 直接 apply | 主题写盘可能影响 OpenCode UI 展示，必须用户预览确认 |
 | 不能默认 `preserveExisting: false` | 会覆盖用户已配的模型与权限；除非用户明确要求 |
 | 不能写 history.jsonl | 主题切换是 UX 动作，与执行回执无关 |
+| commander 必须 primary，其他必须 subagent | OpenCode UI 切换列表只显示 commander，符合主代理设计 |
 
 ## 用户自定义主题
 
@@ -88,7 +103,7 @@ pmw doctor        # 检查整体健康度
 
 1. 主题数据放在 `src/core/agent-theme-data.ts` 的 `BUILTIN_THEMES` 数组里。
 2. 必须给齐全部 6 个 agent 的皮肤；少一个就退到 `default`。
-3. 约束：display_name ≤ 12 字；description ≤ 60 字；body 保留"职责 + 边界"两段语义。
+3. 约束：display_name ≤ 12 字；description ≤ 60 字；body 保留"职责 + 边界"两段语义；commander 强制 mode=primary，其他 5 个强制 mode=subagent。
 
 不支持运行时动态加载用户 JSON 主题（避免 prompt 注入与不一致），后续可能开放。
 
@@ -97,7 +112,7 @@ pmw doctor        # 检查整体健康度
 **用户**："帮我把所有 agent 改成三国主题"
 
 → 你应该：
-1. 解释将要改什么（display_name + description + body 文案，model 与 permission 不动）。
+1. 解释将要改什么（display_name + description + body 文案 + theme + mode 字段，model 与 permission 不动）。
 2. 跑 `pmw agents theme preview sanguo --scope global`，把预览贴给用户。
 3. 用户确认后 `pmw agents theme apply sanguo --scope global`。
 4. 给出验证命令。
@@ -108,7 +123,7 @@ pmw doctor        # 检查整体健康度
 
 **用户**："恢复成普通名字"
 
-→ `pmw agents theme apply default --scope global`（也是覆盖写入，把 6 个 md 重置为中性）。
+→ `pmw agents theme apply default --scope global`（也是覆盖写入，把 6 个 md 重置为中性命名）。
 
 ## 错误处理
 
@@ -116,4 +131,4 @@ pmw doctor        # 检查整体健康度
 |---|---|
 | `unknown theme "xxx"` | 列出可用主题让用户重选 |
 | 写文件失败（权限 / 路径不存在） | 检查 scope 对应目录权限；project 模式可能需要先 `mkdir -p .opencode/agents` |
-| apply 后 OpenCode UI 没变 | 让用户重启 OpenCode 会话，OpenCode 在启动时读取 agents 目录 |
+| apply 后 OpenCode UI 没变 | 让用户**完全 quit + 重启 OpenCode**（不是 reload），OpenCode 在启动时读取 agents 目录 |

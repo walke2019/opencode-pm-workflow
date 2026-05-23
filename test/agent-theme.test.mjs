@@ -343,13 +343,23 @@ function testRegistryExtractsDisplayNameAndTheme() {
 }
 
 function testRegistryHandlesAgentWithoutDisplayName() {
-  // 未跑过 theme apply 的 fallback 路径，display_name / theme 应为 undefined
-  const resolved = resolveWorkflowAgentDefinition({
-    projectDir: process.cwd(),
-    semanticAgent: 'commander',
-  });
-  assert.strictEqual(resolved.displayName, undefined);
-  assert.strictEqual(resolved.theme, undefined);
+  // 未跑过 theme apply 的 fallback 路径，display_name / theme 应为 undefined。
+  // 隔离 XDG_CONFIG_HOME 避免命中真实 ~/.config/opencode/agents/commander.md
+  // （该文件是 rc.6 默认主题安装产物）。
+  const xdgSandbox = mkdtempSync(join(tmpdir(), 'agent-theme-no-theme-'));
+  const previousXdg = process.env.XDG_CONFIG_HOME;
+  process.env.XDG_CONFIG_HOME = xdgSandbox;
+  try {
+    const resolved = resolveWorkflowAgentDefinition({
+      projectDir: process.cwd(),
+      semanticAgent: 'commander',
+    });
+    assert.strictEqual(resolved.displayName, undefined);
+    assert.strictEqual(resolved.theme, undefined);
+  } finally {
+    if (previousXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = previousXdg;
+  }
 }
 
 function testApplyOnlySubsetOfAgents() {

@@ -119,6 +119,10 @@ function makeProjectWithAgent(filename, body) {
 // 6) resolveAgentTaskRouting：找不到 markdown 时 source=none
 {
   const projectDir = mkdtempSync(join(tmpdir(), 'pm-workflow-routing-empty-'));
+  // 隔离 XDG_CONFIG_HOME，避免命中用户真实 ~/.config/opencode/agents/commander.md
+  const xdgSandbox = mkdtempSync(join(tmpdir(), 'pm-workflow-routing-xdg-'));
+  const previousXdg = process.env.XDG_CONFIG_HOME;
+  process.env.XDG_CONFIG_HOME = xdgSandbox;
   try {
     const routing = resolveAgentTaskRouting({
       projectDir,
@@ -130,7 +134,10 @@ function makeProjectWithAgent(filename, body) {
     assert.deepStrictEqual(routing.taskPermission, {});
     assert.strictEqual(routing.filePath, undefined);
   } finally {
+    if (previousXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = previousXdg;
     rmSync(projectDir, { recursive: true, force: true });
+    rmSync(xdgSandbox, { recursive: true, force: true });
   }
 }
 
@@ -233,6 +240,10 @@ function makeProjectWithAgent(filename, body) {
 // 10) isSubagentAllowedByDeclarativeRouting：source=none 时按 fallback 决定
 {
   const projectDir = mkdtempSync(join(tmpdir(), 'pm-workflow-routing-none-'));
+  // 同样隔离 XDG_CONFIG_HOME 避免命中真实全局 agents
+  const xdgSandbox = mkdtempSync(join(tmpdir(), 'pm-workflow-routing-none-xdg-'));
+  const previousXdg = process.env.XDG_CONFIG_HOME;
+  process.env.XDG_CONFIG_HOME = xdgSandbox;
   try {
     const routing = resolveAgentTaskRouting({
       projectDir,
@@ -247,7 +258,10 @@ function makeProjectWithAgent(filename, body) {
     assert.strictEqual(decision.allowed, true);
     assert.match(decision.reason, /no frontmatter routing|legacy dispatch_map/);
   } finally {
+    if (previousXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = previousXdg;
     rmSync(projectDir, { recursive: true, force: true });
+    rmSync(xdgSandbox, { recursive: true, force: true });
   }
 }
 

@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.0.0-rc.7
+
+### 修复：OpenCode skill 规范不符合官方标准
+
+**根因**：rc.3 引入的 skill auto-install 把包内 `skills/<id>/SKILL.md` 复制到 `~/.config/opencode/skills/<id>.md`（扁平结构）。但 [OpenCode 官方 skill 规范](https://opencode.ai/docs/skills) 要求 **子目录 + 大写 SKILL.md**：
+
+```
+~/.config/opencode/skills/
+├── agent-theme-config/
+│   └── SKILL.md          ✓ 正确（rc.7 起）
+└── agent-theme-config.md  ✗ 错误（rc.3-rc.6）
+```
+
+OpenCode 看不到扁平的 `.md` 文件，所以 rc.3-rc.6 的对话式 skill 入口**从未真正生效**。
+
+### 修复
+
+- **`src/server/skill-installer.ts`**：复制目标改为 `<targetDir>/<id>/SKILL.md`（子目录结构）；写入前自动创建子目录
+- **`skills/agent-theme-config/SKILL.md`**：重写内容对齐 rc.6 新 6 个 agent ID（commander / advisor / backendcoder / designer / fixer / writer）+ mode 字段约束 + frontmatter 补全 `name` / `license` / `compatibility` 字段
+- **`skills/agent-model-config/SKILL.md`**：补全 `name` 字段；旧 ID `advisor`（重复）改正为 `writer`
+- **`test/skill-installer.test.mjs`**：测试断言改为子目录结构
+
+### 测试修复（自动化测试隔离环境改进）
+
+- `test/permission-task-routing.test.mjs`：case 6 / case 10 增加 `XDG_CONFIG_HOME` 隔离，避免命中真实 `~/.config/opencode/agents/commander.md`
+- `test/agent-theme.test.mjs`：`testRegistryHandlesAgentWithoutDisplayName` 增加 XDG 隔离
+- `test/mode-aware-dispatch.test.mjs`：测试用 `XDG_CONFIG_HOME` 而不是 `process.env.HOME` mock 全局目录（rc.5 改用 `os.homedir()` 后 HOME mock 失效）
+
+### 影响
+
+- **用户**：升级到 rc.7 + 重启 OpenCode 后，skill auto-install 会写到正确路径；之前 rc.3-rc.6 写入的扁平 `~/.config/opencode/skills/<id>.md` 仍存在但被忽略，可手动删除
+- **AI 对话式入口**：rc.7 起 OpenCode AI 真正能读到 skill 并主动调用 `pmw agents theme apply` 等命令
+- **OpenCode skill 规范一致**：与 [官方文档](https://opencode.ai/docs/skills) 对齐
+
 ## 1.0.0-rc.6
 
 ### 重大变更：6 个固定 agent 重命名 + 角色合并/拆分

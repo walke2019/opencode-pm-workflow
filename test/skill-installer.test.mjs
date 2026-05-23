@@ -57,10 +57,11 @@ function testFirstInstallCopiesAllSkills() {
   assert.strictEqual(report.failed, 0);
 
   for (const id of ['agent-theme-config', 'agent-model-config']) {
-    const target = join(targetDir, `${id}.md`);
-    assert.ok(existsSync(target), `${id}.md 应被写入`);
+    // OpenCode 官方 skill 规范：必须是子目录 + SKILL.md（rc.7 起）
+    const target = join(targetDir, id, 'SKILL.md');
+    assert.ok(existsSync(target), `${id}/SKILL.md 应被写入`);
     const content = readFileSync(target, 'utf-8');
-    assert.ok(content.includes(`name: ${id}`), `${id}.md 内容应包含 frontmatter name`);
+    assert.ok(content.includes(`name: ${id}`), `${id}/SKILL.md 内容应包含 frontmatter name`);
   }
 }
 
@@ -92,9 +93,10 @@ function testKeepsUserModifiedFile() {
   const { sourceDir, targetDir } = setupSkillsSandbox();
   writeSourceSkill(sourceDir, 'agent-theme-config', '# package version');
 
-  // 用户已经放了改过的文件
-  mkdirSync(targetDir, { recursive: true });
-  const userPath = join(targetDir, 'agent-theme-config.md');
+  // 用户已经放了改过的文件（OpenCode 标准结构：子目录 + SKILL.md）
+  const userSkillDir = join(targetDir, 'agent-theme-config');
+  mkdirSync(userSkillDir, { recursive: true });
+  const userPath = join(userSkillDir, 'SKILL.md');
   writeFileSync(userPath, '# user customized version', 'utf-8');
 
   const report = syncPackagedSkillsToOpenCode({
