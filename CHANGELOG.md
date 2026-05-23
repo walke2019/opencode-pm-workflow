@@ -1,5 +1,86 @@
 # Changelog
 
+## 1.0.0-rc.11
+
+### skill 子目录组织（按 OpenCode/Claude Code 标准）
+
+rc.10 把 7 个 .md 文件全堆在 `pm-workflow/` 顶层，不符合 OpenCode/Claude Code 推荐的 supporting files 子目录组织规范，且让 AI 一次加载所有内容浪费 token。
+
+rc.11 按语义拆分为 4 个子目录：
+
+```
+skills/pm-workflow/
+├── SKILL.md                           主入口（仅导航 + 触发词，从 12.4KB 精简到 7.6KB）
+├── reference/                         规范参考（按需查询）
+│   ├── agent-spec.md                  OpenCode agent md 字段规范
+│   ├── skill-spec.md                  OpenCode skill md 字段规范
+│   ├── agent-frontmatter.md           pm-workflow 6 个 agent 标准 frontmatter
+│   ├── config.md                      pm-workflow.config.json + opencode.json plugin 配置
+│   ├── file-paths.md                  跨平台文件路径与目录结构
+│   └── cli-commands.md                pmw CLI 命令参考
+├── workflows/                         场景化工作流
+│   ├── install.md                     首次安装
+│   ├── upgrade.md                     升级
+│   ├── theme.md                       主题切换（5 套内置）
+│   ├── model.md                       为 agent 分配模型
+│   └── uninstall.md                   完全卸载
+├── troubleshooting/                   故障排查（按问题类型）
+│   ├── index.md                       12 错误索引 + 通用排查思路
+│   ├── install.md                     T1-T2 安装与加载类
+│   ├── agent-md.md                    T3-T6 agent md 字段类
+│   ├── skill-load.md                  T7-T8 skill 加载类
+│   └── general.md                     T9-T12 其他类
+└── scripts/                           可执行脚本
+    ├── check.sh
+    ├── upgrade.sh
+    ├── reset-agents.sh
+    └── full-clean.sh
+```
+
+### SKILL.md 精简到只做"导航 + 触发词"
+
+`SKILL.md` 现在只包含：
+
+- 触发词与流程导航表（10 种用户原话 → 走哪个文件）
+- 子目录索引（4 个目录 + 16 个 .md + 4 个 .sh）
+- 6 个固定 agent 速查表
+- 核心约束 6 条
+- 行为约束（**新增**：按需读子文件，不要一次性 Read 全部）
+- 不可破坏的红线
+- 版本历史
+
+详细工作流、规范、错误诊断都拆到子目录，AI 在用户提问时按对应触发词选**一个**子文件 Read。
+
+### token 节省
+
+之前一次加载 12.4KB SKILL.md（包含全部内容）；现在 SKILL.md 只 7.6KB（仅导航），AI 根据用户问题再读 1-2 个子文件（每个 1-9KB）。典型对话节省 70%+ skill content token。
+
+### 测试更新
+
+- `test/skill-installer.test.mjs` 改为期望 `pm-workflow/reference/agent-spec.md` 子目录路径
+- skill auto-install 的递归同步已支持子目录（rc.9 引入）+ 嵌套子目录（rc.9 引入），无代码改动
+- 19 个测试文件全过
+
+### 迁移
+
+```bash
+# 1. 升级
+npm install -g @walke/opencode-pm-workflow@rc
+
+# 2. 清旧 cache 让 OpenCode 拉新版
+pkill -9 -f OpenCode
+rm -rf ~/.cache/opencode/packages/@walke/opencode-pm-workflow@rc
+
+# 3. （可选）清旧顶层 .md 让 plugin 重写为子目录结构
+rm -f ~/.config/opencode/skills/pm-workflow/{theme,model,reference,troubleshooting,upgrade,uninstall}.md
+
+# 4. 双击启动 OpenCode，plugin auto-install 会递归同步新结构
+
+# 5. 验证
+ls ~/.config/opencode/skills/pm-workflow/
+# 应看到：SKILL.md  reference/  workflows/  troubleshooting/  scripts/
+```
+
 ## 1.0.0-rc.10
 
 ### 重大变更：3 个 skill 合并为单一 `pm-workflow` skill

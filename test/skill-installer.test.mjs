@@ -143,9 +143,9 @@ function testResolvePackageSkillsDirPointsToPackageRoot() {
   // 应能看到 pm-workflow skill（rc.10 起的唯一 skill）
   const pmWorkflowSkillMd = join(dir, 'pm-workflow', 'SKILL.md');
   assert.ok(existsSync(pmWorkflowSkillMd), '应找到 pm-workflow/SKILL.md');
-  // 应能看到 supporting files
-  const refMd = join(dir, 'pm-workflow', 'reference.md');
-  assert.ok(existsSync(refMd), '应找到 pm-workflow/reference.md');
+  // rc.11 起 supporting files 改为按子目录组织（reference/ workflows/ troubleshooting/）
+  const refSpec = join(dir, 'pm-workflow', 'reference', 'agent-spec.md');
+  assert.ok(existsSync(refSpec), '应找到 pm-workflow/reference/agent-spec.md（rc.11 子目录）');
 }
 
 function testIgnoresFilesWithoutSkillMd() {

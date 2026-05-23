@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.10`。
+当前发布版本：`1.0.0-rc.11`。
 
 ## 适用场景
 
@@ -124,7 +124,8 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
-| 2026-05-23 | 1.0.0-rc.10 | **3 个 skill 合并为单一 `pm-workflow` skill**：之前 rc.9 有 3 个独立 skill（pm-workflow-config / agent-theme-config / agent-model-config）冗余且分散触发词，rc.10 合并为唯一 `pm-workflow` skill；旧 SKILL.md 内容转换为 supporting files（theme.md / model.md）；用户在 OpenCode 内问 pm-workflow 任意问题都通过这一个入口解决；description 集中所有触发词，避免 OpenCode skill listing budget 浪费 |
+| 2026-05-23 | 1.0.0-rc.11 | **skill 子目录组织**：rc.10 把 7 个 .md 全堆在 pm-workflow/ 顶层，rc.11 按 OpenCode/Claude Code 标准用 4 个语义子目录组织：reference/（6 个规范子文件）+ workflows/（5 个场景流程）+ troubleshooting/（5 个错误类别）+ scripts/（4 个脚本）；SKILL.md 从 12.4KB 精简到 7.6KB 只做导航；AI 按用户问题选对应子文件读取，避免一次性加载全部内容浪费 token |
+| 2026-05-23 | 1.0.0-rc.10 | 3 个 skill 合并为单一 `pm-workflow` skill：之前 rc.9 有 3 个独立 skill 冗余且分散触发词，rc.10 合并为唯一入口；7 个顶层 .md 文件 |
 | 2026-05-23 | 1.0.0-rc.9 | 新增 `pm-workflow-config` skill：插件全场景帮手；含 4 个支持文件 + 4 个可执行脚本（check.sh / upgrade.sh / reset-agents.sh / full-clean.sh）；脚本输出详细过程日志；skill auto-install 升级为递归同步 supporting files 与 scripts/ 子目录 |
 | 2026-05-23 | 1.0.0-rc.8 | **agent md 完全符合 OpenCode 规范**：新增 `temperature` / `tools` / `permission` 字段；body 重写为完整系统 prompt（≥60 行）；不写 model 字段（让 `pmw models init` 单独管） |
 | 2026-05-23 | 1.0.0-rc.7 | **修复 OpenCode skill 规范**：rc.3-rc.6 错误地把 SKILL.md 复制成扁平 `<id>.md`（OpenCode 不识别），rc.7 改为正确的子目录结构 `<id>/SKILL.md`；同时补全 skill frontmatter `name` 字段（OpenCode 必填）；agent-theme-config skill 内容更新对齐 6 个新 agent ID + mode 字段约束 |
