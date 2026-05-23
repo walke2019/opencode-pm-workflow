@@ -166,6 +166,16 @@ export type {
   PluginHealthThresholds,
 } from "./server/hooks-health.js";
 export {
+  resolveOpenCodeSkillsDir,
+  resolvePackageSkillsDir,
+  syncPackagedSkillsToOpenCode,
+} from "./server/skill-installer.js";
+export type {
+  SkillSyncFinding,
+  SkillSyncOutcome,
+  SkillSyncReport,
+} from "./server/skill-installer.js";
+export {
   isSubagentAllowedByDeclarativeRouting,
   parseFrontmatterTaskPermission,
   resolveAgentTaskRouting,

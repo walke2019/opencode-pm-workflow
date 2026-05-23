@@ -18,6 +18,7 @@ import {
   reportPluginHealth,
   type PluginHealthThresholds,
 } from "./hooks-health.js";
+import { syncPackagedSkillsToOpenCode } from "./skill-installer.js";
 import { createAdminTools } from "./tools/admin-tools.js";
 import { createDiagnosticTools } from "./tools/diagnostic-tools.js";
 import { createDispatchTools } from "./tools/dispatch-tools.js";
@@ -62,6 +63,46 @@ export const PmWorkflowPlugin = async (
   });
 
   if (activation === "first") {
+    // Skill auto-install：把包内 skills/<id>/SKILL.md 同步到 ~/.config/opencode/skills/<id>.md。
+    // 失败不阻断插件加载，只通过 log 让用户知道；目标已存在且不同时不覆盖（保护用户改动）。
+    try {
+      const skillSync = syncPackagedSkillsToOpenCode();
+      const summary = {
+        skillsDir: skillSync.skillsDir,
+        total: skillSync.total,
+        installed: skillSync.installed,
+        skipped: skillSync.skipped,
+        userModified: skillSync.userModified,
+        failed: skillSync.failed,
+      };
+      const level =
+        skillSync.failed > 0 ? "warn" : skillSync.installed > 0 ? "info" : "debug";
+      await log(ctx.client, level, "pm-workflow skill auto-install", summary);
+      // 任何 user-modified 的条目，单独打 info 提示，方便用户决定是否手动同步。
+      for (const finding of skillSync.findings) {
+        if (finding.outcome === "user-modified" && finding.message) {
+          await log(ctx.client, "info", "pm-workflow skill kept user version", {
+            skillId: finding.skillId,
+            target: finding.target,
+            note: finding.message,
+          });
+        }
+        if (finding.outcome === "failed" && finding.message) {
+          await log(ctx.client, "warn", "pm-workflow skill install failed", {
+            skillId: finding.skillId,
+            target: finding.target,
+            note: finding.message,
+          });
+        }
+      }
+    } catch (err) {
+      // 兜底：syncPackagedSkillsToOpenCode 内部已经把所有 IO 异常包成 finding，
+      // 这里只接住意外错误（比如 fileURLToPath 路径计算失败）；不阻断加载。
+      await log(ctx.client, "warn", "pm-workflow skill auto-install crashed", {
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     const toolsCount =
       Object.keys(adminTools).length +
       Object.keys(dispatchTools).length +

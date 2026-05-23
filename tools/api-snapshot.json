@@ -1,8 +1,8 @@
 {
   "_doc": "pm-workflow 公开 API 快照。从 1.0.0 起作为 SemVer 承诺的载体：新增（minor）+ 删除/改名（major + deprecation 周期）。本文件由 scripts/api-snapshot.mjs 自动维护；prepare-publish 会校验当前 dist 与本快照一致。",
   "schema_version": 1,
-  "package_version": "1.0.0-rc.1",
-  "generated_at": "2026-05-23T06:44:31.960Z",
+  "package_version": "1.0.0-rc.2",
+  "generated_at": "2026-05-23T07:25:12.589Z",
   "public_symbols": [
     "AGENT_STATS_LIBRARY",
     "DEFAULT_HEALTH_THRESHOLDS",
@@ -121,6 +121,8 @@
     "resolveDocWritePath",
     "resolveFallbackChain",
     "resolveLaneContext",
+    "resolveOpenCodeSkillsDir",
+    "resolvePackageSkillsDir",
     "resolveThemeTargetDir",
     "resolveWorkflowAgentDefinition",
     "seedWorkflowConfig",
@@ -130,6 +132,7 @@
     "setPreferredSession",
     "shouldCreateTodoForLane",
     "summarizeLaneDispatch",
+    "syncPackagedSkillsToOpenCode",
     "syncState",
     "validateWorkflowConfigAgentModels",
     "writeState"

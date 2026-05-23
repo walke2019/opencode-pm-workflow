@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.0-rc.3
+
+### 新增：Skill auto-install
+
+修复 1.0.0-rc.2 的设计漏洞——主题 skill 文件存在于 npm 包里，但没有任何机制告诉 OpenCode 加载，导致用户在 OpenCode 内对话式触发主题时 AI 完全不知道有 skill 可用。
+
+- **`src/server/skill-installer.ts`**：插件首次激活时一次性把包内 `skills/<id>/SKILL.md` 同步到 OpenCode 标准目录 `~/.config/opencode/skills/<id>.md`（XDG_CONFIG_HOME 优先）
+- **幂等设计**：内容相同跳过；目标不存在则复制；**目标已存在但内容不同时不覆盖**（保护用户本地改过的版本）
+- **失败不阻断**：所有 IO 错误转换为 finding，通过 plugin log 上报，不影响插件加载流程
+- **公开 API**：导出 `resolveOpenCodeSkillsDir` / `resolvePackageSkillsDir` / `syncPackagedSkillsToOpenCode` 与 `SkillSyncFinding` / `SkillSyncOutcome` / `SkillSyncReport` 类型；API snapshot 129 → 132 个符号
+- **测试**：`test/skill-installer.test.mjs` 7 个用例覆盖首次安装 / 内容相同跳过 / 用户改过保留 / 源不存在 / XDG 路径 / 包路径定位 / 忽略非 skill 子项
+
+### 影响
+
+- 用户**无需手动**把 skill 复制到 `~/.config/opencode/skills/`；首次启动 OpenCode 时插件自动完成
+- 已经手动复制 skill 的老用户**不会被覆盖**；如想拿包内最新版本需手动删除目标文件后重启 OpenCode
+- 用户的 skill 内容修改完全自由；plugin 不会污染
+
 ## 1.0.0-rc.2
 
 ### 新增：Agent 主题（agent-theme）—— 对话式 agent 皮肤配置

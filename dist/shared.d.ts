@@ -31,6 +31,8 @@ export { detectFeedbackStopSignal, evaluateAutoContinueGuard, markAutoContinueAb
 export type { AutoContinueGuardDecision, AutoContinueGuardInput, } from "./core/auto-continue.js";
 export { DEFAULT_HEALTH_THRESHOLDS, _resetPluginActivationGuardForTesting, evaluatePluginHealth, guardPluginActivation, reportPluginHealth, } from "./server/hooks-health.js";
 export type { PluginActivationGuardResult, PluginHealthFinding, PluginHealthInputs, PluginHealthReport, PluginHealthThresholds, } from "./server/hooks-health.js";
+export { resolveOpenCodeSkillsDir, resolvePackageSkillsDir, syncPackagedSkillsToOpenCode, } from "./server/skill-installer.js";
+export type { SkillSyncFinding, SkillSyncOutcome, SkillSyncReport, } from "./server/skill-installer.js";
 export { isSubagentAllowedByDeclarativeRouting, parseFrontmatterTaskPermission, resolveAgentTaskRouting, } from "./core/agent-routing.js";
 export type { AgentTaskPermission, ResolvedAgentRouting, TaskPermissionValue, } from "./core/agent-routing.js";
 export { buildHistoryReportSummary, renderHistoryReportHtml, } from "./core/report.js";
