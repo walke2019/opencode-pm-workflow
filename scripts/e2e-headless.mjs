@@ -5,7 +5,7 @@
  * 不依赖真实 OpenCode 进程；在 mkdtemp 隔离的项目里自动跑通如下场景：
  *
  * - 场景 1：pmw doctor（dist/index.js 直接调）
- * - 场景 5：声明式路由 routing.denied（写一个 pm_lead.md 后调
+ * - 场景 5：声明式路由 routing.denied（写一个 commander.md 后调
  *   buildAutoContinueDispatch 看是否被 deny，并写 history）
  * - 场景 7：pmw report（写若干 history 后渲染 HTML，校验关键指标）
  *
@@ -96,53 +96,53 @@ function appendHistoryRaw(projectDir, event) {
     const agentsDir = join(projectDir, ".opencode", "agents");
     mkdirSync(agentsDir, { recursive: true });
     writeFileSync(
-      join(agentsDir, "pm_lead.md"),
+      join(agentsDir, "commander.md"),
       [
         "---",
         "description: PM 主协调官",
         "mode: primary",
         "permission:",
         "  task:",
-        "    pm_researcher: deny",
-        "    pm_backend: allow",
+        "    advisor: deny",
+        "    backendcoder: allow",
         "---",
       ].join("\n"),
       "utf-8",
     );
 
-    // 调声明式路由判定：pm_researcher 应被拒绝
+    // 调声明式路由判定：advisor 应被拒绝
     const routing = dist.resolveAgentTaskRouting({
       projectDir,
-      primaryAgent: "pm_lead",
+      primaryAgent: "commander",
     });
     if (routing.source !== "project") {
       fail(
         "scenario-5-routing",
         `routing.source 应为 project，实际：${routing.source}`,
       );
-    } else if (!routing.deniedSubagents.includes("pm_researcher")) {
+    } else if (!routing.deniedSubagents.includes("advisor")) {
       fail(
         "scenario-5-routing",
-        `deniedSubagents 应含 pm_researcher，实际：${routing.deniedSubagents.join(",")}`,
+        `deniedSubagents 应含 advisor，实际：${routing.deniedSubagents.join(",")}`,
       );
     } else {
       const denyDecision = dist.isSubagentAllowedByDeclarativeRouting({
         routing,
-        candidate: "pm_researcher",
+        candidate: "advisor",
       });
       const allowDecision = dist.isSubagentAllowedByDeclarativeRouting({
         routing,
-        candidate: "pm_backend",
+        candidate: "backendcoder",
       });
       if (denyDecision.allowed) {
         fail(
           "scenario-5-routing",
-          `pm_researcher 应被拒绝，实际允许：${denyDecision.reason}`,
+          `advisor 应被拒绝，实际允许：${denyDecision.reason}`,
         );
       } else if (!allowDecision.allowed) {
         fail(
           "scenario-5-routing",
-          `pm_backend 应被允许，实际拒绝：${allowDecision.reason}`,
+          `backendcoder 应被允许，实际拒绝：${allowDecision.reason}`,
         );
       } else {
         pass(
@@ -164,12 +164,12 @@ function appendHistoryRaw(projectDir, event) {
     appendHistoryRaw(projectDir, {
       type: "dispatch.executed",
       exitCode: 0,
-      agent: "pm_lead",
+      agent: "commander",
     });
     appendHistoryRaw(projectDir, {
       type: "dispatch.executed",
       exitCode: 1,
-      agent: "pm_backend",
+      agent: "backendcoder",
     });
     appendHistoryRaw(projectDir, {
       type: "fallback.foreground_switch",
@@ -193,7 +193,7 @@ function appendHistoryRaw(projectDir, event) {
     });
     appendHistoryRaw(projectDir, {
       type: "routing.denied",
-      candidate_agent: "pm_researcher",
+      candidate_agent: "advisor",
     });
 
     const { summary, events } = dist.buildHistoryReportSummary(projectDir);

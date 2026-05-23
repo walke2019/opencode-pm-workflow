@@ -9,12 +9,12 @@ import {
 // 1) AGENT_STATS_LIBRARY：6 个核心 agent 都有完整卡片
 {
   const expectedAgents = [
-    'pm_lead',
-    'pm_advisor',
-    'pm_backend',
-    'pm_frontend',
-    'pm_reviewer',
-    'pm_researcher',
+    'commander',
+    'advisor',
+    'backendcoder',
+    'designer',
+    'fixer',
+    'advisor',
   ];
   for (const agent of expectedAgents) {
     const card = AGENT_STATS_LIBRARY[agent];
@@ -33,7 +33,7 @@ import {
 // 2) pickAgentStats：单候选场景不注入（节省 token）
 {
   const stats = pickAgentStats({
-    targetAgent: 'pm_backend',
+    targetAgent: 'backendcoder',
     fallbackAgents: [],
   });
   assert.strictEqual(
@@ -46,38 +46,38 @@ import {
 // 3) pickAgentStats：多候选时 target 排第一
 {
   const stats = pickAgentStats({
-    targetAgent: 'pm_backend',
-    fallbackAgents: ['pm_reviewer'],
+    targetAgent: 'backendcoder',
+    fallbackAgents: ['fixer'],
   });
   assert.ok(stats);
   assert.strictEqual(stats.length, 2);
-  assert.strictEqual(stats[0].agent, 'pm_backend', 'target 总是第一张');
-  assert.strictEqual(stats[1].agent, 'pm_reviewer');
+  assert.strictEqual(stats[0].agent, 'backendcoder', 'target 总是第一张');
+  assert.strictEqual(stats[1].agent, 'fixer');
 }
 
 // 4) pickAgentStats：最多 3 张卡片
 {
   const stats = pickAgentStats({
-    targetAgent: 'pm_lead',
-    fallbackAgents: ['pm_backend', 'pm_frontend', 'pm_reviewer', 'pm_researcher'],
+    targetAgent: 'commander',
+    fallbackAgents: ['backendcoder', 'designer', 'fixer', 'advisor'],
   });
   assert.ok(stats);
   assert.strictEqual(stats.length, 3, '上限 3 张');
-  assert.strictEqual(stats[0].agent, 'pm_lead');
+  assert.strictEqual(stats[0].agent, 'commander');
 }
 
 // 5) pickAgentStats：去重 - target 出现在 fallbackAgents 时不重复
 {
   const stats = pickAgentStats({
-    targetAgent: 'pm_backend',
-    fallbackAgents: ['pm_backend', 'pm_reviewer'],
+    targetAgent: 'backendcoder',
+    fallbackAgents: ['backendcoder', 'fixer'],
   });
   assert.ok(stats);
   assert.strictEqual(stats.length, 2);
-  assert.strictEqual(stats[0].agent, 'pm_backend');
-  assert.strictEqual(stats[1].agent, 'pm_reviewer');
+  assert.strictEqual(stats[0].agent, 'backendcoder');
+  assert.strictEqual(stats[1].agent, 'fixer');
   // target 不应被 fallback 中的同名再加一次
-  const occurrences = stats.filter((c) => c.agent === 'pm_backend').length;
+  const occurrences = stats.filter((c) => c.agent === 'backendcoder').length;
   assert.strictEqual(occurrences, 1);
 }
 

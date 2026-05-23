@@ -29,31 +29,37 @@ async function testDefaults() {
   const config = defaultWorkflowConfig();
   assert.strictEqual(config.permissions.allow_execute_tools, true, 'Should allow tool execution by default');
   assert.strictEqual(config.confirm.require_confirm_for_execute, false, 'Should not require confirmation by default');
-  assert.strictEqual(config.agents.definitions.pm_lead.model, undefined, 'Model should be read from global config');
-  assert.strictEqual(config.agents.definitions.pm_backend.model, undefined, 'Model should be read from global config');
-  assert.strictEqual(config.agents.definitions.pm_frontend.model, undefined, 'Model should be read from global config');
+  assert.strictEqual(config.agents.definitions.commander.model, undefined, 'Model should be read from global config');
+  assert.strictEqual(config.agents.definitions.backendcoder.model, undefined, 'Model should be read from global config');
+  assert.strictEqual(config.agents.definitions.designer.model, undefined, 'Model should be read from global config');
+  // 1.0.0-rc.6 起 reviewer 拆成 fixer + writer 两个独立 agent
   assert.ok(
-    config.agents.definitions.pm_reviewer.description.includes('审查'),
-    'Reviewer definition should include 审查',
+    config.agents.definitions.fixer.description.includes('测试'),
+    'Fixer definition should include 测试',
   );
   assert.ok(
-    config.agents.definitions.pm_reviewer.description.includes('文档'),
-    'Reviewer definition should include 文档',
+    config.agents.definitions.fixer.description.includes('发布') ||
+      config.agents.definitions.fixer.description.includes('部署'),
+    'Fixer definition should include 发布 or 部署',
   );
   assert.ok(
-    config.agents.definitions.pm_advisor.description.includes('顾问'),
+    config.agents.definitions.writer.description.includes('文档'),
+    'Writer definition should include 文档',
+  );
+  assert.ok(
+    config.agents.definitions.advisor.description.includes('顾问'),
     'Advisor definition should describe advisor role',
   );
   assert.ok(
-    !config.agents.definitions.pm_advisor.description.includes('总指挥'),
+    !config.agents.definitions.advisor.description.includes('总指挥'),
     'Advisor definition should no longer describe commander as the primary coordinator',
   );
   assert.ok(
-    config.agents.definitions.pm_advisor.prompt.includes('顾问'),
+    config.agents.definitions.advisor.prompt.includes('顾问'),
     'Advisor prompt should describe advisor role',
   );
   assert.ok(
-    !config.agents.definitions.pm_advisor.prompt.includes('总指挥'),
+    !config.agents.definitions.advisor.prompt.includes('总指挥'),
     'Advisor prompt should no longer describe commander as the primary coordinator',
   );
   console.log('✓ role-specific model defaults are configured');
@@ -64,31 +70,31 @@ async function testDefaults() {
   console.log('✓ Advisor definition correctly mapped to advisor-only role');
 
   assert.strictEqual(
-    config.fallback.agent_map.pm_researcher,
-    'pm_researcher',
-    'Fallback agent map should support pm_researcher',
+    config.fallback.agent_map.advisor,
+    'advisor',
+    'Fallback agent map should support advisor',
   );
   assert.strictEqual(
-    config.agents.dispatch_map.pm_researcher,
-    'pm_researcher',
-    'Dispatch map should support pm_researcher',
+    config.agents.dispatch_map.advisor,
+    'advisor',
+    'Dispatch map should support advisor',
   );
   assert.ok(
-    config.agents.definitions.pm_researcher,
+    config.agents.definitions.advisor,
     'Built-in researcher definition should exist for executable researcher defaults',
   );
   assert.ok(
-    config.agents.definitions.pm_researcher.description.includes('调研') ||
-      config.agents.definitions.pm_researcher.description.includes('搜索') ||
-      config.agents.definitions.pm_researcher.description.includes('资料'),
+    config.agents.definitions.advisor.description.includes('调研') ||
+      config.agents.definitions.advisor.description.includes('搜索') ||
+      config.agents.definitions.advisor.description.includes('资料'),
     'Researcher definition should describe research/search behavior',
   );
   assert.ok(
-    config.agents.definitions.pm_researcher.prompt.includes('不直接承担实现工作') ||
-      config.agents.definitions.pm_researcher.prompt.includes('不替代开发'),
+    config.agents.definitions.advisor.prompt.includes('不直接承担实现工作') ||
+      config.agents.definitions.advisor.prompt.includes('不替代开发'),
     'Researcher definition prompt should state non-implementation by default',
   );
-  const researcherPrompt = buildExecutablePrompt('pm_researcher', '帮我调研一下官方鉴权方案');
+  const researcherPrompt = buildExecutablePrompt('advisor', '帮我调研一下官方鉴权方案');
   assert.ok(researcherPrompt.includes('资料'), 'Researcher prompt should mention 资料');
   assert.ok(
     researcherPrompt.includes('调研') || researcherPrompt.includes('搜索'),
@@ -113,7 +119,7 @@ async function testDefaults() {
 
 async function testPrompts() {
   console.log('\nTesting prompts and character mapping...');
-  const advisorPrompt = buildExecutablePrompt('pm_advisor', '测试任务');
+  const advisorPrompt = buildExecutablePrompt('advisor', '测试任务');
   assert.ok(advisorPrompt.includes('拆解顾问'), 'Advisor prompt should include 拆解顾问');
   assert.ok(advisorPrompt.includes('【核心任务】'), 'Prompt should be structured');
   assert.ok(advisorPrompt.includes('顾问'), 'Commander prompt should describe advisor role');
@@ -123,17 +129,23 @@ async function testPrompts() {
   );
   console.log('✓ Advisor prompt correctly mapped to 拆解顾问');
 
-  const backendPrompt = buildExecutablePrompt('pm_backend', '修复 Bug');
+  const backendPrompt = buildExecutablePrompt('backendcoder', '修复 Bug');
   assert.ok(backendPrompt.includes('后端'), 'Backend prompt should include 后端');
   console.log('✓ Backend prompt correctly mapped to 后端角色');
 
-  const reviewerPrompt = buildExecutablePrompt('pm_reviewer', '执行代码审查');
-  assert.ok(reviewerPrompt.includes('审查'), 'Reviewer prompt should include 审查');
-  console.log('✓ Reviewer prompt correctly mapped to 审查职责');
+  // 1.0.0-rc.6 起 reviewer 拆成 fixer + writer：
+  // - "审查代码" / "测试" / "修复 bug" / "打包发版" → fixer
+  // - "整理发布说明" / "写文档" → writer
+  const fixerPrompt = buildExecutablePrompt('fixer', '执行代码审查');
+  assert.ok(
+    fixerPrompt.includes('测试') || fixerPrompt.includes('修复'),
+    'Fixer prompt should include 测试 or 修复',
+  );
+  console.log('✓ Fixer prompt correctly mapped to 测试/修复职责');
 
-  const reviewerDocPrompt = buildExecutablePrompt('pm_reviewer', '整理发布说明');
-  assert.ok(reviewerDocPrompt.includes('文档'), 'Reviewer prompt should include 文档');
-  console.log('✓ Reviewer prompt correctly mapped to 文档职责');
+  const writerPrompt = buildExecutablePrompt('writer', '整理发布说明');
+  assert.ok(writerPrompt.includes('文档'), 'Writer prompt should include 文档');
+  console.log('✓ Writer prompt correctly mapped to 文档职责');
 }
 
 async function testDispatchRouting() {
@@ -154,12 +166,13 @@ async function testDispatchRouting() {
   );
   assert.ok(simpleWriterDispatch.analysis, 'Dispatch should include task analysis');
   assert.ok(simpleWriterDispatch.handoffPacket, 'Dispatch should include handoff packet');
-  assert.strictEqual(simpleWriterDispatch.recommendedAgent, 'pm_reviewer');
+  // 1.0.0-rc.6 起 writer 与 fixer 是独立 agent；纯文档任务路由到 writer
+  assert.strictEqual(simpleWriterDispatch.recommendedAgent, 'writer');
   assert.ok(
     !simpleWriterDispatch.executablePrompt.includes('commander 作为主 agent'),
     'Executable prompt should not describe commander as the primary agent',
   );
-  console.log('✓ Simple writer task does not default to commander');
+  console.log('✓ Simple writer task routes to writer (not commander)');
   console.log('✓ Dispatch includes analysis and handoff packet');
 
   const backendDispatch = await withTempProject((projectDir) => {
@@ -171,11 +184,11 @@ async function testDispatchRouting() {
       '实现 OpenCode plugin 工具调用和 workflow 路由，并补齐测试',
     ),
   );
-  assert.strictEqual(backendDispatch.recommendedAgent, 'pm_backend');
-  assert.ok(backendDispatch.analysis.expectedNextAgents.includes('pm_reviewer'));
+  assert.strictEqual(backendDispatch.recommendedAgent, 'backendcoder');
+  assert.ok(backendDispatch.analysis.expectedNextAgents.includes('fixer'));
   assert.ok(backendDispatch.executablePrompt.includes('Workflow 标准'));
   assert.ok(backendDispatch.executablePrompt.includes('todo'));
-  console.log('✓ Backend dispatch routes implementation work to pm_backend with reviewer follow-up');
+  console.log('✓ Backend dispatch routes implementation work to backendcoder with reviewer follow-up');
 
   const gatedDispatch = await withTempProject(() => {}, (projectDir) =>
     buildDispatchCommand(
@@ -186,8 +199,8 @@ async function testDispatchRouting() {
   assert.strictEqual(gatedDispatch.recommendedAction, 'collect-spec');
   assert.strictEqual(
     gatedDispatch.recommendedAgent,
-    'pm_lead',
-    'Spec gate should keep collect-spec on pm_lead instead of routing to backend',
+    'commander',
+    'Spec gate should keep collect-spec on commander instead of routing to backend',
   );
   console.log('✓ Spec gate keeps requirements compression on PM before development routing');
 
@@ -200,7 +213,7 @@ async function testDispatchRouting() {
       '帮我调研一下 React Native 埋点方案，并对比几种实现路线',
     ),
   );
-  assert.strictEqual(researcherDispatch.recommendedAgent, 'pm_researcher');
+  assert.strictEqual(researcherDispatch.recommendedAgent, 'advisor');
   assert.strictEqual(researcherDispatch.analysis?.domain, 'researcher');
   assert.strictEqual(researcherDispatch.analysis?.executionMode, 'serial_handoff');
 
@@ -213,7 +226,7 @@ async function testDispatchRouting() {
       '帮我调研一下官方鉴权方案，并对比几种中间件实现路线',
     ),
   );
-  assert.strictEqual(researcherBackendCollisionDispatch.recommendedAgent, 'pm_researcher');
+  assert.strictEqual(researcherBackendCollisionDispatch.recommendedAgent, 'advisor');
   assert.strictEqual(researcherBackendCollisionDispatch.analysis?.domain, 'researcher');
 
   const backendRoutingDispatch = await withTempProject((projectDir) => {
@@ -225,7 +238,7 @@ async function testDispatchRouting() {
       '帮我实现一个鉴权中间件，并补测试',
     ),
   );
-  assert.strictEqual(backendRoutingDispatch.recommendedAgent, 'pm_backend');
+  assert.strictEqual(backendRoutingDispatch.recommendedAgent, 'backendcoder');
 
   const writerRoutingDispatch = await withTempProject((projectDir) => {
     createDoc(projectDir, 'Product-Spec.md');
@@ -236,8 +249,8 @@ async function testDispatchRouting() {
       '把这段说明整理成文档，并更新 README',
     ),
   );
-  assert.strictEqual(writerRoutingDispatch.recommendedAgent, 'pm_reviewer');
-  console.log('✓ Researcher medium-trigger routing prefers researcher over backend/writer fallbacks');
+  assert.strictEqual(writerRoutingDispatch.recommendedAgent, 'writer');
+  console.log('✓ Writer task routes to writer agent');
 }
 
 async function testStageDefaultRouting() {
@@ -250,8 +263,8 @@ async function testStageDefaultRouting() {
   assert.strictEqual(planReadyDispatch.stage, 'plan_ready', 'Fixture should resolve to plan_ready');
   assert.strictEqual(
     planReadyDispatch.recommendedAgent,
-    'pm_lead',
-    'plan_ready should default to pm_lead',
+    'commander',
+    'plan_ready should default to commander',
   );
 
   const developmentDispatch = await withTempProject((projectDir) => {
@@ -266,12 +279,12 @@ async function testStageDefaultRouting() {
   );
   assert.strictEqual(
     developmentDispatch.recommendedAgent,
-    'pm_lead',
-    'development should default to pm_lead',
+    'commander',
+    'development should default to commander',
   );
 
-  console.log('✓ plan_ready defaults to pm_lead');
-  console.log('✓ development defaults to pm_lead');
+  console.log('✓ plan_ready defaults to commander');
+  console.log('✓ development defaults to commander');
 }
 
 async function runTests() {

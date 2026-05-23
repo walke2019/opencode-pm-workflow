@@ -24,20 +24,20 @@ function makeProjectWithAgent(filename, body) {
     'mode: primary',
     'permission:',
     '  task:',
-    '    pm_backend: allow',
-    '    pm_frontend: allow',
-    '    pm_reviewer: ask',
-    '    pm_researcher: deny',
+    '    backendcoder: allow',
+    '    designer: allow',
+    '    fixer: ask',
+    '    advisor: deny',
     '---',
     '',
     '正文不影响解析',
   ].join('\n');
 
   const { taskPermission } = parseFrontmatterTaskPermission(raw);
-  assert.strictEqual(taskPermission.pm_backend, 'allow');
-  assert.strictEqual(taskPermission.pm_frontend, 'allow');
-  assert.strictEqual(taskPermission.pm_reviewer, 'ask');
-  assert.strictEqual(taskPermission.pm_researcher, 'deny');
+  assert.strictEqual(taskPermission.backendcoder, 'allow');
+  assert.strictEqual(taskPermission.designer, 'allow');
+  assert.strictEqual(taskPermission.fixer, 'ask');
+  assert.strictEqual(taskPermission.advisor, 'deny');
 }
 
 // 2) parseFrontmatterTaskPermission：无 frontmatter 或无 permission 节
@@ -62,15 +62,15 @@ function makeProjectWithAgent(filename, body) {
     '---',
     'permission:',
     '  task:',
-    '    pm_backend: allow',
-    '    pm_frontend: yes',
-    '    pm_reviewer: 1',
+    '    backendcoder: allow',
+    '    designer: yes',
+    '    fixer: 1',
     '---',
   ].join('\n');
   const { taskPermission } = parseFrontmatterTaskPermission(raw);
-  assert.strictEqual(taskPermission.pm_backend, 'allow');
-  assert.strictEqual(taskPermission.pm_frontend, undefined);
-  assert.strictEqual(taskPermission.pm_reviewer, undefined);
+  assert.strictEqual(taskPermission.backendcoder, 'allow');
+  assert.strictEqual(taskPermission.designer, undefined);
+  assert.strictEqual(taskPermission.fixer, undefined);
 }
 
 // 4) parseFrontmatterTaskPermission：带引号的 value 也能解析
@@ -79,37 +79,37 @@ function makeProjectWithAgent(filename, body) {
     '---',
     'permission:',
     '  task:',
-    '    pm_backend: "allow"',
-    "    pm_frontend: 'deny'",
+    '    backendcoder: "allow"',
+    "    designer: 'deny'",
     '---',
   ].join('\n');
   const { taskPermission } = parseFrontmatterTaskPermission(raw);
-  assert.strictEqual(taskPermission.pm_backend, 'allow');
-  assert.strictEqual(taskPermission.pm_frontend, 'deny');
+  assert.strictEqual(taskPermission.backendcoder, 'allow');
+  assert.strictEqual(taskPermission.designer, 'deny');
 }
 
 // 5) resolveAgentTaskRouting：项目级 agent 命中
 {
   const projectDir = makeProjectWithAgent(
-    'pm_lead.md',
+    'commander.md',
     [
       '---',
       'description: x',
       'permission:',
       '  task:',
-      '    pm_backend: allow',
-      '    pm_researcher: deny',
+      '    backendcoder: allow',
+      '    advisor: deny',
       '---',
     ].join('\n'),
   );
   try {
     const routing = resolveAgentTaskRouting({
       projectDir,
-      primaryAgent: 'pm_lead',
+      primaryAgent: 'commander',
     });
     assert.strictEqual(routing.source, 'project');
-    assert.deepStrictEqual(routing.allowedSubagents.sort(), ['pm_backend']);
-    assert.deepStrictEqual(routing.deniedSubagents.sort(), ['pm_researcher']);
+    assert.deepStrictEqual(routing.allowedSubagents.sort(), ['backendcoder']);
+    assert.deepStrictEqual(routing.deniedSubagents.sort(), ['advisor']);
     assert.ok(routing.filePath);
   } finally {
     rmSync(projectDir, { recursive: true, force: true });
@@ -122,7 +122,7 @@ function makeProjectWithAgent(filename, body) {
   try {
     const routing = resolveAgentTaskRouting({
       projectDir,
-      primaryAgent: 'pm_lead',
+      primaryAgent: 'commander',
     });
     assert.strictEqual(routing.source, 'none');
     assert.deepStrictEqual(routing.allowedSubagents, []);
@@ -137,22 +137,22 @@ function makeProjectWithAgent(filename, body) {
 // 7) resolveAgentTaskRouting：ask 也算 allowedSubagents
 {
   const projectDir = makeProjectWithAgent(
-    'pm_lead.md',
+    'commander.md',
     [
       '---',
       'permission:',
       '  task:',
-      '    pm_reviewer: ask',
+      '    fixer: ask',
       '---',
     ].join('\n'),
   );
   try {
     const routing = resolveAgentTaskRouting({
       projectDir,
-      primaryAgent: 'pm_lead',
+      primaryAgent: 'commander',
     });
-    assert.deepStrictEqual(routing.allowedSubagents, ['pm_reviewer']);
-    assert.strictEqual(routing.taskPermission.pm_reviewer, 'ask');
+    assert.deepStrictEqual(routing.allowedSubagents, ['fixer']);
+    assert.strictEqual(routing.taskPermission.fixer, 'ask');
   } finally {
     rmSync(projectDir, { recursive: true, force: true });
   }
@@ -161,32 +161,32 @@ function makeProjectWithAgent(filename, body) {
 // 8) isSubagentAllowedByDeclarativeRouting：deny 优先
 {
   const projectDir = makeProjectWithAgent(
-    'pm_lead.md',
+    'commander.md',
     [
       '---',
       'permission:',
       '  task:',
-      '    pm_backend: deny',
-      '    pm_reviewer: allow',
+      '    backendcoder: deny',
+      '    fixer: allow',
       '---',
     ].join('\n'),
   );
   try {
     const routing = resolveAgentTaskRouting({
       projectDir,
-      primaryAgent: 'pm_lead',
+      primaryAgent: 'commander',
     });
 
     const denied = isSubagentAllowedByDeclarativeRouting({
       routing,
-      candidate: 'pm_backend',
+      candidate: 'backendcoder',
     });
     assert.strictEqual(denied.allowed, false);
     assert.match(denied.reason, /deny/);
 
     const allowed = isSubagentAllowedByDeclarativeRouting({
       routing,
-      candidate: 'pm_reviewer',
+      candidate: 'fixer',
     });
     assert.strictEqual(allowed.allowed, true);
     assert.match(allowed.reason, /allow/);
@@ -198,19 +198,19 @@ function makeProjectWithAgent(filename, body) {
 // 9) isSubagentAllowedByDeclarativeRouting：未声明的 candidate 走 fallback
 {
   const projectDir = makeProjectWithAgent(
-    'pm_lead.md',
+    'commander.md',
     [
       '---',
       'permission:',
       '  task:',
-      '    pm_backend: allow',
+      '    backendcoder: allow',
       '---',
     ].join('\n'),
   );
   try {
     const routing = resolveAgentTaskRouting({
       projectDir,
-      primaryAgent: 'pm_lead',
+      primaryAgent: 'commander',
     });
 
     const fallbackTrue = isSubagentAllowedByDeclarativeRouting({
@@ -236,13 +236,13 @@ function makeProjectWithAgent(filename, body) {
   try {
     const routing = resolveAgentTaskRouting({
       projectDir,
-      primaryAgent: 'pm_lead',
+      primaryAgent: 'commander',
     });
     assert.strictEqual(routing.source, 'none');
 
     const decision = isSubagentAllowedByDeclarativeRouting({
       routing,
-      candidate: 'pm_backend',
+      candidate: 'backendcoder',
     });
     assert.strictEqual(decision.allowed, true);
     assert.match(decision.reason, /no frontmatter routing|legacy dispatch_map/);

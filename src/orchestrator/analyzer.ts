@@ -22,12 +22,12 @@ function inferDomain(
   prompt: string,
   preferredAgent?: DispatchAgent | null,
 ): TaskDomain {
-  if (preferredAgent === "pm_backend") return "backend";
-  if (preferredAgent === "pm_frontend") return "frontend";
-  if (preferredAgent === "pm_reviewer") return "writer";
-  if (preferredAgent === "pm_researcher") return "researcher";
-  if (preferredAgent === "pm_advisor") return "orchestration";
-  // pm_lead 是主协调默认值，不应阻止后续基于任务内容分派给专业 subagent。
+  if (preferredAgent === "backendcoder") return "backend";
+  if (preferredAgent === "designer") return "frontend";
+  if (preferredAgent === "writer") return "writer";
+  if (preferredAgent === "fixer") return "qa_engineer";
+  if (preferredAgent === "advisor") return "researcher";
+  // commander 是主协调默认值，不应阻止后续基于任务内容分派给专业 subagent。
 
   const normalized = prompt.toLowerCase();
   const researcherMatched =
@@ -152,20 +152,20 @@ function inferComplexity(prompt: string): TaskComplexity {
 function mapDomainToAgent(domain: TaskDomain): DispatchAgent {
   switch (domain) {
     case "backend":
-      return "pm_backend";
+      return "backendcoder";
     case "frontend":
-      return "pm_frontend";
+      return "designer";
     case "writer":
-      return "pm_reviewer";
+      return "writer";
     case "qa_engineer":
-      return "pm_reviewer";
+      return "fixer";
     case "researcher":
-      return "pm_researcher";
+      return "advisor";
     case "pm":
-      return "pm_lead";
+      return "commander";
     case "orchestration":
     default:
-      return "pm_lead";
+      return "commander";
   }
 }
 
@@ -197,7 +197,7 @@ function inferRecommendedAgent(
   complexity: TaskComplexity,
   preferredAgent?: DispatchAgent | null,
 ): DispatchAgent {
-  if (preferredAgent && preferredAgent !== "pm_lead") {
+  if (preferredAgent && preferredAgent !== "commander") {
     return preferredAgent;
   }
   return mapDomainToAgent(domain);
@@ -208,19 +208,21 @@ function inferExpectedNextAgents(
   recommendedAgent: DispatchAgent,
   complexity: TaskComplexity,
 ): DispatchAgent[] {
-  if (recommendedAgent === "pm_advisor") {
-    return ["pm_lead", "pm_frontend", "pm_reviewer"];
+  if (recommendedAgent === "advisor") {
+    // 调研/拆解后通常需要主协调决策、设计实现、最后跑测试验收
+    return ["commander", "designer", "fixer"];
   }
   if (domain === "researcher") {
-    return ["pm_researcher"];
+    return ["advisor"];
   }
   if (domain === "backend" && complexity !== "simple") {
-    return ["pm_backend", "pm_reviewer"];
+    // 后端实现完成后跑测试验收
+    return ["backendcoder", "fixer"];
   }
-  if (recommendedAgent === "pm_lead") {
+  if (recommendedAgent === "commander") {
     return complexity === "simple"
-      ? ["pm_advisor"]
-      : ["pm_advisor", "pm_reviewer"];
+      ? ["advisor"]
+      : ["advisor", "fixer"];
   }
   return [recommendedAgent];
 }
@@ -247,7 +249,7 @@ export function analyzeDispatchTask(
     domain,
     complexity,
     recommendedAgent,
-    fallbackAgents: recommendedAgent === "pm_lead" ? ["pm_advisor"] : ["pm_lead"],
+    fallbackAgents: recommendedAgent === "commander" ? ["advisor"] : ["commander"],
     executionMode,
     needsDecomposition: complexity !== "simple",
     rationale: [
@@ -265,7 +267,7 @@ export function analyzeDispatchTask(
     suggestedStepCount:
       complexity === "simple" ? 1 : complexity === "multi_step" ? 3 : 4,
     specialistCount: new Set(
-      expectedNextAgents.filter((agent) => agent !== "pm_lead"),
+      expectedNextAgents.filter((agent) => agent !== "commander"),
     ).size,
   };
 }

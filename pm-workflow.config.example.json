@@ -23,45 +23,45 @@
     "enabled": true,
     "default_mode": "subagent",
     "dispatch_map": {
-      "pm": "pm_lead",
-      "plan": "pm_advisor",
-      "build": "pm_advisor",
-      "commander": "pm_advisor",
-      "backend": "pm_backend",
-      "frontend": "pm_frontend",
-      "qa_engineer": "pm_reviewer",
-      "writer": "pm_reviewer",
-      "researcher": "pm_researcher"
+      "pm": "commander",
+      "plan": "advisor",
+      "build": "advisor",
+      "commander": "advisor",
+      "backend": "backendcoder",
+      "frontend": "designer",
+      "qa_engineer": "fixer",
+      "writer": "fixer",
+      "researcher": "advisor"
     },
     "definitions": {
-      "pm_lead": {
+      "commander": {
         "mode": "primary",
         "temperature": 0.2,
         "description": "pm-workflow primary coordinator"
       },
-      "pm_advisor": {
+      "advisor": {
         "mode": "primary",
         "temperature": 0.2,
         "description": "Advisor-only decomposition agent"
       },
-      "pm_backend": {
+      "backendcoder": {
         "mode": "subagent",
         "temperature": 0.2,
         "description": "Backend/plugin/API implementation agent"
       },
-      "pm_frontend": {
+      "designer": {
         "mode": "subagent",
         "hidden": true,
         "temperature": 0.25,
         "description": "Frontend/UI implementation agent"
       },
-      "pm_reviewer": {
+      "fixer": {
         "mode": "subagent",
         "hidden": true,
         "temperature": 0.1,
         "description": "QA/code-review and documentation agent"
       },
-      "pm_researcher": {
+      "advisor": {
         "mode": "subagent",
         "hidden": true,
         "temperature": 0.3,
@@ -96,28 +96,28 @@
       "continue-development"
     ],
     "agent_map": {
-      "plan": "pm_advisor",
-      "build": "pm_advisor",
-      "backend": "pm_backend",
-      "frontend": "pm_frontend",
-      "qa_engineer": "pm_reviewer",
-      "writer": "pm_reviewer",
-      "researcher": "pm_researcher"
+      "plan": "advisor",
+      "build": "advisor",
+      "backend": "backendcoder",
+      "frontend": "designer",
+      "qa_engineer": "fixer",
+      "writer": "fixer",
+      "researcher": "advisor"
     },
     "chains": {
-      "pm_lead": [
+      "commander": [
         "kr/claude-sonnet-4.5",
         "cx/gpt-5.5"
       ],
-      "pm_backend": [
+      "backendcoder": [
         "cx/gpt-5.5",
         "kr/claude-sonnet-4.5"
       ],
-      "pm_frontend": [
+      "designer": [
         "kr/claude-sonnet-4.5",
         "cx/gpt-5.4"
       ],
-      "pm_reviewer": [
+      "fixer": [
         "kr/claude-haiku-4.5"
       ]
     }

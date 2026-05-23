@@ -25,15 +25,15 @@ function appendConfigHistory(projectDir, payload) {
     writeFileSync(historyPath, existsSync(historyPath) ? readFileSync(historyPath, "utf-8") + line : line, "utf-8");
 }
 const WORKFLOW_AGENT_ORDER = [
-    "pm_lead",
-    "pm_advisor",
-    "pm_backend",
-    "pm_frontend",
-    "pm_reviewer",
-    "pm_researcher",
+    "commander",
+    "advisor",
+    "backendcoder",
+    "designer",
+    "fixer",
+    "writer",
 ];
 const DEFAULT_WORKFLOW_AGENTS = {
-    pm_lead: {
+    commander: {
         mode: "primary",
         description: "pm-workflow 主协调官，负责分析决策、规划分派、收敛验收。",
         prompt: "你是 pm-workflow 的主协调官。负责快速压缩需求，确定目标、边界、todo、验收标准与分派路径；随后直接推进开发、测试、发布摘要。你表达直接、务实、清晰，重视结果与验证。",
@@ -43,17 +43,17 @@ const DEFAULT_WORKFLOW_AGENTS = {
             bash: "ask",
         },
     },
-    pm_advisor: {
-        mode: "primary",
-        description: "拆解顾问，擅长任务拆解、风险识别与顾问式支持。",
-        prompt: "你是 pm-workflow 的拆解顾问。擅长将复杂任务拆解为清晰的推进步骤，识别风险并提供顾问式支持。先澄清疑虑，再划定边界，最后给出合适的分派建议与推进顺序。",
+    advisor: {
+        mode: "subagent",
+        description: "调研、分析、拆解、决策顾问；负责检索资料、比对方案、识别风险、给出推进建议。",
+        prompt: "你是 pm-workflow 的调研拆解顾问。负责调研资料、对比方案、识别风险、把复杂任务拆成清晰的推进步骤，并给出可被 commander 直接拿来分派的拆解结果与决策建议。先澄清疑虑，再划定边界，最后输出拆解 + 风险 + 建议三段。不直接承担实现工作。",
         permission: {
-            edit: "allow",
-            write: "allow",
+            edit: "ask",
+            write: "ask",
             bash: "allow",
         },
     },
-    pm_backend: {
+    backendcoder: {
         mode: "subagent",
         description: "后端执行，负责 API、数据库、服务、性能。",
         prompt: "你是 pm-workflow 的后端 agent。专注于 API、数据库、服务逻辑与性能优化。追求代码质量与架构清晰。",
@@ -63,7 +63,7 @@ const DEFAULT_WORKFLOW_AGENTS = {
             bash: "allow",
         },
     },
-    pm_frontend: {
+    designer: {
         mode: "subagent",
         description: "前端执行，负责 UI、交互、组件、响应式。",
         prompt: "你是 pm-workflow 的前端 agent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。",
@@ -73,25 +73,25 @@ const DEFAULT_WORKFLOW_AGENTS = {
             bash: "allow",
         },
     },
-    pm_reviewer: {
+    fixer: {
         mode: "subagent",
         hidden: true,
-        description: "审查与文档，负责测试、回归、代码审查、文档与发布。",
-        prompt: "你是 pm-workflow 的 reviewer agent。优先检查 bug、回归风险、安全问题和缺失测试；同时负责整理发布说明、变更摘要与用户可读文档。",
+        description: "测试与发布，负责测试、回归、修复、打包、部署、CI/CD。",
+        prompt: "你是 pm-workflow 的 fixer agent。优先跑测试、type check、回归验证；遇到失败要定位并修复 bug；同时负责打包、版本号、构建产物、CI/CD 与发布前验收。完成后产出 summary / verification / risk 三段反馈。",
         permission: {
             edit: "ask",
             write: "ask",
-            bash: "ask",
+            bash: "allow",
         },
     },
-    pm_researcher: {
+    writer: {
         mode: "subagent",
         hidden: true,
-        description: "调研，负责资料检索、官方方案调研、事实比对。",
-        prompt: "你是 pm-workflow 的 researcher agent。负责资料检索、官方方案调研、事实核查、备选路径比较与参考依据整理。不直接承担实现工作。",
+        description: "文档撰写，负责 README / API 文档 / 注释 / 发布说明 / ADR。",
+        prompt: "你是 pm-workflow 的 writer agent。负责文档撰写、README、API 文档、代码注释、发布说明、ADR、用户可读说明。表达清晰、结构稳定、术语一致；只动文档与注释，不动业务代码。",
         permission: {
-            edit: "ask",
-            write: "ask",
+            edit: "allow",
+            write: "allow",
             bash: "ask",
         },
     },
@@ -120,12 +120,12 @@ export function defaultWorkflowConfig() {
                 "continue-development",
             ],
             agent_map: {
-                pm_lead: "pm_lead",
-                pm_advisor: "pm_advisor",
-                pm_backend: "pm_backend",
-                pm_frontend: "pm_frontend",
-                pm_reviewer: "pm_reviewer",
-                pm_researcher: "pm_researcher",
+                commander: "commander",
+                advisor: "advisor",
+                backendcoder: "backendcoder",
+                designer: "designer",
+                fixer: "fixer",
+                writer: "writer",
             },
             chains: {},
         },
@@ -133,12 +133,12 @@ export function defaultWorkflowConfig() {
             enabled: true,
             default_mode: "subagent",
             dispatch_map: {
-                pm_lead: "pm_lead",
-                pm_advisor: "pm_advisor",
-                pm_backend: "pm_backend",
-                pm_frontend: "pm_frontend",
-                pm_reviewer: "pm_reviewer",
-                pm_researcher: "pm_researcher",
+                commander: "commander",
+                advisor: "advisor",
+                backendcoder: "backendcoder",
+                designer: "designer",
+                fixer: "fixer",
+                writer: "writer",
             },
             definitions: DEFAULT_WORKFLOW_AGENTS,
         },

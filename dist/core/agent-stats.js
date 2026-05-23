@@ -1,6 +1,6 @@
 export const AGENT_STATS_LIBRARY = Object.freeze({
-    pm_lead: {
-        agent: "pm_lead",
+    commander: {
+        agent: "commander",
         role: "主协调官",
         speed: "1x（基准）",
         cost: "1x（基准）",
@@ -16,24 +16,26 @@ export const AGENT_STATS_LIBRARY = Object.freeze({
         ],
         ruleOfThumb: "需要拍板和编排时找它，纯执行交给专业 agent",
     },
-    pm_advisor: {
-        agent: "pm_advisor",
-        role: "拆解顾问",
-        speed: "1.5x faster（仅做拆解，不做执行）",
-        cost: "0.6x（仅推理，不动文件）",
-        quality: "拆解与风险识别质量高于纯 PM",
+    advisor: {
+        agent: "advisor",
+        role: "调研拆解顾问",
+        speed: "1.5x faster（仅做调研与拆解，不动文件）",
+        cost: "0.6x（推理 + 检索为主）",
+        quality: "资料调研、方案对比、任务拆解、风险识别 质量稳定",
         delegateWhen: [
             "需要先把模糊任务拆成清晰步骤",
+            "需要先确认官方文档/最新规范",
+            "需要在多种方案间做事实层面的比较",
             "对推进顺序、风险排序拿不准",
         ],
         dontDelegateWhen: [
-            "任务已经被拆得很清楚",
-            "需要的是真正动手而不是拆解",
+            "任务核心是直接动代码",
+            "任务已经被拆得很清楚 + 上下文充足",
         ],
-        ruleOfThumb: "卡在'怎么拆'时找它，已经在'怎么做'就别再拆",
+        ruleOfThumb: "卡在'调研 / 拆解 / 风险评估'时找它，纯实现别派给它",
     },
-    pm_backend: {
-        agent: "pm_backend",
+    backendcoder: {
+        agent: "backendcoder",
         role: "后端执行",
         speed: "1x",
         cost: "1x",
@@ -48,8 +50,8 @@ export const AGENT_STATS_LIBRARY = Object.freeze({
         ],
         ruleOfThumb: "动接口/数据/服务找它，UI/前端别派给它",
     },
-    pm_frontend: {
-        agent: "pm_frontend",
+    designer: {
+        agent: "designer",
         role: "前端执行",
         speed: "1x",
         cost: "1x",
@@ -64,37 +66,40 @@ export const AGENT_STATS_LIBRARY = Object.freeze({
         ],
         ruleOfThumb: "改页面/组件/交互找它，后端/打包别派给它",
     },
-    pm_reviewer: {
-        agent: "pm_reviewer",
-        role: "审查与文档",
-        speed: "1.2x faster（聚焦验证与文档）",
+    fixer: {
+        agent: "fixer",
+        role: "测试与发布",
+        speed: "1.2x faster（专注验证与交付）",
         cost: "0.8x",
-        quality: "测试/回归/审查/发布说明 质量稳定",
+        quality: "测试/回归/修复/打包/部署 质量稳定",
         delegateWhen: [
-            "需要验证已有改动、补回归用例",
-            "需要整理变更摘要、发布说明、用户文档",
+            "需要验证已有改动、补回归用例、跑 type check",
+            "需要修 bug、做联调、补缺失测试",
+            "需要打包、发版本、跑 CI/CD",
         ],
         dontDelegateWhen: [
             "任务核心是新功能实现",
             "任务核心是技术评审或方案选型",
+            "任务核心是写文档或发布说明文案",
         ],
-        ruleOfThumb: "验证或文档化已有改动找它，新建实现别派给它",
+        ruleOfThumb: "验证 / 修复 / 发布找它，写新功能或写文档别派给它",
     },
-    pm_researcher: {
-        agent: "pm_researcher",
-        role: "资料调研",
-        speed: "2x faster（不动文件，仅检索整理）",
-        cost: "0.5x（仅 LLM + 检索）",
-        quality: "外部资料、官方方案对比、事实核查 质量高",
+    writer: {
+        agent: "writer",
+        role: "文档撰写",
+        speed: "1.5x faster（聚焦文字创作）",
+        cost: "0.6x",
+        quality: "README / API 文档 / 发布说明 / ADR 文笔稳定",
         delegateWhen: [
-            "需要先确认官方文档/最新规范",
-            "需要在多种方案间做事实层面的比较",
+            "需要写 README / API 文档 / 注释",
+            "需要整理变更摘要、发布说明、用户文档",
+            "需要把决策结果写成 ADR / runbook",
         ],
         dontDelegateWhen: [
-            "任务核心是直接动代码",
-            "已经有充足上下文，不需要再调研",
+            "任务核心是改代码",
+            "任务核心是跑测试或跑命令",
         ],
-        ruleOfThumb: "需要查/对比官方资料找它，纯实现别派给它",
+        ruleOfThumb: "写文档找它，跑命令或改代码别派给它",
     },
 });
 /**

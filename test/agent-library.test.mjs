@@ -46,7 +46,7 @@ const COMPLETE_AGENT = [
   'model: kr/claude-sonnet-4.5',
   'permission:',
   '  task:',
-  '    pm_backend: allow',
+  '    backendcoder: allow',
   '---',
   '正文',
 ].join('\n');
@@ -56,17 +56,17 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
 // 1) listAgentLibrary：项目级 agent 全部识别，frontmatter 字段抽取正确
 {
   const projectDir = makeProject({
-    'pm_lead.md': COMPLETE_AGENT,
-    'pm_backend.md': MINIMAL_AGENT,
+    'commander.md': COMPLETE_AGENT,
+    'backendcoder.md': MINIMAL_AGENT,
   });
   try {
     process.env.XDG_CONFIG_HOME = join(projectDir, 'xdg-empty');
     const report = listAgentLibrary(projectDir);
     assert.strictEqual(report.agents.length, 2);
-    assert.deepStrictEqual(report.projectAgents, ['pm_backend', 'pm_lead']);
+    assert.deepStrictEqual(report.projectAgents, ['backendcoder', 'commander']);
     assert.deepStrictEqual(report.globalAgents, []);
 
-    const lead = report.agents.find((a) => a.id === 'pm_lead');
+    const lead = report.agents.find((a) => a.id === 'commander');
     assert.strictEqual(lead.source, 'project');
     assert.strictEqual(lead.description, '完整 PM 主协调官');
     assert.strictEqual(lead.mode, 'primary');
@@ -74,7 +74,7 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
     assert.strictEqual(lead.hasTaskPermission, true);
     assert.strictEqual(lead.findings.length, 0);
 
-    const backend = report.agents.find((a) => a.id === 'pm_backend');
+    const backend = report.agents.find((a) => a.id === 'backendcoder');
     assert.strictEqual(backend.findings.length, 2);
     assert.ok(backend.findings.some((f) => f.field === 'description'));
     assert.ok(backend.findings.some((f) => f.field === 'model'));
@@ -85,17 +85,17 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
 
 // 2) listAgentLibrary：项目覆盖全局
 {
-  const projectDir = makeProject({ 'pm_lead.md': COMPLETE_AGENT });
-  const xdgHome = makeXdgWithGlobalAgent('pm_lead.md', MINIMAL_AGENT);
+  const projectDir = makeProject({ 'commander.md': COMPLETE_AGENT });
+  const xdgHome = makeXdgWithGlobalAgent('commander.md', MINIMAL_AGENT);
   try {
     process.env.XDG_CONFIG_HOME = xdgHome;
     const report = listAgentLibrary(projectDir);
-    assert.deepStrictEqual(report.shadowedGlobals, ['pm_lead']);
-    // 同名时项目优先；agents 中 pm_lead 来源应是 project
-    const lead = report.agents.find((a) => a.id === 'pm_lead');
+    assert.deepStrictEqual(report.shadowedGlobals, ['commander']);
+    // 同名时项目优先；agents 中 commander 来源应是 project
+    const lead = report.agents.find((a) => a.id === 'commander');
     assert.strictEqual(lead.source, 'project');
-    // global agents 列表仍包含 pm_lead（提示有同名全局版本）
-    assert.ok(report.globalAgents.includes('pm_lead'));
+    // global agents 列表仍包含 commander（提示有同名全局版本）
+    assert.ok(report.globalAgents.includes('commander'));
   } finally {
     delete process.env.XDG_CONFIG_HOME;
     rmSync(projectDir, { recursive: true, force: true });
@@ -105,12 +105,12 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
 
 // 3) listAgentLibrary：同名时不重复列
 {
-  const projectDir = makeProject({ 'pm_lead.md': COMPLETE_AGENT });
-  const xdgHome = makeXdgWithGlobalAgent('pm_lead.md', MINIMAL_AGENT);
+  const projectDir = makeProject({ 'commander.md': COMPLETE_AGENT });
+  const xdgHome = makeXdgWithGlobalAgent('commander.md', MINIMAL_AGENT);
   try {
     process.env.XDG_CONFIG_HOME = xdgHome;
     const report = listAgentLibrary(projectDir);
-    const occurrences = report.agents.filter((a) => a.id === 'pm_lead');
+    const occurrences = report.agents.filter((a) => a.id === 'commander');
     assert.strictEqual(
       occurrences.length,
       1,
@@ -125,13 +125,13 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
 
 // 4) promoteProjectAgentToGlobal：成功路径
 {
-  const projectDir = makeProject({ 'pm_lead.md': COMPLETE_AGENT });
+  const projectDir = makeProject({ 'commander.md': COMPLETE_AGENT });
   const xdgHome = mkdtempSync(join(tmpdir(), 'pmw-xdg-promote-'));
   try {
     process.env.XDG_CONFIG_HOME = xdgHome;
     const result = promoteProjectAgentToGlobal({
       projectDir,
-      agentId: 'pm_lead',
+      agentId: 'commander',
     });
     assert.strictEqual(result.ok, true);
     assert.strictEqual(result.overwritten, false);
@@ -141,7 +141,7 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
     const globalContent = readFileSync(result.to, 'utf-8');
     assert.strictEqual(projContent, globalContent);
     // 项目级原文件保留
-    assert.ok(existsSync(join(projectDir, '.opencode', 'agents', 'pm_lead.md')));
+    assert.ok(existsSync(join(projectDir, '.opencode', 'agents', 'commander.md')));
   } finally {
     delete process.env.XDG_CONFIG_HOME;
     rmSync(projectDir, { recursive: true, force: true });
@@ -170,13 +170,13 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
 
 // 6) promoteProjectAgentToGlobal：全局已有 → 默认拒绝
 {
-  const projectDir = makeProject({ 'pm_lead.md': COMPLETE_AGENT });
-  const xdgHome = makeXdgWithGlobalAgent('pm_lead.md', MINIMAL_AGENT);
+  const projectDir = makeProject({ 'commander.md': COMPLETE_AGENT });
+  const xdgHome = makeXdgWithGlobalAgent('commander.md', MINIMAL_AGENT);
   try {
     process.env.XDG_CONFIG_HOME = xdgHome;
     const result = promoteProjectAgentToGlobal({
       projectDir,
-      agentId: 'pm_lead',
+      agentId: 'commander',
     });
     assert.strictEqual(result.ok, false);
     assert.match(result.reason, /全局已有同名/);
@@ -189,13 +189,13 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
 
 // 7) promoteProjectAgentToGlobal：overwrite=true 强制
 {
-  const projectDir = makeProject({ 'pm_lead.md': COMPLETE_AGENT });
-  const xdgHome = makeXdgWithGlobalAgent('pm_lead.md', MINIMAL_AGENT);
+  const projectDir = makeProject({ 'commander.md': COMPLETE_AGENT });
+  const xdgHome = makeXdgWithGlobalAgent('commander.md', MINIMAL_AGENT);
   try {
     process.env.XDG_CONFIG_HOME = xdgHome;
     const result = promoteProjectAgentToGlobal({
       projectDir,
-      agentId: 'pm_lead',
+      agentId: 'commander',
       overwrite: true,
     });
     assert.strictEqual(result.ok, true);
@@ -213,8 +213,8 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
 // 8) doctorAgentLibrary：聚合计数与明细
 {
   const projectDir = makeProject({
-    'pm_lead.md': COMPLETE_AGENT,
-    'pm_backend.md': MINIMAL_AGENT, // 缺 description + model（mode=subagent，不触发 permission.task finding）
+    'commander.md': COMPLETE_AGENT,
+    'backendcoder.md': MINIMAL_AGENT, // 缺 description + model（mode=subagent，不触发 permission.task finding）
   });
   try {
     process.env.XDG_CONFIG_HOME = join(projectDir, 'xdg-empty');
@@ -227,7 +227,7 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
     assert.strictEqual(report.bySeverity.warn, 1);
     assert.strictEqual(report.bySeverity.info, 1);
     assert.strictEqual(report.details.length, 1);
-    assert.strictEqual(report.details[0].id, 'pm_backend');
+    assert.strictEqual(report.details[0].id, 'backendcoder');
   } finally {
     rmSync(projectDir, { recursive: true, force: true });
   }
@@ -235,7 +235,7 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
 
 // 9) CLI: pmw agents list 输出关键字段
 {
-  const projectDir = makeProject({ 'pm_lead.md': COMPLETE_AGENT });
+  const projectDir = makeProject({ 'commander.md': COMPLETE_AGENT });
   const xdgHome = mkdtempSync(join(tmpdir(), 'pmw-xdg-cli-list-'));
   try {
     const r = spawnSync(
@@ -248,7 +248,7 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
     );
     assert.strictEqual(r.status, 0, `agents list 应成功，stderr:\n${r.stderr}`);
     assert.match(r.stdout, /pm-workflow agents/);
-    assert.match(r.stdout, /pm_lead/);
+    assert.match(r.stdout, /commander/);
     assert.match(r.stdout, /mode=primary/);
     assert.match(r.stdout, /taskPerm=yes/);
   } finally {
@@ -259,28 +259,28 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
 
 // 10) CLI: pmw agents promote 端到端
 {
-  const projectDir = makeProject({ 'pm_lead.md': COMPLETE_AGENT });
+  const projectDir = makeProject({ 'commander.md': COMPLETE_AGENT });
   const xdgHome = mkdtempSync(join(tmpdir(), 'pmw-xdg-cli-promote-'));
   try {
     const r = spawnSync(
       'node',
-      [CLI_PATH, 'agents', 'promote', 'pm_lead', '--cwd', projectDir],
+      [CLI_PATH, 'agents', 'promote', 'commander', '--cwd', projectDir],
       {
         encoding: 'utf-8',
         env: { ...process.env, XDG_CONFIG_HOME: xdgHome },
       },
     );
     assert.strictEqual(r.status, 0);
-    assert.match(r.stdout, /agents promote pm_lead ✓/);
+    assert.match(r.stdout, /agents promote commander ✓/);
     assert.ok(
-      existsSync(join(xdgHome, 'opencode', 'agents', 'pm_lead.md')),
+      existsSync(join(xdgHome, 'opencode', 'agents', 'commander.md')),
       '应在 XDG_CONFIG_HOME 下创建全局 agent',
     );
 
     // 第二次默认拒绝
     const r2 = spawnSync(
       'node',
-      [CLI_PATH, 'agents', 'promote', 'pm_lead', '--cwd', projectDir],
+      [CLI_PATH, 'agents', 'promote', 'commander', '--cwd', projectDir],
       {
         encoding: 'utf-8',
         env: { ...process.env, XDG_CONFIG_HOME: xdgHome },
@@ -315,8 +315,8 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
 // 13) CLI: pmw agents doctor --json
 {
   const projectDir = makeProject({
-    'pm_lead.md': COMPLETE_AGENT,
-    'pm_backend.md': MINIMAL_AGENT,
+    'commander.md': COMPLETE_AGENT,
+    'backendcoder.md': MINIMAL_AGENT,
   });
   const xdgHome = mkdtempSync(join(tmpdir(), 'pmw-xdg-cli-doctor-'));
   try {

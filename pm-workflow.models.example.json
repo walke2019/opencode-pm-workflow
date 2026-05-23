@@ -7,42 +7,42 @@
   "default_fallback_model": ["claude-haiku-4.5", "gpt-5-mini"],
 
   "agent_profiles": {
-    "pm_lead": {
+    "commander": {
       "role": "主协调官（primary）",
       "description": "分析决策、规划分派、收敛验收。是会话的主入口；其他 agent 都由它调度。",
       "model_traits": ["强推理", "长上下文", "决策稳健", "中文优先"],
       "fallback_traits": ["低成本", "保留中文", "至少能完成结构化输出"],
       "tips": "不要选纯编码型模型；它要做需求压缩与跨角色编排。"
     },
-    "pm_advisor": {
+    "advisor": {
       "role": "拆解顾问（primary）",
-      "description": "把复杂任务拆成清晰步骤，识别风险，给出推进顺序。比 pm_lead 更聚焦于'怎么拆'。",
+      "description": "把复杂任务拆成清晰步骤，识别风险，给出推进顺序。比 commander 更聚焦于'怎么拆'。",
       "model_traits": ["结构化拆解", "风险识别", "中文优先"],
       "fallback_traits": ["低成本", "结构化输出不丢"],
-      "tips": "可与 pm_lead 共用同一模型；预算紧张时可降一档。"
+      "tips": "可与 commander 共用同一模型；预算紧张时可降一档。"
     },
-    "pm_backend": {
+    "backendcoder": {
       "role": "后端执行（subagent）",
       "description": "API、数据库、服务逻辑、性能优化。代码质量是首要指标。",
       "model_traits": ["编码能力强", "调试推理", "理解复杂依赖"],
       "fallback_traits": ["仍能写出可运行代码", "回退后不丢类型/接口"],
       "tips": "优先选编码强化版（codex 类）；普通通用模型也可接受。"
     },
-    "pm_frontend": {
+    "designer": {
       "role": "前端执行（subagent）",
       "description": "页面、组件、交互、响应式、安全区、可访问性。",
       "model_traits": ["UI 直觉", "CSS / 样式准确", "组件拆分清晰"],
       "fallback_traits": ["保留响应式与可访问性能力"],
       "tips": "重视视觉与设计图理解时，可优先 Gemini 系列（多模态）。"
     },
-    "pm_reviewer": {
+    "fixer": {
       "role": "审查与文档（subagent，hidden）",
       "description": "测试、回归风险、代码审查、发布说明、变更摘要、用户可读文档。",
       "model_traits": ["细致审查", "找 bug / 安全问题", "文档语感"],
       "fallback_traits": ["仍能完成检查表与发布说明"],
       "tips": "可降一档省钱；review 与文档对推理深度要求低于 lead/backend。"
     },
-    "pm_researcher": {
+    "advisor": {
       "role": "调研（subagent，hidden）",
       "description": "资料检索、官方方案调研、事实核查、备选方案比较；不直接动代码。",
       "model_traits": ["检索能力", "概要提炼", "中英双语"],
@@ -52,21 +52,21 @@
   },
 
   "agent_models": {
-    "pm_lead": ["claude-opus", "gpt-5.5", "gpt-5.4"],
-    "pm_advisor": ["claude-opus", "gpt-5.5", "gpt-5.4"],
-    "pm_backend": ["gpt-5.4", "gpt-5.3-codex"],
-    "pm_frontend": ["gemini-3.1-", "gemini-3-"],
-    "pm_reviewer": ["claude-sonnet", "claude-haiku-4.5", "gpt-5-mini"],
-    "pm_researcher": ["claude-haiku-4.5", "gpt-5.4-mini", "gpt-5-mini"]
+    "commander": ["claude-opus", "gpt-5.5", "gpt-5.4"],
+    "advisor": ["claude-opus", "gpt-5.5", "gpt-5.4"],
+    "backendcoder": ["gpt-5.4", "gpt-5.3-codex"],
+    "designer": ["gemini-3.1-", "gemini-3-"],
+    "fixer": ["claude-sonnet", "claude-haiku-4.5", "gpt-5-mini"],
+    "advisor": ["claude-haiku-4.5", "gpt-5.4-mini", "gpt-5-mini"]
   },
 
   "agent_fallback_models": {
-    "pm_lead": ["gpt-5.4", "claude-sonnet", "gpt-5-mini"],
-    "pm_advisor": ["gpt-5.4", "claude-sonnet", "gpt-5-mini"],
-    "pm_backend": ["gpt-5.3-codex", "claude-sonnet", "gpt-5-mini"],
-    "pm_frontend": ["gemini-3-", "claude-sonnet", "gpt-5-mini"],
-    "pm_reviewer": ["claude-haiku-4.5", "gpt-5-mini"],
-    "pm_researcher": ["gpt-5-mini", "claude-haiku-4.5"]
+    "commander": ["gpt-5.4", "claude-sonnet", "gpt-5-mini"],
+    "advisor": ["gpt-5.4", "claude-sonnet", "gpt-5-mini"],
+    "backendcoder": ["gpt-5.3-codex", "claude-sonnet", "gpt-5-mini"],
+    "designer": ["gemini-3-", "claude-sonnet", "gpt-5-mini"],
+    "fixer": ["claude-haiku-4.5", "gpt-5-mini"],
+    "advisor": ["gpt-5-mini", "claude-haiku-4.5"]
   },
 
   "_resolve_strategy": {

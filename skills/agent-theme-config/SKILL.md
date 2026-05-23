@@ -7,7 +7,7 @@ description: 对话式 agent 主题配置入口。用户给一个主题名（三
 
 ## 任务定位
 
-用户希望把 pm-workflow 的 6 个固定 agent（pm_lead / pm_advisor / pm_backend / pm_frontend / pm_reviewer / pm_researcher）包装成不同"皮肤"——比如三国谋士、西游师徒、漫威英雄。
+用户希望把 pm-workflow 的 6 个固定 agent（commander / advisor / backendcoder / designer / fixer / advisor）包装成不同"皮肤"——比如三国谋士、西游师徒、漫威英雄。
 
 这是 **UX 层** 的能力：
 
@@ -39,7 +39,7 @@ import {
 
 1. **主题** ID（必填）：`default` / `sanguo` / `xiyou` / `marvel` / `workplace` 之一，或者用户用中文表达（"三国" → `sanguo`，"现代职场" → `workplace`）。
 2. **写入范围** scope：`global`（默认）= `~/.config/opencode/agents/`；`project` = `<projectDir>/.opencode/agents/`。
-3. **是否限定 agent 子集**：默认全部 6 个；用户可指定例如 "只换前端" → `agents: ["pm_frontend"]`。
+3. **是否限定 agent 子集**：默认全部 6 个；用户可指定例如 "只换前端" → `agents: ["designer"]`。
 4. **是否保留已有配置**：默认全部保留（model / mode / permission / fallback_models / temperature）；除非用户明确说"重置我的模型配置"才把对应字段设为 false。
 
 ### Step 2 — 强制 dry-run 给用户看
@@ -57,7 +57,7 @@ pmw agents theme preview <theme-id> --scope <scope>
 ```bash
 pmw agents theme apply <theme-id> --scope <scope>
 # 或者带 agents / no-preserve flag：
-pmw agents theme apply sanguo --scope project --agents pm_backend,pm_frontend
+pmw agents theme apply sanguo --scope project --agents backendcoder,designer
 pmw agents theme apply default --scope global --no-preserve-model
 ```
 
@@ -70,7 +70,7 @@ pmw agents list   # 确认目标目录里出现 6 个 md
 pmw doctor        # 检查整体健康度
 ```
 
-或在 OpenCode 内重启会话，`pm_lead` 等 agent 在 UI 中应能看到新的 description；pm-workflow dispatch 输出会渲染 `display_name`（如"诸葛亮"）。
+或在 OpenCode 内重启会话，`commander` 等 agent 在 UI 中应能看到新的 description；pm-workflow dispatch 输出会渲染 `display_name`（如"诸葛亮"）。
 
 ## 不可破坏的约束
 
@@ -104,7 +104,7 @@ pmw doctor        # 检查整体健康度
 
 **用户**："只把前端换成貂蝉"
 
-→ `pmw agents theme apply sanguo --scope global --agents pm_frontend`。
+→ `pmw agents theme apply sanguo --scope global --agents designer`。
 
 **用户**："恢复成普通名字"
 

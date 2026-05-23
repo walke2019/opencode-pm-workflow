@@ -55,7 +55,7 @@ function makeProjectWithHistory(events) {
     { at: '2026-05-22T10:04:00Z', type: 'auto_continue.step', exit_code: 0 },
     { at: '2026-05-22T10:05:00Z', type: 'auto_continue.step', exit_code: 0 },
     { at: '2026-05-22T10:06:00Z', type: 'auto_continue.aborted', reason: 'feedback-stop' },
-    { at: '2026-05-22T10:07:00Z', type: 'routing.denied', candidate_agent: 'pm_researcher' },
+    { at: '2026-05-22T10:07:00Z', type: 'routing.denied', candidate_agent: 'advisor' },
   ]);
   try {
     const { summary } = buildHistoryReportSummary(projectDir);

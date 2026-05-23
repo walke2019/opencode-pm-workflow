@@ -2,7 +2,7 @@
  * 0.7.0：声明式路由（permission.task）。
  *
  * 设计目标：
- * - 把 `pm_lead → specialist` 路由的真相从代码（`config.agents.dispatch_map`）迁到
+ * - 把 `commander → specialist` 路由的真相从代码（`config.agents.dispatch_map`）迁到
  *   agent frontmatter，让用户改一份 markdown 就能定制路由，而不需要改代码。
  * - 完整向后兼容：有 frontmatter `permission.task` 时优先使用；没有则回退到
  *   现有 `dispatch_map`；都没有时回退到默认（self-route）。
@@ -14,10 +14,10 @@
  *   mode: primary
  *   permission:
  *     task:
- *       pm_backend: allow
- *       pm_frontend: allow
- *       pm_reviewer: allow
- *       pm_researcher: deny
+ *       backendcoder: allow
+ *       designer: allow
+ *       fixer: allow
+ *       advisor: deny
  *   ---
  *
  * 其中 value 为 `allow` / `deny` / `ask`：
@@ -32,7 +32,7 @@
 export type TaskPermissionValue = "allow" | "deny" | "ask";
 export type AgentTaskPermission = Partial<Record<string, TaskPermissionValue>>;
 export type ResolvedAgentRouting = {
-    /** primary agent id（即 frontmatter 来源的 agent，如 `pm_lead`） */
+    /** primary agent id（即 frontmatter 来源的 agent，如 `commander`） */
     primaryAgent: string;
     /** primary 允许分派的 subagent 列表（`allow` 与 `ask` 都计入） */
     allowedSubagents: string[];
@@ -59,7 +59,7 @@ export declare function parseFrontmatterTaskPermission(raw: string): {
     taskPermission: AgentTaskPermission;
 };
 /**
- * 解析某个 primary agent（如 `pm_lead`）的声明式路由。
+ * 解析某个 primary agent（如 `commander`）的声明式路由。
  *
  * 优先 project agents，再 global；都没有时返回 `source: "none"`，调用方应回退到
  * `dispatch_map` 或默认 self-route。

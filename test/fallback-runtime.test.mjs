@@ -77,28 +77,28 @@ import {
 {
   const config = defaultWorkflowConfig();
   config.fallback.chains = {
-    pm_lead: ['provider/a', 'provider/b'],
+    commander: ['provider/a', 'provider/b'],
     'provider/c': ['provider/d', 'provider/a'],
   };
 
   const byAgentOnly = resolveFallbackChain({
     config,
-    semanticAgent: 'pm_lead',
+    semanticAgent: 'commander',
   });
   assert.deepStrictEqual(byAgentOnly, ['provider/a', 'provider/b']);
 
   const merged = resolveFallbackChain({
     config,
-    semanticAgent: 'pm_lead',
+    semanticAgent: 'commander',
     currentModel: 'provider/c',
   });
-  // pm_lead 链路 + provider/c 链路合并；去重保留首次出现。
+  // commander 链路 + provider/c 链路合并；去重保留首次出现。
   // currentModel='provider/c' 自身不在两条链路里，因此不会出现在 merged 里。
   assert.deepStrictEqual(merged, ['provider/a', 'provider/b', 'provider/d']);
 
   const empty = resolveFallbackChain({
     config,
-    semanticAgent: 'pm_backend',
+    semanticAgent: 'backendcoder',
   });
   assert.deepStrictEqual(empty, [], '未配置 chain 的 agent 应得空数组');
 }
@@ -107,12 +107,12 @@ import {
 {
   const config = defaultWorkflowConfig();
   config.fallback.chains = {
-    pm_lead: ['provider/a', 'provider/b', 'provider/c'],
+    commander: ['provider/a', 'provider/b', 'provider/c'],
   };
 
   const chain = resolveFallbackChain({
     config,
-    semanticAgent: 'pm_lead',
+    semanticAgent: 'commander',
     currentModel: 'provider/b',
   });
   // 保留位置便于 pickNext 按位置推进；去重保证不重复出现。
@@ -167,13 +167,13 @@ import {
 {
   const config = defaultWorkflowConfig();
   config.fallback.chains = {
-    pm_backend: ['fallback/a', 'fallback/b'],
+    backendcoder: ['fallback/a', 'fallback/b'],
   };
 
   // 8a) 未触发：成功执行
   const ok = buildForegroundFallbackPlan({
     config,
-    semanticAgent: 'pm_backend',
+    semanticAgent: 'backendcoder',
     exitCode: 0,
   });
   assert.strictEqual(ok.triggered, false);
@@ -182,7 +182,7 @@ import {
   // 8b) 触发但无链路：未配置 chain 的 agent
   const noChain = buildForegroundFallbackPlan({
     config,
-    semanticAgent: 'pm_lead',
+    semanticAgent: 'commander',
     exitCode: 1,
     stderr: '429 rate limit',
   });
@@ -194,7 +194,7 @@ import {
   // 8c) 触发且可降级：第一次切换
   const first = buildForegroundFallbackPlan({
     config,
-    semanticAgent: 'pm_backend',
+    semanticAgent: 'backendcoder',
     exitCode: 1,
     stderr: '429 too many requests',
   });
@@ -206,7 +206,7 @@ import {
   // 8d) 已用过第一个备选，触发再次切换
   const second = buildForegroundFallbackPlan({
     config,
-    semanticAgent: 'pm_backend',
+    semanticAgent: 'backendcoder',
     currentModel: 'fallback/a',
     exitCode: 1,
     stderr: 'request timed out',
@@ -217,7 +217,7 @@ import {
   // 8e) 链路用尽
   const exhausted = buildForegroundFallbackPlan({
     config,
-    semanticAgent: 'pm_backend',
+    semanticAgent: 'backendcoder',
     currentModel: 'fallback/b',
     exitCode: 1,
     stderr: 'rate limit hit',

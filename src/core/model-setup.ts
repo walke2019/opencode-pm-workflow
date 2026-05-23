@@ -10,12 +10,12 @@ import { ensureStateDir, getConfigPath } from "./project.js";
 import type { DispatchAgent, WorkflowConfig } from "./types.js";
 
 const DEFAULT_MODEL_AGENTS: DispatchAgent[] = [
-  "pm_lead",
-  "pm_advisor",
-  "pm_backend",
-  "pm_frontend",
-  "pm_reviewer",
-  "pm_researcher",
+  "commander",
+  "advisor",
+  "backendcoder",
+  "designer",
+  "fixer",
+  "advisor",
 ];
 
 export type ModelSetupScope = "global" | "project";

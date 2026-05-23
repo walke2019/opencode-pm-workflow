@@ -122,7 +122,7 @@ function testFrontmatterFieldsAreNotOverriddenByFallbackDefinition() {
     JSON.stringify({
       agents: {
         dispatch_map: {
-          frontend: 'pm_frontend',
+          frontend: 'designer',
         },
       },
     }),
@@ -146,7 +146,7 @@ function testFrontmatterFieldsAreNotOverriddenByFallbackDefinition() {
     semanticAgent: 'frontend',
   });
 
-  assert.strictEqual(resolved.id, 'pm_frontend');
+  assert.strictEqual(resolved.id, 'designer');
   assert.strictEqual(resolved.model, 'custom-frontend-model');
   assert.strictEqual(resolved.description, 'Frontend from frontmatter');
   assert.strictEqual(resolved.mode, 'subagent');
@@ -164,7 +164,7 @@ function testFallbackOnlyFillsMissingFields() {
     JSON.stringify({
       agents: {
         dispatch_map: {
-          frontend: 'pm_frontend',
+          frontend: 'designer',
         },
       },
     }),
@@ -187,10 +187,10 @@ function testFallbackOnlyFillsMissingFields() {
     semanticAgent: 'frontend',
   });
 
-  assert.strictEqual(resolved.id, 'pm_frontend');
+  assert.strictEqual(resolved.id, 'designer');
   assert.strictEqual(resolved.model, 'custom-frontend-model');
   assert.strictEqual(resolved.description, 'Frontend from frontmatter');
-  // 0.2.0 起 pm_frontend 内置 fallback mode 为 subagent，不再是 'all'。
+  // 0.2.0 起 designer 内置 fallback mode 为 subagent，不再是 'all'。
   assert.strictEqual(resolved.mode, 'subagent');
   assert.strictEqual(resolved.usedFallback, true);
   assert.strictEqual(resolved.fallbackReason, 'missing-mode');
@@ -208,7 +208,7 @@ function testMissingAgentUsesExecutableFallbackId() {
     JSON.stringify({
       agents: {
         dispatch_map: {
-          frontend: 'pm_frontend',
+          frontend: 'designer',
         },
       },
     }),
@@ -224,7 +224,7 @@ function testMissingAgentUsesExecutableFallbackId() {
       semanticAgent: 'frontend',
     });
 
-    assert.strictEqual(resolved.id, 'pm_frontend');
+    assert.strictEqual(resolved.id, 'designer');
     assert.strictEqual(resolved.source, 'fallback');
     assert.strictEqual(resolved.usedFallback, true);
     assert.strictEqual(resolved.fallbackReason, 'missing-agent');
@@ -250,7 +250,7 @@ function testMissingDescriptionUsesFallbackReason() {
     JSON.stringify({
       agents: {
         dispatch_map: {
-          frontend: 'pm_frontend',
+          frontend: 'designer',
         },
       },
     }),
@@ -277,7 +277,7 @@ function testMissingDescriptionUsesFallbackReason() {
       semanticAgent: 'frontend',
     });
 
-    assert.strictEqual(resolved.id, 'pm_frontend');
+    assert.strictEqual(resolved.id, 'designer');
     assert.strictEqual(resolved.model, 'custom-frontend-model');
     assert.strictEqual(resolved.mode, 'subagent');
     // 0.2.0 起 description 收敛为短句；prompt 仍是原长描述。

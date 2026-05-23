@@ -73,7 +73,7 @@ function testGetBuiltinThemeUnknownReturnsUndefined() {
 
 function testRenderAgentMdProducesValidFrontmatter() {
   const rendered = renderAgentMdForTheme({
-    agent: 'pm_lead',
+    agent: 'commander',
     themeId: 'sanguo',
   });
   assert.ok(rendered.content.startsWith('---\n'), '应该以 frontmatter 开头');
@@ -129,7 +129,7 @@ function testApplyThemeToGlobalScopeRespectsXdgConfigHome() {
     assert.ok(result.targetDir.endsWith('/opencode/agents'));
     assert.strictEqual(result.written.length, 6);
 
-    const leadFile = join(result.targetDir, 'pm_lead.md');
+    const leadFile = join(result.targetDir, 'commander.md');
     const content = readFileSync(leadFile, 'utf-8');
     assert.ok(content.includes('display_name: 美国队长'));
     assert.ok(content.includes('theme: marvel'));
@@ -163,8 +163,8 @@ function testApplyPreservesExistingModelAndMode() {
   const targetDir = join(sandbox, '.opencode', 'agents');
   mkdirSync(targetDir, { recursive: true });
 
-  // 用户已有的 pm_backend.md，配了模型和 mode
-  const existingPath = join(targetDir, 'pm_backend.md');
+  // 用户已有的 backendcoder.md，配了模型和 mode
+  const existingPath = join(targetDir, 'backendcoder.md');
   writeFileSync(
     existingPath,
     [
@@ -186,7 +186,7 @@ function testApplyPreservesExistingModelAndMode() {
     projectDir: sandbox,
     themeId: 'sanguo',
     scope: 'project',
-    agents: ['pm_backend'],
+    agents: ['backendcoder'],
   });
   assert.strictEqual(result.written.length, 1);
 
@@ -208,7 +208,7 @@ function testApplyPreservesNestedPermissionBlock() {
   const targetDir = join(sandbox, '.opencode', 'agents');
   mkdirSync(targetDir, { recursive: true });
 
-  const existingPath = join(targetDir, 'pm_lead.md');
+  const existingPath = join(targetDir, 'commander.md');
   writeFileSync(
     existingPath,
     [
@@ -219,8 +219,8 @@ function testApplyPreservesNestedPermissionBlock() {
       '  edit: allow',
       '  bash: ask',
       '  task:',
-      '    pm_backend: allow',
-      '    pm_frontend: allow',
+      '    backendcoder: allow',
+      '    designer: allow',
       '---',
       '',
       '旧 body',
@@ -233,7 +233,7 @@ function testApplyPreservesNestedPermissionBlock() {
     projectDir: sandbox,
     themeId: 'sanguo',
     scope: 'project',
-    agents: ['pm_lead'],
+    agents: ['commander'],
   });
   assert.strictEqual(result.skipped.length, 0);
 
@@ -244,8 +244,8 @@ function testApplyPreservesNestedPermissionBlock() {
   assert.ok(after.includes('permission:'), 'permission 块应保留');
   assert.ok(after.includes('edit: allow'));
   assert.ok(after.includes('task:'));
-  assert.ok(after.includes('pm_backend: allow'));
-  assert.ok(after.includes('pm_frontend: allow'));
+  assert.ok(after.includes('backendcoder: allow'));
+  assert.ok(after.includes('designer: allow'));
 }
 
 function testPreserveOptOutDropsExistingFields() {
@@ -253,7 +253,7 @@ function testPreserveOptOutDropsExistingFields() {
   const targetDir = join(sandbox, '.opencode', 'agents');
   mkdirSync(targetDir, { recursive: true });
 
-  const existingPath = join(targetDir, 'pm_backend.md');
+  const existingPath = join(targetDir, 'backendcoder.md');
   writeFileSync(
     existingPath,
     [
@@ -273,13 +273,17 @@ function testPreserveOptOutDropsExistingFields() {
     projectDir: sandbox,
     themeId: 'sanguo',
     scope: 'project',
-    agents: ['pm_backend'],
+    agents: ['backendcoder'],
     preserveExisting: { model: false, mode: false },
   });
 
   const after = readFileSync(existingPath, 'utf-8');
   assert.ok(!after.includes('model: bestool/claude-opus-4.x'), 'model 不应保留');
-  assert.ok(!after.includes('mode: subagent'), 'mode 不应保留');
+  // 1.0.0-rc.6 起 mode 由主题强制写入（commander = primary，其他 = subagent），
+  // preserveExisting.mode 不再影响这个写入。这是核心 UI 修复——避免 OpenCode
+  // 切换列表显示全部 6 个 agent。
+  // backendcoder 主题里 mode = "subagent"，所以这里期望 mode: subagent 仍存在。
+  assert.ok(after.includes('mode: subagent'), 'mode 必须由主题强制写入为 subagent');
   assert.ok(after.includes('display_name: 吕布'));
 }
 
@@ -324,15 +328,15 @@ function testRegistryExtractsDisplayNameAndTheme() {
     projectDir,
     themeId: 'sanguo',
     scope: 'project',
-    agents: ['pm_lead'],
+    agents: ['commander'],
   });
 
   const resolved = resolveWorkflowAgentDefinition({
     projectDir,
-    semanticAgent: 'pm_lead',
+    semanticAgent: 'commander',
   });
 
-  assert.strictEqual(resolved.id, 'pm_lead');
+  assert.strictEqual(resolved.id, 'commander');
   assert.strictEqual(resolved.displayName, '诸葛亮');
   assert.strictEqual(resolved.theme, 'sanguo');
   assert.ok(resolved.description?.startsWith('诸葛亮'));
@@ -342,7 +346,7 @@ function testRegistryHandlesAgentWithoutDisplayName() {
   // 未跑过 theme apply 的 fallback 路径，display_name / theme 应为 undefined
   const resolved = resolveWorkflowAgentDefinition({
     projectDir: process.cwd(),
-    semanticAgent: 'pm_lead',
+    semanticAgent: 'commander',
   });
   assert.strictEqual(resolved.displayName, undefined);
   assert.strictEqual(resolved.theme, undefined);
@@ -354,16 +358,16 @@ function testApplyOnlySubsetOfAgents() {
     projectDir: sandbox,
     themeId: 'workplace',
     scope: 'project',
-    agents: ['pm_backend', 'pm_frontend'],
+    agents: ['backendcoder', 'designer'],
   });
   assert.strictEqual(result.written.length, 2);
   const writtenAgents = result.written.map((w) => w.agent);
-  assert.deepStrictEqual(writtenAgents.sort(), ['pm_backend', 'pm_frontend']);
+  assert.deepStrictEqual(writtenAgents.sort(), ['backendcoder', 'designer']);
 
   const targetDir = result.targetDir;
-  assert.ok(existsSync(join(targetDir, 'pm_backend.md')));
-  assert.ok(existsSync(join(targetDir, 'pm_frontend.md')));
-  assert.ok(!existsSync(join(targetDir, 'pm_lead.md')), '未指定的 agent 不应被写');
+  assert.ok(existsSync(join(targetDir, 'backendcoder.md')));
+  assert.ok(existsSync(join(targetDir, 'designer.md')));
+  assert.ok(!existsSync(join(targetDir, 'commander.md')), '未指定的 agent 不应被写');
 }
 
 testListThemesContainsBuiltins();

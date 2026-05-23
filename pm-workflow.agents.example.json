@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/@walke/opencode-pm-workflow@latest/pm-workflow.schema.json",
-  "_doc": "pm-workflow agent 主题配置模板。用户填 theme + scope，AI 读取后调用 pmw agents theme apply（或直接 import applyAgentTheme）把 6 个固定 agent 的 md 写到目标目录。语义 ID（pm_lead / pm_advisor / pm_backend / pm_frontend / pm_reviewer / pm_researcher）永不可改；主题只换 display_name + description + body 文案。",
+  "_doc": "pm-workflow agent 主题配置模板。用户填 theme + scope，AI 读取后调用 pmw agents theme apply（或直接 import applyAgentTheme）把 6 个固定 agent 的 md 写到目标目录。语义 ID（commander / advisor / backendcoder / designer / fixer / advisor）永不可改；主题只换 display_name + description + body 文案。",
 
   "theme": "default",
   "_theme_choices": [
@@ -18,7 +18,7 @@
   ],
 
   "agents": null,
-  "_agents_doc": "默认 null = 主题化全部 6 个固定 agent；可填字符串数组指定子集，例如 [\"pm_backend\", \"pm_frontend\"]。",
+  "_agents_doc": "默认 null = 主题化全部 6 个固定 agent；可填字符串数组指定子集，例如 [\"backendcoder\", \"designer\"]。",
 
   "preserve_existing": {
     "model": true,

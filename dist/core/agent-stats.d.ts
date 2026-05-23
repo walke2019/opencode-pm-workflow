@@ -5,7 +5,7 @@
  * oh-my-opencode-slim 的 orchestrator AGENT_DESCRIPTIONS（其使用类似
  * "2x faster, 1/2 cost" 的相对量化方式提升 LLM 分派准确率）。
  *
- * 我们的卡片以 `pm_lead` 主协调为基准（相对 1x），其他 agent 用相对值描述
+ * 我们的卡片以 `commander` 主协调为基准（相对 1x），其他 agent 用相对值描述
  * 速度/成本/质量；并补充 delegate-when / don't-delegate-when 边界，
  * 让被 handoff 的 agent 能精准决定"是否需要再委派"。
  *

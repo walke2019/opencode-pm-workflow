@@ -56,24 +56,24 @@ function buildBasePacket(input, targetAgent) {
 }
 function applyAgentSpecificContext(packet) {
     switch (packet.targetAgent) {
-        case "pm_frontend":
+        case "designer":
             packet.scope.do = limitItems([...packet.scope.do, "只处理相关页面、组件与交互边界"], 3);
             packet.acceptance = limitItems([...packet.acceptance, "说明 UI/交互影响范围"], 3);
             packet.deliverables = ["页面或组件修改摘要", "交互说明", "验收方式"];
             packet.scope.dont = limitItems(["不要扩展到其他页面", "不要擅自扩大范围", "不要做大规模无关重构"], 3);
             break;
-        case "pm_reviewer":
+        case "fixer":
             packet.scope.do = limitItems([...packet.scope.do, "聚焦验证范围、未覆盖项与回归风险"], 3);
             packet.acceptance = limitItems([...packet.acceptance, "明确列出验证范围与未覆盖项"], 3);
             packet.deliverables = ["测试结论", "风险列表", "是否通过建议"];
             break;
-        case "pm_advisor":
+        case "advisor":
             packet.scope.do = limitItems([...packet.scope.do, "只做任务拆解、角色顺序与风险排序建议"], 3);
             packet.scope.dont = limitItems([...packet.scope.dont, "不要直接取代 PM 做最终决策"], 3);
             packet.deliverables = ["任务拆解建议", "推荐角色顺序", "风险排序"];
             packet.constraints = limitItems([...packet.constraints, "只提供任务拆解、角色顺序与风险排序建议"], 3);
             break;
-        case "pm_backend":
+        case "backendcoder":
             packet.acceptance = limitItems([...packet.acceptance, "说明接口或逻辑影响范围"], 3);
             packet.deliverables = ["代码修改摘要", "验证命令", "风险说明"];
             break;

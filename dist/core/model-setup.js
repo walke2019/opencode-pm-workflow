@@ -4,12 +4,12 @@ import { defaultWorkflowConfig, getGlobalWorkflowConfigPath, readWorkflowConfig,
 import { listGlobalOpenCodeModelKeys } from "./model-inventory.js";
 import { ensureStateDir, getConfigPath } from "./project.js";
 const DEFAULT_MODEL_AGENTS = [
-    "pm_lead",
-    "pm_advisor",
-    "pm_backend",
-    "pm_frontend",
-    "pm_reviewer",
-    "pm_researcher",
+    "commander",
+    "advisor",
+    "backendcoder",
+    "designer",
+    "fixer",
+    "advisor",
 ];
 function readJsonObject(path) {
     if (!existsSync(path))

@@ -3,7 +3,7 @@
  *
  * 关键约束（与"稳定任务域"治理原则一致）：
  * - 主题只影响 frontmatter `description` / `display_name` / `theme` 与 body 文案。
- * - 永不影响语义 ID（pm_lead / pm_backend / ...）、dispatch 路由、history 记录、
+ * - 永不影响语义 ID（commander / backendcoder / ...）、dispatch 路由、history 记录、
  *   permission 规则、retry/fallback 链路。
  * - 用户已配置的 model / mode / permission / fallback_models / temperature 字段
  *   在 apply 时默认保留（preserveExisting）。
@@ -281,6 +281,18 @@ function renderAgentMd(input: {
   topLevel.description = skin.description;
   topLevel.display_name = skin.display_name;
   topLevel.theme = input.theme.id;
+
+  // 关键修复（1.0.0-rc.6）：写入 mode 字段。这是修 UI bug 的核心——
+  // 之前主题渲染没写 mode 字段，OpenCode 默认当 `all` 处理，导致 6 个 agent
+  // 全部出现在切换列表里。1.0.0-rc.6 起所有内置主题强制声明 mode：
+  //   - commander = primary（唯一显示在 OpenCode 切换列表里的 agent）
+  //   - 其他 5 个 = subagent（通过 task tool 被 commander 调用，不进切换列表）
+  //
+  // 注意：preserveExisting.mode 不影响这个写入。主题对 mode 的语义约束是
+  // 强约束（commander 必须 primary，其他必须 subagent），不允许用户自定义破坏
+  // 这个边界。如果用户想把某个 subagent 改成 primary，应该是手动改 md 文件，
+  // 而不是通过主题切换实现。
+  topLevel.mode = skin.mode;
 
   const frontmatter = renderFrontmatter({ topLevel, nestedRaw });
   const content = `${frontmatter}\n\n${skin.body}\n`;

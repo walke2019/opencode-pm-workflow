@@ -61,7 +61,7 @@
 
 ### 主从 Agent 协作模型
 
-**主 Agent（pm_lead）定位**：
+**主 Agent（commander）定位**：
 - 分析决策：识别任务类型、判断优先级、评估风险
 - 规划：拆解任务、确定执行顺序、设定验收标准
 - 分发委派：根据任务特征将具体要求委派给合适的子 agent
@@ -104,7 +104,7 @@
 
 ### 关键设计决策
 
-- `pm_lead` 是唯一 primary orchestrator
+- `commander` 是唯一 primary orchestrator
 - command lanes 是 UX facade，不是第二套 runtime
 - specialist agent 若为 subagent，必须走 subagent-safe 路径
 - 项目级 `.opencode/agents/*.md` 优先于全局 `~/.config/opencode/agents/*.md`
@@ -127,7 +127,7 @@ src/
 ### 关键类型定义
 
 - `WorkflowStage`：idea / spec_ready / plan_ready / development / review_pending / release_ready / released / maintenance
-- `DispatchAgent`：pm_lead / pm_advisor / pm_backend / pm_frontend / pm_reviewer / pm_researcher（旧名称向后兼容）
+- `DispatchAgent`：commander / advisor / backendcoder / designer / fixer / advisor（旧名称向后兼容）
 - `DispatchAction`：collect-spec / create-dev-plan / start-development / continue-development / run-code-review / prepare-release / blocked
 - `AgentInvocationMode`：primary / subagent / all
 
@@ -209,12 +209,12 @@ npm view @walke/opencode-pm-workflow version
 
 | Agent | 模型 | 模式 | 职责 |
 | --- | --- | --- | --- |
-| `pm_lead` | 从全局配置读取 | primary | 主协调官：决策、指挥、分派、收敛 |
-| `pm_advisor` | 从全局配置读取 | primary | 拆解顾问：任务拆解、风险识别 |
-| `pm_backend` | 从全局配置读取 | subagent | 后端执行：API、数据库、性能 |
-| `pm_frontend` | 从全局配置读取 | subagent | 前端执行：UI/UX、交互、组件 |
-| `pm_reviewer` | 从全局配置读取 | subagent (hidden) | 审查与文档：QA、回归、发布说明 |
-| `pm_researcher` | 从全局配置读取 | subagent (hidden) | 调研：检索、官方方案、事实核查 |
+| `commander` | 从全局配置读取 | primary | 主协调官：决策、指挥、分派、收敛 |
+| `advisor` | 从全局配置读取 | primary | 拆解顾问：任务拆解、风险识别 |
+| `backendcoder` | 从全局配置读取 | subagent | 后端执行：API、数据库、性能 |
+| `designer` | 从全局配置读取 | subagent | 前端执行：UI/UX、交互、组件 |
+| `fixer` | 从全局配置读取 | subagent (hidden) | 审查与文档：QA、回归、发布说明 |
+| `advisor` | 从全局配置读取 | subagent (hidden) | 调研：检索、官方方案、事实核查 |
 
 > 注：0.2.0 起移除硬编码模型 ID，改为从全局 OpenCode 配置读取。0.2.1 起子 agent mode 统一为 `subagent`。0.3.0 起完全移除旧 agent 名称兼容。
 

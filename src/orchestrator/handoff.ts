@@ -89,7 +89,7 @@ function buildBasePacket(
 
 function applyAgentSpecificContext(packet: HandoffPacket): HandoffPacket {
   switch (packet.targetAgent) {
-    case "pm_frontend":
+    case "designer":
       packet.scope.do = limitItems(
         [...packet.scope.do, "只处理相关页面、组件与交互边界"],
         3,
@@ -104,7 +104,7 @@ function applyAgentSpecificContext(packet: HandoffPacket): HandoffPacket {
         3,
       );
       break;
-    case "pm_reviewer":
+    case "fixer":
       packet.scope.do = limitItems(
         [...packet.scope.do, "聚焦验证范围、未覆盖项与回归风险"],
         3,
@@ -115,7 +115,7 @@ function applyAgentSpecificContext(packet: HandoffPacket): HandoffPacket {
       );
       packet.deliverables = ["测试结论", "风险列表", "是否通过建议"];
       break;
-    case "pm_advisor":
+    case "advisor":
       packet.scope.do = limitItems(
         [...packet.scope.do, "只做任务拆解、角色顺序与风险排序建议"],
         3,
@@ -130,7 +130,7 @@ function applyAgentSpecificContext(packet: HandoffPacket): HandoffPacket {
         3,
       );
       break;
-    case "pm_backend":
+    case "backendcoder":
       packet.acceptance = limitItems(
         [...packet.acceptance, "说明接口或逻辑影响范围"],
         3,

@@ -346,13 +346,13 @@ export function buildAutoContinueDispatch(
   }
 
   // 0.7.0：声明式路由门禁。
-  // 如果当前 evaluation.recommendedNextAgent 是某个 primary（pm_lead / pm_advisor）
+  // 如果当前 evaluation.recommendedNextAgent 是某个 primary（commander / advisor）
   // 推荐分派出去的 subagent，且该 primary 的 frontmatter 明确写了 `permission.task[next]=deny`，
   // 则 buildAutoContinueDispatch 直接返回 undefined，让 chain 落到 `completed` 状态。
   // primary 自身缺失 frontmatter（source=none）时按 fallbackAllow=true，保持向后兼容。
   const lastAgentCandidate =
     (evaluation as unknown as { lastAgent?: string }).lastAgent ||
-    "pm_lead";
+    "commander";
   const routing = resolveAgentTaskRouting({
     projectDir,
     primaryAgent: lastAgentCandidate,

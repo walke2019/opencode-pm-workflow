@@ -226,17 +226,17 @@ function runCli(args, options = {}) {
     const parsed = JSON.parse(r.stdout);
     assert.strictEqual(parsed.ok, true);
     assert.strictEqual(parsed.scope, 'global');
-    assert.ok(parsed.agents.includes('pm_lead'));
+    assert.ok(parsed.agents.includes('commander'));
 
     const config = JSON.parse(
       readFileSync(join(opencodeDir, 'pm-workflow.config.json'), 'utf-8'),
     );
-    assert.strictEqual(config.agents.definitions.pm_lead.model, 'openai/gpt-5');
+    assert.strictEqual(config.agents.definitions.commander.model, 'openai/gpt-5');
     assert.deepStrictEqual(
-      config.agents.definitions.pm_lead.fallback_models,
+      config.agents.definitions.commander.fallback_models,
       ['openai/gpt-5-mini'],
     );
-    assert.deepStrictEqual(config.fallback.chains.pm_lead, ['openai/gpt-5-mini']);
+    assert.deepStrictEqual(config.fallback.chains.commander, ['openai/gpt-5-mini']);
   } finally {
     rmSync(projectDir, { recursive: true, force: true });
   }

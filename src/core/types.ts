@@ -29,13 +29,27 @@ export type AutomationCapability =
   | "commit_gate"
   | "review_marker";
 
+/**
+ * pm-workflow 的 6 个固定语义 agent。
+ *
+ * 命名规则（1.0.0-rc.6 起）：
+ * - `commander`    主控、决策、协调、分派（唯一 primary，OpenCode 切换列表只显示它）
+ * - `advisor`      调研、分析、拆解、决策顾问（合并自旧 advisor + researcher）
+ * - `backendcoder` 后端代码（API、数据库、服务）
+ * - `designer`     设计 + 前端代码 + 交互原型 + 图像生成（合并自旧 frontend + 新增 designer 职责）
+ * - `fixer`        测试 + 修复 + 打包 + 部署（合并自旧 reviewer 测试侧 + 新增 deployer 职责）
+ * - `writer`       文档撰写 + 发布说明 + 注释（合并自旧 reviewer 文档侧）
+ *
+ * 旧 ID（pm_lead / pm_advisor / pm_backend / pm_frontend / pm_reviewer / pm_researcher）
+ * 在 1.0.0-rc.6 中被废弃；config / state 自动 migration（详见 src/core/agent-id-migrate.ts）。
+ */
 export type DispatchAgent =
-  | "pm_lead"
-  | "pm_advisor"
-  | "pm_backend"
-  | "pm_frontend"
-  | "pm_reviewer"
-  | "pm_researcher";
+  | "commander"
+  | "advisor"
+  | "backendcoder"
+  | "designer"
+  | "fixer"
+  | "writer";
 export type ExecutableAgent = string;
 
 /**
@@ -43,7 +57,7 @@ export type ExecutableAgent = string;
  *
  * 关键约束（与"稳定任务域"治理原则一致）：
  * - 主题只影响 frontmatter `description` / `display_name` / `theme` 与 body 的角色称呼；
- * - 永不影响语义 ID（pm_lead / pm_backend / ...）、dispatch 路由、history 记录、permission 规则；
+ * - 永不影响语义 ID（commander / backendcoder / ...）、dispatch 路由、history 记录、permission 规则；
  * - 用户配置的 `model` / `mode` / `permission` / `fallback_models` 字段在 apply 时默认保留（preserve_existing）。
  */
 export type AgentThemeId = string;
@@ -55,6 +69,16 @@ export interface AgentThemeRoleSkin {
   description: string;
   /** 主题化后的 body 正文。保留原职责语义，仅替换称呼与语气。 */
   body: string;
+  /**
+   * OpenCode mode 字段。
+   *
+   * - `commander` 永远是 `primary`（OpenCode 切换列表只显示它，符合主代理设计）
+   * - 其他 5 个固定 agent 永远是 `subagent`（不进切换列表，通过 task tool 被 commander 调用）
+   *
+   * 1.0.0-rc.6 起所有内置主题必须显式声明 mode；未声明会触发渲染时校验失败。
+   * 这是核心 UX 修复——之前主题不写 mode 导致 OpenCode 默认当作 `all`，6 个 agent 全部出现在切换列表。
+   */
+  mode: "primary" | "subagent";
 }
 
 export interface AgentThemeDefinition {
@@ -198,7 +222,7 @@ export interface TaskAnalysis {
  * Agent 量化能力卡片：用于 handoff packet 的"角色对比"段。
  *
  * 字段语义：
- * - `speed` / `cost` / `quality`：相对于 pm_lead 主协调的相对值（multiplier），
+ * - `speed` / `cost` / `quality`：相对于 commander 主协调的相对值（multiplier），
  *   纯文字描述（如 `"1x"` / `"2x faster"` / `"1/2 cost"`），方便 LLM 直接拿到
  *   做"是否值得再委派"的对比。
  * - `delegateWhen` / `dontDelegateWhen`：触发与禁忌条件，便于被 handoff 的角色
@@ -404,7 +428,7 @@ export type WorkflowConfig = {
     /**
      * 运行时模型降级链（ForegroundFallback）。
      *
-     * key 使用 semantic agent 名称（如 `pm_lead`、`pm_backend`）或具体 model id。
+     * key 使用 semantic agent 名称（如 `commander`、`backendcoder`）或具体 model id。
      * value 为按优先级排列的备用模型 id 列表。
      *
      * 当上游模型出现限流（429 / rate-limit）、超时或上下文溢出错误时，

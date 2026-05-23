@@ -33,7 +33,7 @@ Use this Skill when starting or onboarding a project and the user asks to config
 8. If the user provides a model template (`pm-workflow.models.example.json`, `.pm-workflow/model-profile.json`, or pasted JSON with `default_model` / `agent_models`), treat it as the preferred source of intent. Read it, **resolve keywords (see "Keyword resolution rules" below)**, present the resolved mapping to the user for confirmation, then merge into pm-workflow config.
 9. The template's `agent_profiles` block describes each agent's role, `model_traits`, `fallback_traits`. Use it to:
    - Validate the resolved model against the trait expectations.
-   - When the resolved model clearly violates `model_traits` (e.g. a coding-only model resolved for `pm_lead`), surface the issue with 1-3 alternative candidates from the global inventory and ask the user to confirm.
+   - When the resolved model clearly violates `model_traits` (e.g. a coding-only model resolved for `commander`), surface the issue with 1-3 alternative candidates from the global inventory and ask the user to confirm.
    - Never silently substitute a different model. Always confirm with the user.
 10. `agent_profiles` and `_resolve_strategy` are read-only metadata. Do not write them to `pm-workflow.config.json` or `agents.definitions.*`.
 
@@ -63,7 +63,7 @@ Before writing any merged config, present the resolution result as a table and a
 
 | Agent | Template (keywords) | Resolved model ID | Source provider |
 | --- | --- | --- | --- |
-| `pm_lead` | `["claude-opus", "gpt-5.5"]` | `bestool-route-kr/kr/claude-opus-4.7` | `bestool-route-kr` |
+| `commander` | `["claude-opus", "gpt-5.5"]` | `bestool-route-kr/kr/claude-opus-4.7` | `bestool-route-kr` |
 | ... | ... | ... | ... |
 
 Wait for explicit user confirmation. Do not assume "no objection = confirmation".
@@ -74,14 +74,14 @@ The pm-workflow built-in agents have stable roles. When the user fills the model
 
 | Agent | Mode | Role | Model traits to look for | Fallback traits |
 | --- | --- | --- | --- | --- |
-| `pm_lead` | primary | 主协调官：分析决策、规划分派、收敛验收 | 强推理、长上下文、决策稳健、中文优先 | 低成本但保留中文与结构化输出 |
-| `pm_advisor` | primary | 拆解顾问：把复杂任务拆成清晰步骤、识别风险 | 结构化拆解、风险识别、中文优先 | 低成本但结构化输出不丢 |
-| `pm_backend` | subagent | 后端执行：API、数据库、服务、性能 | 编码能力强、调试推理、理解复杂依赖 | 仍能写出可运行代码、保留类型/接口 |
-| `pm_frontend` | subagent | 前端执行：页面、组件、交互、响应式、可访问性 | UI 直觉、CSS/样式准确、组件拆分清晰 | 保留响应式与可访问性 |
-| `pm_reviewer` | subagent (hidden) | 审查与文档：测试、回归、code review、发布说明 | 细致审查、找 bug/安全问题、文档语感 | 仍能完成检查表与发布说明 |
-| `pm_researcher` | subagent (hidden) | 调研：资料检索、官方方案、事实核查 | 检索能力、概要提炼、中英双语 | 保留检索与提炼能力 |
+| `commander` | primary | 主协调官：分析决策、规划分派、收敛验收 | 强推理、长上下文、决策稳健、中文优先 | 低成本但保留中文与结构化输出 |
+| `advisor` | primary | 拆解顾问：把复杂任务拆成清晰步骤、识别风险 | 结构化拆解、风险识别、中文优先 | 低成本但结构化输出不丢 |
+| `backendcoder` | subagent | 后端执行：API、数据库、服务、性能 | 编码能力强、调试推理、理解复杂依赖 | 仍能写出可运行代码、保留类型/接口 |
+| `designer` | subagent | 前端执行：页面、组件、交互、响应式、可访问性 | UI 直觉、CSS/样式准确、组件拆分清晰 | 保留响应式与可访问性 |
+| `fixer` | subagent (hidden) | 审查与文档：测试、回归、code review、发布说明 | 细致审查、找 bug/安全问题、文档语感 | 仍能完成检查表与发布说明 |
+| `advisor` | subagent (hidden) | 调研：资料检索、官方方案、事实核查 | 检索能力、概要提炼、中英双语 | 保留检索与提炼能力 |
 
-If the user picks a model that violates these traits (e.g. choosing a coding-only model for `pm_lead`, or a heavy reasoning model for `pm_researcher` when budget matters), surface 1-3 alternatives from the global inventory and ask the user to confirm. Never silently substitute.
+If the user picks a model that violates these traits (e.g. choosing a coding-only model for `commander`, or a heavy reasoning model for `advisor` when budget matters), surface 1-3 alternatives from the global inventory and ask the user to confirm. Never silently substitute.
 
 ## Default role mapping
 
@@ -116,7 +116,7 @@ Apply fields as follows:
 | `agent_models.<agent>` | `agents.definitions.<agent>.model` |
 | `agent_fallback_models.<agent>` | `agents.definitions.<agent>.fallback_models[0]` and `fallback.chains.<agent>[0]` |
 
-Supported built-in pm agents: `pm_lead`, `pm_advisor`, `pm_backend`, `pm_frontend`, `pm_reviewer`, `pm_researcher`.
+Supported built-in pm agents: `commander`, `advisor`, `backendcoder`, `designer`, `fixer`, `advisor`.
 
 Do not require the user to run a CLI command for this flow. The CLI can be mentioned only as an optional fallback for scripted setup.
 

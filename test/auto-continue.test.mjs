@@ -234,7 +234,7 @@ function writeProjectConfig(projectDir, partial) {
     recordAutoContinueStep(projectDir, {
       stepIndex: 1,
       action: 'run-code-review',
-      agent: 'pm_reviewer',
+      agent: 'fixer',
       exitCode: 0,
     });
     state = readState(projectDir);
@@ -244,7 +244,7 @@ function writeProjectConfig(projectDir, partial) {
     recordAutoContinueStep(projectDir, {
       stepIndex: 2,
       action: 'continue-development',
-      agent: 'pm_lead',
+      agent: 'commander',
       exitCode: 0,
     });
     state = readState(projectDir);

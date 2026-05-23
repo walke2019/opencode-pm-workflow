@@ -116,14 +116,14 @@ function printHelp() {
     "  pmw history --limit 5 --type fallback.foreground_switch",
     "  pmw report --out ./report.html",
     "  pmw agents list",
-    "  pmw agents promote pm_lead --overwrite",
+    "  pmw agents promote commander --overwrite",
     "  pmw agents doctor --json",
     "  pmw agents theme list",
     "  pmw agents theme preview sanguo",
     "  pmw agents theme apply sanguo --scope global",
-    "  pmw agents theme apply default --scope project --agents pm_backend,pm_frontend",
+    "  pmw agents theme apply default --scope project --agents backendcoder,designer",
     "  pmw models init --model opencode/gpt-5 --fallback opencode/gpt-5-mini",
-    "  pmw models init --scope project --agent pm_backend --model cx/gpt-5.5 --fallback cx/gpt-5.4",
+    "  pmw models init --scope project --agent backendcoder --model cx/gpt-5.5 --fallback cx/gpt-5.4",
     "  pmw docs check",
     "  pmw verify",
   ];
@@ -501,7 +501,7 @@ async function runAgentsThemeApply(args) {
   const themeId = args._[3];
   if (!themeId) {
     console.error(
-      "用法: pmw agents theme apply <theme-id> [--scope project|global] [--agents pm_lead,pm_backend]",
+      "用法: pmw agents theme apply <theme-id> [--scope project|global] [--agents commander,backendcoder]",
     );
     return 2;
   }
@@ -545,7 +545,7 @@ async function runAgentsThemeApply(args) {
     for (const s of result.skipped) lines.push(`  ${s.agent} — ${s.reason}`);
   }
   lines.push("");
-  lines.push("提示: 主题只换皮肤；语义 ID（pm_lead / pm_backend / ...）与路由不变。");
+  lines.push("提示: 主题只换皮肤；语义 ID（commander / backendcoder / ...）与路由不变。");
   lines.push("      用户已配的 model / mode / permission 默认保留。");
   console.log(lines.join("\n"));
   return result.skipped.length === 0 ? 0 : 1;

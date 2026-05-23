@@ -1,5 +1,75 @@
 # Changelog
 
+## 1.0.0-rc.6
+
+### 重大变更：6 个固定 agent 重命名 + 角色合并/拆分
+
+**ID 映射**：
+
+| 旧 ID | 新 ID | 关系 |
+|---|---|---|
+| pm_lead | **commander** | 重命名（唯一 primary） |
+| pm_advisor + pm_researcher | **advisor** | **2:1 合并**（调研 + 拆解 + 决策顾问） |
+| pm_backend | **backendcoder** | 重命名 |
+| pm_frontend | **designer** | 重命名 + **职责扩展**（设计 + 前端代码 + 交互原型 + 图像生成） |
+| pm_reviewer（测试侧） | **fixer** | 拆分 + **职责扩展**（测试 + 修复 + 打包 + 部署 + CI/CD） |
+| pm_reviewer（文档侧） | **writer** | 拆分（独立的文档撰写 agent） |
+
+### 关键 UI 修复：OpenCode 切换列表只显示 commander
+
+之前所有 6 个 agent 都出现在 OpenCode 的 agent 切换列表里——根因是主题渲染时**没写 mode 字段**，OpenCode 默认当作 `all` 处理。
+
+修复：
+
+- `src/core/types.ts` `AgentThemeRoleSkin` 增加必填字段 `mode: "primary" | "subagent"`
+- `src/core/agent-theme-data.ts` 5 套内置主题（default / sanguo / xiyou / marvel / workplace）每个 skin 显式声明 mode：
+  - `commander` = `primary`（唯一显示在 OpenCode 切换列表）
+  - 其他 5 个 = `subagent`（通过 task tool 被 commander 调用，不进切换列表）
+- `src/core/agent-theme.ts` 渲染时强制写入 mode 到 frontmatter；preserveExisting.mode 不再影响这个写入（mode 是主题强约束）
+
+### 业务语义变化
+
+- **advisor**：合并 pm_advisor（拆解顾问）+ pm_researcher（资料调研）的全部职责
+- **designer**：在 pm_frontend（前端代码 + UI/UX）基础上新增"设计草图、原型、高保真页面、图像生成"等设计师职责
+- **fixer**：在 pm_reviewer（测试 + 修复）基础上新增"打包 + 部署 + 版本号 + CI/CD"等 deployer 职责
+- **writer**：从 pm_reviewer 中独立出来，专注 README / API 文档 / 注释 / 发布说明 / ADR
+- **commander** = primary，其他 5 个 = subagent，OpenCode UI 切换列表只显示 commander
+
+### 影响范围
+
+- 719 处旧 ID 引用全部替换为新 ID（src / test / scripts / skills / docs / 顶层 .json 与 .md）
+- 19 个测试文件全部更新；测试新增"writer 独立路由"用例
+- 5 套内置主题完全重写 + 6 个 agent 角色完整覆盖（之前 default 主题只有 5 个，1.0.0-rc.6 起补齐 writer）
+- 5 篇主文档（docs/01-04 + 05-公开-API-参考）同步重命名
+
+### 不兼容（破坏性变更）
+
+- 所有用户已有的 `~/.config/opencode/agents/<old-id>.md` 文件将不再被 pm-workflow registry 识别——用户需要重新跑 `pmw agents theme apply <theme>` 写入新 ID
+- 项目级 `<projectDir>/.opencode/agents/<old-id>.md` 同上
+- `~/.config/opencode/pm-workflow.config.json` 里 dispatch_map / agent_map 等若包含旧 ID 会被 readWorkflowConfig 自动填充新默认值（不会丢用户其他配置）
+- history.jsonl 旧记录里的 `agent: "pm_lead"` 等仍可读但不会再生成
+
+### 升级建议
+
+```bash
+# 1. 升级全局 CLI
+npm install -g @walke/opencode-pm-workflow@rc
+
+# 2. 完全 quit OpenCode，清旧 plugin cache
+pkill -f "OpenCode" && sleep 2
+rm -rf ~/.cache/opencode/packages/@walke/opencode-pm-workflow@rc
+
+# 3. （可选但建议）清旧的 agent md 文件，让新主题写入新 ID
+rm -f ~/.config/opencode/agents/pm_*.md
+
+# 4. 重启 OpenCode（plugin auto-install + skill 同步会自动跑）
+
+# 5. 在终端重新应用主题
+pmw agents theme apply default --scope global   # 中性命名
+# 或
+pmw agents theme apply sanguo --scope global    # 三国主题
+```
+
 ## 1.0.0-rc.5
 
 ### 修复：跨平台兼容性（macOS / Linux / Windows）
@@ -97,7 +167,7 @@ OpenCode server 在 system service 模式下传给 plugin 的 `ctx.worktree` / `
 
 ### 新增：Agent 主题（agent-theme）—— 对话式 agent 皮肤配置
 
-把 6 个固定语义 agent（pm_lead / pm_advisor / pm_backend / pm_frontend / pm_reviewer / pm_researcher）包装成不同"皮肤"显示名（默认 / 三国 / 西游 / 漫威 / 现代职场）。语义 ID、dispatch 路由、history、permission 全部不变；只换 frontmatter `description` / `display_name` / `theme` 与 body 文案。
+把 6 个固定语义 agent（commander / advisor / backendcoder / designer / fixer / advisor）包装成不同"皮肤"显示名（默认 / 三国 / 西游 / 漫威 / 现代职场）。语义 ID、dispatch 路由、history、permission 全部不变；只换 frontmatter `description` / `display_name` / `theme` 与 body 文案。
 
 - **5 套内置主题**：`default` / `sanguo` / `xiyou` / `marvel` / `workplace`，每套包含 6 个固定 agent 完整皮肤
 - **核心模块** `src/core/agent-theme.ts`：`applyAgentTheme` / `previewAgentTheme` / `renderAgentMdForTheme` / `resolveThemeTargetDir` / `listAgentThemes`；frontmatter 解析保留嵌套 `permission` / `permission.task` 块
@@ -105,7 +175,7 @@ OpenCode server 在 system service 模式下传给 plugin 的 `ctx.worktree` / `
 - **CLI 三件套**：
   - `pmw agents theme list` 列出内置主题
   - `pmw agents theme preview <id>` 预览渲染（dry-run，不写盘）
-  - `pmw agents theme apply <id> [--scope project|global] [--agents pm_backend,pm_frontend] [--no-preserve-model]` 真正落盘
+  - `pmw agents theme apply <id> [--scope project|global] [--agents backendcoder,designer] [--no-preserve-model]` 真正落盘
 - **scope 路由**：`global` → `~/.config/opencode/agents/`（XDG_CONFIG_HOME 优先）；`project` → `<projectDir>/.opencode/agents/`
 - **`agent-registry` 扩展**：解析 frontmatter `display_name` / `theme` 字段，回填到 `ResolvedAgentDefinition`；OpenCode 自身忽略不识别的字段，无副作用
 - **dispatch 输出渲染**：`resolved agent` 行附加 `theme=xxx display=xxx` badge，dispatch 与 doctor 都能看到当前主题
@@ -124,7 +194,7 @@ OpenCode server 在 system service 模式下传给 plugin 的 `ctx.worktree` / `
 - **agent-registry.test.mjs 漏跑 + 断言过时**：该测试 0.2.0 后从未在 `npm test` 中运行；其内部 `'all'` → `'subagent'` 与 fallback description 短句对齐；现已加回 npm test 序列
 - **scripts/test-coverage.mjs Node 22+ 输出前缀**：Node test reporter 从 `# ` 改为 `ℹ `，旧解析逻辑导致 6 个关键模块全部"未找到覆盖率数据"假失败；同时兼容两种前缀
 - **test:coverage 接入 verify-release**：守门工具复活后并入发布前置检查
-- **docs/workflow-flow.svg 残留"曹操"**：0.2.0 三国清理时漏掉的 SVG 文本节点，改为中性 `pm_lead`
+- **docs/workflow-flow.svg 残留"曹操"**：0.2.0 三国清理时漏掉的 SVG 文本节点，改为中性 `commander`
 - **test/workflow-redesign.test.mjs 三国变量名**：`zhuge` / `lvbu` / `zhaoyun` / `chenlin` 改名为中性 `advisorPrompt` / `backendPrompt` / `reviewerPrompt` / `reviewerDocPrompt`
 - **mode-aware-dispatch.test.mjs deepStrictEqual**：补上新字段 `displayName: undefined` / `theme: undefined`
 - **公开 API 快照同步**：从 120 → 129 个符号，新增 9 个主题相关导出（`FIXED_AGENT_IDS` / `applyAgentTheme` / `getBuiltinTheme` / `getDefaultTheme` / `listAgentThemes` / `listBuiltinThemes` / `previewAgentTheme` / `renderAgentMdForTheme` / `resolveThemeTargetDir`）
@@ -309,7 +379,7 @@ OpenCode server 在 system service 模式下传给 plugin 的 `ctx.worktree` / `
 - `pm-workflow.models.example.json` 重写：
   - 每个 agent 的 `model` / `fallback_models` 字段同时支持 **完整模型 ID / 关键词字符串 / 关键词数组** 三种形式。
   - 关键词数组按出现顺序逐个尝试匹配，**第一个命中的关键词就停**，不再尝试后续。
-  - 默认值替换为用户偏好示例：`pm_lead/pm_advisor` = `[claude-opus, gpt-5.5, gpt-5.4]`、`pm_backend` = `[gpt-5.4, gpt-5.3-codex]`、`pm_frontend` = `[gemini-3.1-, gemini-3-]` 等。
+  - 默认值替换为用户偏好示例：`commander/advisor` = `[claude-opus, gpt-5.5, gpt-5.4]`、`backendcoder` = `[gpt-5.4, gpt-5.3-codex]`、`designer` = `[gemini-3.1-, gemini-3-]` 等。
   - 新增 `_resolve_strategy` 段，定义 `match_order` / `provider_priority`（默认 `bestool-route-` > `bestool-` > `antigravity-manager/` > `antigravity/` > `opencode/` > `kr/` > `kg/` > `gh/` > `cx/`）/ `exclude_keywords_default`（`preview` / `deprecated` / `experimental`）。
   - `ai_apply_instructions` 扩到 12 条，明确多源 tiebreak、解析失败容忍场景（关键词当前 0 命中时保留模板原样，等接入新 provider 后再跑）、写入前必须用户确认等硬规则。
 - `skills/agent-model-config/SKILL.md` 升级：
@@ -324,11 +394,11 @@ OpenCode server 在 system service 模式下传给 plugin 的 `ctx.worktree` / `
 
 | Agent | 模板 | 解析结果 |
 | --- | --- | --- |
-| `pm_lead` / `pm_advisor` | `[claude-opus, gpt-5.5, gpt-5.4]` | `bestool-route-kr/kr/claude-opus-4.7` |
-| `pm_backend` | `[gpt-5.4, gpt-5.3-codex]` | `bestool-route-cx/cx/gpt-5.4` |
-| `pm_frontend` | `[gemini-3.1-, gemini-3-]` | `bestool-route-antigravity/antigravity/gemini-3.1-pro-high` |
-| `pm_reviewer` | `[claude-sonnet, claude-haiku-4.5, gpt-5-mini]` | `bestool-route-kr/kr/claude-sonnet-4.6` |
-| `pm_researcher` | `[claude-haiku-4.5, gpt-5.4-mini, gpt-5-mini]` | `bestool-route-gh/gh/claude-haiku-4.5` |
+| `commander` / `advisor` | `[claude-opus, gpt-5.5, gpt-5.4]` | `bestool-route-kr/kr/claude-opus-4.7` |
+| `backendcoder` | `[gpt-5.4, gpt-5.3-codex]` | `bestool-route-cx/cx/gpt-5.4` |
+| `designer` | `[gemini-3.1-, gemini-3-]` | `bestool-route-antigravity/antigravity/gemini-3.1-pro-high` |
+| `fixer` | `[claude-sonnet, claude-haiku-4.5, gpt-5-mini]` | `bestool-route-kr/kr/claude-sonnet-4.6` |
+| `advisor` | `[claude-haiku-4.5, gpt-5.4-mini, gpt-5-mini]` | `bestool-route-gh/gh/claude-haiku-4.5` |
 
 `gpt-5.4-mini` 当前 0 命中，按设计保留在数组里，等接入新 provider 后下次解析自动生效。
 
@@ -347,7 +417,7 @@ OpenCode server 在 system service 模式下传给 plugin 的 `ctx.worktree` / `
   - `model_traits`：主模型应具备的能力标签（强推理 / 编码 / UI 直觉 / 检索 等）
   - `fallback_traits`：回退模型应保留的最低能力
   - `model_examples` / `fallback_examples`：可选模型示例（仅参考，仍以全局 OpenCode 清单为准）
-  - `tips`：选模型的提示，例如"不要给 pm_lead 选纯编码型模型"
+  - `tips`：选模型的提示，例如"不要给 commander 选纯编码型模型"
 - `agent_profiles` 是只读元数据，AI 校验时使用，**不**写入 `pm-workflow.config.json`。
 - `ai_apply_instructions` 加强为 10 条规则，明确 AI 在 agent_models 缺失或模型不符 traits 时**给候选让用户确认、不静默替换**。
 - 同步更新：
@@ -386,7 +456,7 @@ OpenCode server 在 system service 模式下传给 plugin 的 `ctx.worktree` / `
 - `pmw` CLI 新增 `models init` 子命令：
   - `pmw models init --model <id> --fallback <id>`：初次使用时配置所有内置 agent。
   - `--scope project`：只写当前项目 `.pm-workflow/config.json`。
-  - `--agent pm_backend,pm_frontend`：只配置指定 agent。
+  - `--agent backendcoder,designer`：只配置指定 agent。
   - `--allow-unknown`：跳过 OpenCode 模型清单校验。
 - 更新模型清单读取逻辑：当 provider model key 不含 `/` 时，同时接受官方 `provider/model-id` 写法；当 key 已含 `/` 时保持原样，避免重复拼接 provider。
 - 新增 CLI 回归测试，覆盖成功写入全局配置与未知模型 blocker。
@@ -636,7 +706,7 @@ OpenCode server 在 system service 模式下传给 plugin 的 `ctx.worktree` / `
 ## 0.3.0
 
 - **Breaking**: 完全移除旧 agent 名称兼容层。删除 `LEGACY_AGENT_MAP`、`CLI_COMPATIBLE_SUBAGENTS`、`normalizeAgentName`、`normalizeWorkflowAgentMode`、`normalizeWorkflowConfigModes` 等所有向后兼容代码。
-- **Breaking**: `DispatchAgent` 类型仅保留新名称（`pm_lead/pm_advisor/pm_backend/pm_frontend/pm_reviewer/pm_researcher`），不再包含旧名称。
+- **Breaking**: `DispatchAgent` 类型仅保留新名称（`commander/advisor/backendcoder/designer/fixer/advisor`），不再包含旧名称。
 - **Breaking**: `dispatch_map` / `fallback.agent_map` 的 key 从语义名称改为新 agent 名称。
 - 清理 `prompts.ts`、`analyzer.ts`、`evaluator.ts`、`handoff.ts`、`plan.ts`、`dispatch-tools.ts` 中所有旧名称分支。
 - 更新 `pm-workflow.schema.json`，移除旧名称 properties。
@@ -651,12 +721,12 @@ OpenCode server 在 system service 模式下传给 plugin 的 `ctx.worktree` / `
 
 ## 0.2.1
 
-- 修复子 agent mode 定义：将 `pm_backend`/`pm_frontend`/`pm_reviewer`/`pm_researcher` 的 mode 从 `"all"` 改为 `"subagent"`，语义更清晰，避免未来误用。
+- 修复子 agent mode 定义：将 `backendcoder`/`designer`/`fixer`/`advisor` 的 mode 从 `"all"` 改为 `"subagent"`，语义更清晰，避免未来误用。
 
 ## 0.2.0
 
-- **Agent 命名简化**：弃用旧 namespaced 角色名，统一为通用短名称（pm_lead/pm_advisor/pm_backend/pm_frontend/pm_reviewer/pm_researcher）。
-- **角色合并**：QA + Writer 合并为 `pm_reviewer`（审查与文档），前端双角色合并为 `pm_frontend`。
+- **Agent 命名简化**：弃用旧 namespaced 角色名，统一为通用短名称（commander/advisor/backendcoder/designer/fixer/advisor）。
+- **角色合并**：QA + Writer 合并为 `fixer`（审查与文档），前端双角色合并为 `designer`。
 - **移除硬编码模型 ID**：所有内置 agent 定义不再携带具体模型 ID，改为从全局 OpenCode 配置读取。
 - **向后兼容**：新增 `LEGACY_AGENT_MAP` 自动映射机制，旧名称自动转换为新名称，保留 2 个版本兼容期。
 - `DispatchAgent` 类型扩展为新旧名称联合类型，确保旧配置仍可正常工作。

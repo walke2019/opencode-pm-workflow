@@ -64,10 +64,10 @@ try {
   assert.ok(listGlobalOpenCodeModelKeys().includes('cx/gpt-5.5'));
 
   const config = validateWorkflowConfigAgentModels(defaultWorkflowConfig());
-  assert.strictEqual(config.agents.definitions.pm_lead.model, undefined);
-  assert.strictEqual(config.agents.definitions.pm_backend.model, undefined);
-  assert.strictEqual(config.agents.definitions.pm_frontend.model, undefined);
-  assert.strictEqual(config.agents.definitions.pm_reviewer.model, undefined);
+  assert.strictEqual(config.agents.definitions.commander.model, undefined);
+  assert.strictEqual(config.agents.definitions.backendcoder.model, undefined);
+  assert.strictEqual(config.agents.definitions.designer.model, undefined);
+  assert.strictEqual(config.agents.definitions.fixer.model, undefined);
 
   const resolvedQa = resolveWorkflowAgentDefinition({
     projectDir,

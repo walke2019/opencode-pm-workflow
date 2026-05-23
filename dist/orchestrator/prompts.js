@@ -1,11 +1,11 @@
 import { escapePrompt } from "../core/recovery.js";
 const DEFAULT_DISPATCH_AGENT_MAP = {
-    pm_lead: "pm_lead",
-    pm_advisor: "pm_advisor",
-    pm_backend: "pm_backend",
-    pm_frontend: "pm_frontend",
-    pm_reviewer: "pm_reviewer",
-    pm_researcher: "pm_researcher",
+    commander: "commander",
+    advisor: "advisor",
+    backendcoder: "backendcoder",
+    designer: "designer",
+    fixer: "fixer",
+    writer: "writer",
 };
 export function getExecutableAgent(agent, dispatchMap = DEFAULT_DISPATCH_AGENT_MAP) {
     return dispatchMap[agent] || DEFAULT_DISPATCH_AGENT_MAP[agent] || agent;
@@ -95,35 +95,35 @@ export function buildExecutablePrompt(agent, prompt, packet) {
     let roleContext = "";
     let roleTitle = "";
     switch (agent) {
-        case "pm_advisor":
-            roleTitle = "【拆解顾问】";
+        case "advisor":
+            roleTitle = "【调研拆解顾问】";
             roleContext =
-                "你是 pm-workflow 的拆解顾问。擅长将复杂任务拆解为清晰的推进步骤，识别风险并提供顾问式支持。先澄清疑虑，再划定边界，最后给出合适的分派建议与推进顺序。";
+                "你是 pm-workflow 的调研拆解顾问。负责调研资料、对比方案、识别风险、把复杂任务拆成清晰的推进步骤，并给出可被 commander 直接拿来分派的拆解结果与决策建议。先澄清疑虑，再划定边界，最后输出调研 + 拆解 + 风险 + 建议四段。不直接承担实现工作。";
             break;
-        case "pm_lead":
+        case "commander":
             roleTitle = "【主协调官】";
             roleContext =
                 "你是 pm-workflow 的主协调官。负责快速压缩需求，确定目标、边界、todo、验收标准与分派路径；随后直接推进开发、测试、发布摘要。你表达直接、务实、清晰，重视结果与验证。";
             break;
-        case "pm_backend":
-            roleTitle = "【后端执行】";
+        case "backendcoder":
+            roleTitle = "【后端工程师】";
             roleContext =
-                "你是 pm-workflow 的后端 agent。专注于 API、数据库、服务逻辑与性能优化。追求代码质量与架构清晰。";
+                "你是 pm-workflow 的后端工程师。专注于 API、数据库、服务逻辑与性能优化。追求代码质量与架构清晰。";
             break;
-        case "pm_frontend":
-            roleTitle = "【前端执行】";
+        case "designer":
+            roleTitle = "【设计师】";
             roleContext =
-                "你是 pm-workflow 的前端 agent。负责前端实现、UI/UX、组件拆分、响应式布局、可访问性和视觉一致性。";
+                "你是 pm-workflow 的设计师。负责 UI 草图、原型、高保真页面、前端代码、交互、图像生成；保证响应式、可访问性与视觉一致性。";
             break;
-        case "pm_reviewer":
-            roleTitle = "【审查与文档】";
+        case "fixer":
+            roleTitle = "【测试与发布】";
             roleContext =
-                "你是 pm-workflow 的 reviewer agent。优先检查 bug、回归风险、安全问题和缺失测试；同时负责整理发布说明、变更摘要与用户可读文档。";
+                "你是 pm-workflow 的 fixer agent。优先跑测试、type check、回归验证；遇到失败要定位并修复 bug；同时负责打包、版本号、构建产物、CI/CD 与发布前验收。";
             break;
-        case "pm_researcher":
-            roleTitle = "【资料调研】";
+        case "writer":
+            roleTitle = "【文档撰稿人】";
             roleContext =
-                "你是 pm-workflow 的 researcher agent。负责资料检索、官方方案调研、事实核查、备选路径比较与参考依据整理。不直接承担实现工作。";
+                "你是 pm-workflow 的 writer agent。负责文档撰写、README、API 文档、代码注释、发布说明、ADR、用户可读说明。表达清晰、结构稳定、术语一致；只动文档与注释，不动业务代码。";
             break;
         default:
             roleTitle = "【专业执行官】";
@@ -132,7 +132,7 @@ export function buildExecutablePrompt(agent, prompt, packet) {
     const taskBody = packet
         ? renderAgentHandoffPrompt(agent, packet)
         : `【核心任务】\n${prompt}`;
-    const executionRequirements = agent === "pm_researcher"
+    const executionRequirements = agent === "advisor"
         ? [
             "1. 优先查找官方文档、权威资料或一手来源；结论需尽量附参考依据。",
             "2. 先收集资料、再比对方案与风险，不默认进入开发实现、测试验证或发布摘要。",

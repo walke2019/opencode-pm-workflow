@@ -3,7 +3,7 @@
  *
  * 关键约束（与"稳定任务域"治理原则一致）：
  * - 主题只影响 frontmatter `description` / `display_name` / `theme` 与 body 文案。
- * - 永不影响语义 ID（pm_lead / pm_backend / ...）、dispatch 路由、history 记录、
+ * - 永不影响语义 ID（commander / backendcoder / ...）、dispatch 路由、history 记录、
  *   permission 规则、retry/fallback 链路。
  * - 用户已配置的 model / mode / permission / fallback_models / temperature 字段
  *   在 apply 时默认保留（preserveExisting）。

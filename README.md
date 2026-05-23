@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.5`。
+当前发布版本：`1.0.0-rc.6`。
 
 ## 适用场景
 
@@ -40,7 +40,7 @@
 
 `pm-workflow` 采用**"稳定任务域 + 外部 agent 定义绑定"**的双层模型：
 
-- `pm_lead` 是统一主协调入口
+- `commander` 是统一主协调入口
 - command lanes 是 UX facade，不是第二套 runtime
 - Analyzer 负责语义判断，Registry 负责 agent 定义绑定，Runtime 负责执行编排
 - 新增 agent 不等于新增语义角色
@@ -124,6 +124,7 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-23 | 1.0.0-rc.6 | **6 个固定 agent 重命名 + 角色合并/拆分**：commander / advisor / backendcoder / designer / fixer / writer 替代旧 ID；advisor 合并旧 advisor + researcher；designer 合并旧 frontend + 新增设计/原型/图像生成；fixer 合并旧 reviewer 测试侧 + 新增 deployer 职责；writer 独立为文档撰写专门 agent。**修复 OpenCode UI bug**：主题渲染强制写 mode 字段（commander=primary，其他=subagent），切换列表只显示 commander |
 | 2026-05-23 | 1.0.0-rc.5 | **跨平台兼容性修复**：fallback 路径从硬编码 `/tmp` 改为 Node `os.tmpdir()`（macOS/Linux/Windows 自动适配）；从 `process.env.HOME \|\| process.env.USERPROFILE` 改为 `os.homedir()`；`getConfigDir` 在 Windows 上改用 `%USERPROFILE%\.config\opencode` 与 OpenCode 官方规范对齐（不再用 `%APPDATA%`） |
 | 2026-05-23 | 1.0.0-rc.4 | **修复 OpenCode 启动时插件加载失败**：getProjectDir 在 OpenCode server 进程（cwd === "/"）下返回 "/" 导致 mkdir('/.pm-workflow') ENOENT 让插件 abort；新增 resolveSafeProjectDir 跳过空字符串 / "/" / "\"，回退到 ~/.cache/pm-workflow/global；plugin 入口 try/catch 兜底 bootstrap；skill auto-install 移到激活判断之外；TUI plugin 与 28 处 tool 入口同步使用安全兜底 |
 | 2026-05-23 | 1.0.0-rc.3 | Skill auto-install：插件首次激活时自动把包内 `skills/<id>/SKILL.md` 同步到 `~/.config/opencode/skills/<id>.md`，无需用户手动复制；用户改过的目标文件不覆盖 |
@@ -138,6 +139,6 @@ npm view @walke/opencode-pm-workflow version
 | 2026-05-23 | 0.11.1 | 新增 `pmw models init`，初次使用时可一次性配置 agent 主模型与回退模型 |
 | 2026-05-23 | 0.11.0 | 新增 `pmw docs check` 文档治理检查，自动校验版本同步、主文档数量、Change Log 与旧路径引用 |
 | 2026-05-22 | 0.10.1 | README 对齐当前版本、5 篇文档结构与 OpenCode npm plugin 接入方式 |
-| 2026-05-09 | 0.2.0 | Agent 命名简化：弃用三国角色名，统一为通用短名称；合并 QA+Writer 为 pm_reviewer；移除硬编码模型 ID |
+| 2026-05-09 | 0.2.0 | Agent 命名简化：弃用三国角色名，统一为通用短名称；合并 QA+Writer 为 fixer；移除硬编码模型 ID |
 | 2026-05-09 | 0.1.18 | 文档收敛：将 30+ 篇分散文档合并为 5 篇主文档，删除历史 spec/plan/migration 文档，统一流程图到主文档正文 |
 | 2026-05-08 | 0.1.17 | 新增 researcher 路由、Agent Definition Registry、compact handoff、mode-aware dispatch |

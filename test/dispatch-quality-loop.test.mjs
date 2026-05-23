@@ -65,7 +65,7 @@ async function testResolvedAgentFormattingOnAutoContinueDispatch() {
     const agentsDir = join(projectDir, '.opencode', 'agents');
     mkdirSync(agentsDir, { recursive: true });
     writeFileSync(
-      join(agentsDir, 'pm_reviewer.md'),
+      join(agentsDir, 'fixer.md'),
       ['---', 'description: QA agent', 'mode: subagent', 'model: test/qa-model', '---', '# qa'].join('\n'),
       'utf-8',
     );
@@ -75,7 +75,7 @@ async function testResolvedAgentFormattingOnAutoContinueDispatch() {
       matchedDeliverables: [],
       missingDeliverables: ['验证'],
       gaps: ['仍需继续处理'],
-      recommendedNextAgent: 'pm_reviewer',
+      recommendedNextAgent: 'fixer',
       recommendedNextAction: 'continue-development',
       canAutoContinue: true,
       autoContinueSafe: true,
@@ -112,7 +112,7 @@ async function testAnalyzerRouting() {
     blockedReasons: [],
   });
   assert.strictEqual(writerTask.domain, 'writer');
-  assert.strictEqual(writerTask.recommendedAgent, 'pm_reviewer');
+  assert.strictEqual(writerTask.recommendedAgent, 'writer');
   assert.strictEqual(writerTask.executionMode, 'single_agent');
 
   const backendTask = analyzeDispatchTask({
@@ -121,17 +121,17 @@ async function testAnalyzerRouting() {
     blockedReasons: [],
   });
   assert.strictEqual(backendTask.domain, 'backend');
-  assert.ok(backendTask.expectedNextAgents.includes('pm_reviewer'));
+  assert.ok(backendTask.expectedNextAgents.includes('fixer'));
 
   const orchestrationTask = analyzeDispatchTask({
     prompt: '把 onboarding 流程的前端实现、说明文档和拆解方案一起补齐',
     stage: 'plan_ready',
     blockedReasons: [],
   });
-  assert.strictEqual(orchestrationTask.recommendedAgent, 'pm_lead');
+  assert.strictEqual(orchestrationTask.recommendedAgent, 'commander');
   assert.strictEqual(orchestrationTask.needsDecomposition, true);
   assert.strictEqual(orchestrationTask.executionMode, 'advisor_then_dispatch');
-  assert.ok(orchestrationTask.expectedNextAgents.includes('pm_advisor'));
+  assert.ok(orchestrationTask.expectedNextAgents.includes('advisor'));
 }
 
 async function testHandoffPacket() {
@@ -143,11 +143,11 @@ async function testHandoffPacket() {
 
   const backendPacket = buildHandoffPacket({
     prompt: '修复认证接口 401 并确认不影响现有登录流程',
-    targetAgent: 'pm_backend',
+    targetAgent: 'backendcoder',
     analysis,
   });
 
-  assert.strictEqual(backendPacket.targetAgent, 'pm_backend');
+  assert.strictEqual(backendPacket.targetAgent, 'backendcoder');
   assert.ok(backendPacket.mission.includes('修复认证接口 401'));
   assert.ok(Array.isArray(backendPacket.context));
   assert.ok(Array.isArray(backendPacket.scope.do));
@@ -162,10 +162,10 @@ async function testHandoffPacket() {
   assert.ok(backendPacket.acceptance.length <= 3);
   assert.ok(backendPacket.context.length <= 4);
   assert.ok(backendPacket.artifacts.length <= 6);
-  assert.strictEqual(backendPacket.nextStepHint, 'pm_backend');
+  assert.strictEqual(backendPacket.nextStepHint, 'backendcoder');
 
   const structuredPrompt = buildExecutablePrompt(
-    'pm_backend',
+    'backendcoder',
     '修复认证接口 401 并确认不影响现有登录流程',
     backendPacket,
   );
@@ -190,7 +190,7 @@ async function testCompactHandoffCompression() {
 
   const packet = buildHandoffPacket({
     prompt,
-    targetAgent: 'pm_frontend',
+    targetAgent: 'designer',
     analysis: analyzeDispatchTask({
       prompt,
       stage: 'development',
@@ -218,7 +218,7 @@ async function testDispatchCommandIncludesHandoffPacket() {
   );
 
   assert.ok(dispatch.handoffPacket);
-  assert.strictEqual(dispatch.recommendedAgent, 'pm_backend');
+  assert.strictEqual(dispatch.recommendedAgent, 'backendcoder');
   assert.ok(dispatch.executablePrompt.includes('【任务目标】'));
   assert.ok(dispatch.executablePrompt.includes('todo'));
   assert.ok(dispatch.executablePrompt.includes('Workflow 标准')); 
@@ -237,8 +237,8 @@ async function testDispatchCommandIncludesHandoffPacket() {
     ),
   );
   assert.ok(
-    analysisLines.some((line) => line.includes('pm_lead 负责主协调')),
-    'Analysis lines should explain that pm_lead remains the primary coordinator',
+    analysisLines.some((line) => line.includes('commander 负责主协调')),
+    'Analysis lines should explain that commander remains the primary coordinator',
   );
   assert.ok(
     handoffLines.some((line) =>
@@ -256,10 +256,10 @@ async function testAgentSpecificCompactContext() {
     blockedReasons: [],
   });
 
-  const frontendPacket = buildHandoffPacket({ prompt, targetAgent: 'pm_frontend', analysis });
-  const qaPacket = buildHandoffPacket({ prompt, targetAgent: 'pm_reviewer', analysis });
-  const writerPacket = buildHandoffPacket({ prompt, targetAgent: 'pm_reviewer', analysis });
-  const commanderPacket = buildHandoffPacket({ prompt, targetAgent: 'pm_advisor', analysis });
+  const frontendPacket = buildHandoffPacket({ prompt, targetAgent: 'designer', analysis });
+  const qaPacket = buildHandoffPacket({ prompt, targetAgent: 'fixer', analysis });
+  const writerPacket = buildHandoffPacket({ prompt, targetAgent: 'fixer', analysis });
+  const commanderPacket = buildHandoffPacket({ prompt, targetAgent: 'advisor', analysis });
 
   assert.ok(frontendPacket.scope.do.some((item) => item.includes('只处理当前任务直接相关内容')));
   assert.ok(qaPacket.acceptance.some((item) => item.includes('可验证') || item.includes('未完成')));
@@ -275,7 +275,7 @@ async function testEvaluator() {
   });
   const packet = buildHandoffPacket({
     prompt: '修复认证接口 401 并确认不影响现有登录流程',
-    targetAgent: 'pm_backend',
+    targetAgent: 'backendcoder',
     analysis,
   });
 
@@ -290,7 +290,7 @@ async function testEvaluator() {
     stderr: '',
   });
   assert.strictEqual(needsVerification.status, 'needs_verification');
-  assert.strictEqual(needsVerification.recommendedNextAgent, 'pm_reviewer');
+  assert.strictEqual(needsVerification.recommendedNextAgent, 'fixer');
   assert.strictEqual(needsVerification.canAutoContinue, true);
   assert.strictEqual(needsVerification.autoContinueSafe, true);
   assert.strictEqual(needsVerification.nextAutoAction, 'run-code-review');
@@ -329,7 +329,7 @@ async function testEvaluator() {
 
   const commanderPacket = buildHandoffPacket({
     prompt: '拆解 onboarding 流程并给出后续分派建议',
-    targetAgent: 'pm_advisor',
+    targetAgent: 'advisor',
     analysis: analyzeDispatchTask({
       prompt: '拆解 onboarding 流程并给出后续分派建议',
       stage: 'plan_ready',
@@ -347,7 +347,7 @@ async function testEvaluator() {
     stderr: '',
   });
   assert.strictEqual(commanderResult.status, 'partial');
-  assert.strictEqual(commanderResult.recommendedNextAgent, 'pm_lead');
+  assert.strictEqual(commanderResult.recommendedNextAgent, 'commander');
   assert.strictEqual(commanderResult.recommendedNextAction, 'continue-development');
   assert.strictEqual(commanderResult.canAutoContinue, true);
   assert.strictEqual(commanderResult.autoContinueSafe, true);
@@ -368,7 +368,7 @@ async function testEvaluator() {
 
   const blockedPacket = buildHandoffPacket({
     prompt: '等待产品确认后再继续开发',
-    targetAgent: 'pm_lead',
+    targetAgent: 'commander',
     analysis: analyzeDispatchTask({
       prompt: '等待产品确认后再继续开发',
       stage: 'development',
@@ -392,7 +392,7 @@ async function testEvaluator() {
     evaluationLines.some((line) => line.includes('evaluation status: needs_verification')),
   );
   assert.ok(
-    evaluationLines.some((line) => line.includes('recommended next agent: pm_reviewer')),
+    evaluationLines.some((line) => line.includes('recommended next agent: fixer')),
   );
   assert.ok(
     evaluationLines.some((line) => line.includes('auto continue: yes')),
@@ -406,12 +406,12 @@ async function testEvaluator() {
 
   const nextHintLines = formatNextDispatchHintLines(needsVerification);
   assert.ok(
-    nextHintLines.some((line) => line.includes('next dispatch hint: pm_reviewer/run-code-review')),
+    nextHintLines.some((line) => line.includes('next dispatch hint: fixer/run-code-review')),
   );
 
   const commanderHintLines = formatNextDispatchHintLines(commanderResult);
   assert.ok(
-    commanderHintLines.some((line) => line.includes('next dispatch hint: pm_lead/continue-development')),
+    commanderHintLines.some((line) => line.includes('next dispatch hint: commander/continue-development')),
   );
 
   const orchestrationAnalysisLines = formatTaskAnalysisLines(
@@ -422,7 +422,7 @@ async function testEvaluator() {
     }),
   );
   assert.ok(
-    orchestrationAnalysisLines.some((line) => line.includes('pm_advisor')),
+    orchestrationAnalysisLines.some((line) => line.includes('advisor')),
     'Orchestration analysis should describe advisor-only support',
   );
 
@@ -431,7 +431,7 @@ async function testEvaluator() {
     loopEvaluationLines.some((line) => line.includes('evaluation status: needs_verification')),
   );
   assert.ok(
-    loopEvaluationLines.some((line) => line.includes('next dispatch hint: pm_reviewer/run-code-review')),
+    loopEvaluationLines.some((line) => line.includes('next dispatch hint: fixer/run-code-review')),
   );
   assert.ok(
     loopEvaluationLines.some((line) => line.includes('auto continue: yes')),
@@ -482,19 +482,19 @@ async function testEvaluator() {
     needsVerification,
   );
   assert.ok(qaAutoContinueDispatch, 'Needs verification should build one safe auto-continue dispatch');
-  assert.strictEqual(qaAutoContinueDispatch?.recommendedAgent, 'pm_reviewer');
+  assert.strictEqual(qaAutoContinueDispatch?.recommendedAgent, 'fixer');
   assert.strictEqual(qaAutoContinueDispatch?.recommendedAction, 'run-code-review');
-  assert.strictEqual(qaAutoContinueDispatch?.handoffPacket?.targetAgent, 'pm_reviewer');
+  assert.strictEqual(qaAutoContinueDispatch?.handoffPacket?.targetAgent, 'fixer');
 
   const pmAutoContinueDispatch = buildAutoContinueDispatch(
     projectDir,
     '拆解 onboarding 流程并给出后续分派建议',
     commanderResult,
   );
-  assert.ok(pmAutoContinueDispatch, 'Commander advice should auto-continue back to pm_lead');
-  assert.strictEqual(pmAutoContinueDispatch?.recommendedAgent, 'pm_lead');
+  assert.ok(pmAutoContinueDispatch, 'Commander advice should auto-continue back to commander');
+  assert.strictEqual(pmAutoContinueDispatch?.recommendedAgent, 'commander');
   assert.strictEqual(pmAutoContinueDispatch?.recommendedAction, 'continue-development');
-  assert.strictEqual(pmAutoContinueDispatch?.handoffPacket?.targetAgent, 'pm_lead');
+  assert.strictEqual(pmAutoContinueDispatch?.handoffPacket?.targetAgent, 'commander');
 
   const blockedAutoContinueDispatch = buildAutoContinueDispatch(
     projectDir,
@@ -516,7 +516,7 @@ async function testEvaluator() {
     maxAutoSteps: 2,
   });
   assert.strictEqual(autoContinueChain.length, 1);
-  assert.strictEqual(autoContinueChain[0]?.recommendedAgent, 'pm_reviewer');
+  assert.strictEqual(autoContinueChain[0]?.recommendedAgent, 'fixer');
   assert.strictEqual(autoContinueChain[0]?.recommendedAction, 'run-code-review');
 
   const blockedChain = collectAutoContinueDispatches({
@@ -536,7 +536,7 @@ async function testEvaluator() {
     maxAutoSteps: 1,
   });
   assert.strictEqual(cappedChain.length, 1);
-  assert.strictEqual(cappedChain[0]?.recommendedAgent, 'pm_lead');
+  assert.strictEqual(cappedChain[0]?.recommendedAgent, 'commander');
 
   const executed = [];
   const executedChain = await executeAutoContinueChain({
@@ -556,7 +556,7 @@ async function testEvaluator() {
     sleep: () => Promise.resolve(),
   });
   assert.strictEqual(executedChain.executions.length, 1);
-  assert.deepStrictEqual(executed, ['pm_reviewer/run-code-review']);
+  assert.deepStrictEqual(executed, ['fixer/run-code-review']);
   assert.strictEqual(executedChain.stopReason, 'completed');
 
   const blockedExecutionChain = await executeAutoContinueChain({
