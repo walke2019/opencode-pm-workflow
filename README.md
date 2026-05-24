@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.20`。
+当前发布版本：`1.0.0-rc.21`。
 
 ## 适用场景
 
@@ -124,7 +124,8 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
-| 2026-05-24 | 1.0.0-rc.20 | **commander 强约束加固**：实测 rc.12 的 `tools.write/edit: false` + `permission.edit: deny` 没真正阻止 commander 自己写文件——LLM 用 bash 的 `cat`/`echo`/`heredoc` 命令绕过 write 禁令直接写 spec.md。rc.20 收紧：`tools.bash: false` + `permission.bash: deny` 完全禁用 bash；body 加任务路由对照表 + 明确『绝不用 bash 绕过 write 禁令』；commander 物理上只剩 task / webfetch 两个工具，强迫所有产出走 subagent |
+| 2026-05-24 | 1.0.0-rc.21 | **清理 0.x 死代码与冗余**：删除 `commands/` 4 个 OpenCode 命令文件（OpenCode 不会自动加载，0.x 时代死代码；用旧 `pm_lead` ID）；删除 `src/tui/agent-theme-banner.ts`（rc.16 起 banner 改走 server，TUI 端死代码 200 行）；修 `docs/sandbox/e2e-checklist.md` 与 `docs/workflow-flow.svg` 与 `pm-workflow.config.example.json` dispatch_map 里残留的旧 agent ID（pm_lead/pm_advisor 等 → commander/advisor 等）；package.json 不再发布 commands/ |
+| 2026-05-24 | 1.0.0-rc.20 | commander 强约束加固：rc.12 的 `tools.write/edit: false` + `permission.edit: deny` 实测被 LLM 用 bash 的 cat/echo 绕过；rc.20 收紧 `tools.bash: false` + `permission.bash: deny`，body 加任务路由对照表 |
 | 2026-05-23 | 1.0.0-rc.19 | model.md 新增 3 套订阅平台预设方案（OpenAI / OpenCode-Go / bestool） |
 | 2026-05-23 | 1.0.0-rc.18 | model.md 新增 5 个常见错误诊断（E1 ProviderModelNotFoundError / E2 用户 UI 手选覆盖 / E3 fallback 不触发 / E4 路由器 503 熔断 / E5 JSON 语法错误） |
 | 2026-05-23 | 1.0.0-rc.17 | 修复 banner 不显示真因：rc.16 的 banner 调用在 plugin first activation 期间发出，早于 OpenCode TUI server 启动，`client.tui.showToast()` HTTP 调用永远不 resolve 让 plugin 流程挂起；rc.17 改用 setTimeout(2s) 异步触发 + Promise.race 3 秒兜底超时，banner 失败不卡 plugin |

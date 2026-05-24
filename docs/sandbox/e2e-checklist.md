@@ -88,7 +88,7 @@ pmw doctor --json | jq '.blockers'
 {
   "fallback": {
     "chains": {
-      "pm_lead": ["bestool-route-cx/cx/gpt-5.4"]
+      "commander": ["bestool-route-cx/cx/gpt-5.4"]
     }
   }
 }
@@ -167,7 +167,7 @@ pmw doctor --json | jq '.blockers'
 
 **目的**：验证 0.7.0 frontmatter `permission.task` 真的能拒绝 dispatch。
 
-**前置**：在 `.opencode/agents/pm_lead.md` 写：
+**前置**：在 `.opencode/agents/commander.md` 写：
 
 ```yaml
 ---
@@ -175,19 +175,19 @@ description: PM 主协调官
 mode: primary
 permission:
   task:
-    pm_researcher: deny
+    advisor: deny
 ---
 ```
 
 ```
-# 在会话里发一个明显应路由到 pm_researcher 的请求
+# 在会话里发一个明显应路由到 advisor 的请求
 > 帮我调研 OpenCode 1.16.0 的官方 release notes 与 1.15.7 的差异
 ```
 
 **期望**：
-- pm-workflow 不会 dispatch 到 `pm_researcher`
-- `pm-get-history` 含 `routing.denied` 事件，candidate_agent=`pm_researcher`
-- 实际链路落到次优候选（pm_advisor 或 pm_lead 自己处理）
+- pm-workflow 不会 dispatch 到 `advisor`
+- `pm-get-history` 含 `routing.denied` 事件，candidate_agent=`advisor`
+- 实际链路落到次优候选（advisor 或 commander 自己处理）
 
 **实际**：
 - ☐ 跑通日期：

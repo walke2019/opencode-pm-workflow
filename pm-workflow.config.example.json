@@ -23,15 +23,12 @@
     "enabled": true,
     "default_mode": "subagent",
     "dispatch_map": {
-      "pm": "commander",
-      "plan": "advisor",
-      "build": "advisor",
-      "commander": "advisor",
-      "backend": "backendcoder",
-      "frontend": "designer",
-      "qa_engineer": "fixer",
-      "writer": "fixer",
-      "researcher": "advisor"
+      "commander": "commander",
+      "advisor": "advisor",
+      "backendcoder": "backendcoder",
+      "designer": "designer",
+      "fixer": "fixer",
+      "writer": "writer"
     },
     "definitions": {
       "commander": {
@@ -40,9 +37,10 @@
         "description": "pm-workflow primary coordinator"
       },
       "advisor": {
-        "mode": "primary",
-        "temperature": 0.2,
-        "description": "Advisor-only decomposition agent"
+        "mode": "subagent",
+        "hidden": true,
+        "temperature": 0.3,
+        "description": "Research/official docs lookup agent"
       },
       "backendcoder": {
         "mode": "subagent",
@@ -60,12 +58,6 @@
         "hidden": true,
         "temperature": 0.1,
         "description": "QA/code-review and documentation agent"
-      },
-      "advisor": {
-        "mode": "subagent",
-        "hidden": true,
-        "temperature": 0.3,
-        "description": "Research/official docs lookup agent"
       }
     }
   },

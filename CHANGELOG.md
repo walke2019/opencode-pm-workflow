@@ -1,5 +1,64 @@
 # Changelog
 
+## 1.0.0-rc.21
+
+### 清理 0.x 死代码与冗余
+
+经过 rc.2 → rc.20 的反复迭代，仓库累积了几处死代码与配置残留。rc.21 系统性清理。
+
+### 删除的内容
+
+**1. `commands/` 目录（4 个 .md 文件）**
+
+`pm-quick.md` / `pm-medium.md` / `pm-full.md` / `pm-debug.md` 是 0.x 时代为 OpenCode 命令系统准备的入口，但 **OpenCode 不会自动加载** plugin 包内的 `commands/` 目录（只扫 `~/.config/opencode/command/` 与 `<projectDir>/.opencode/command/`）。
+
+而且这 4 个文件 frontmatter 用 `agent: pm_lead`——rc.6 已废弃的旧 ID，**用户即便手动 cp 也会失败**。
+
+Lane 系统现在通过 `src/commands/` 模块（`resolveLaneContext` / `summarizeLaneDispatch`）+ TUI plugin slash 命令（`/pm-lane-quick` 等）暴露——不依赖 commands/ 目录。
+
+**2. `src/tui/agent-theme-banner.ts`**
+
+rc.14 引入用于 TUI plugin 弹 banner，但 rc.15 实测 OpenCode 1.15 不支持外部 npm plugin 注册 TUI hook，rc.16 改走 server 侧 SDK（`src/server/agent-theme-banner.ts`）已生效（log 验证 `shown=true`）。
+
+TUI 端这个文件**永远不会被加载**，纯死代码 200+ 行。删除。
+
+**3. package.json `files` 数组移除 `commands`**
+
+不再发布 commands/ 到 npm 包。
+
+### 修的旧 ID 残留（rc.6 改名漏网）
+
+| 文件 | 旧 → 新 |
+|---|---|
+| `docs/sandbox/e2e-checklist.md` | `pm_lead` → `commander`，`pm_advisor` → `advisor`，`pm_researcher` → `advisor`，`pm_reviewer` → `fixer` 等 |
+| `docs/workflow-flow.svg` | `pm_lead` → `commander`（节点 label） |
+| `pm-workflow.config.example.json` `dispatch_map` | 旧 `pm/plan/build/backend/frontend/qa_engineer/researcher` 混杂 key 改为干净的 6 个新 ID |
+
+### 保留（仍然在用）
+
+- `src/commands/` 模块（lane policy / result / types）— core lane 系统实现
+- `src/tui/commands.ts` 4 条 lane slash 命令（pm-lane-quick 等）
+- `test/command-lane-analysis.test.mjs` — 测 lane 系统
+- 3 篇主文档讲 Lane 概念 — 跟代码一致
+- CHANGELOG.md 与 src/core/types.ts 注释里的旧 ID — 历史记录，不删
+
+### 修过的测试
+
+- `test/command-lane-analysis.test.mjs`：`testPackagePublishesCommandsDirectory` 改为期望 commands/ **不**在 files 数组（rc.21 起删除）
+- `test/agent-theme.test.mjs`：commander permission.bash 期望从 `ask` 改 `deny`（同步 rc.20）
+
+### 影响
+
+- npm 包体减小（少 4 个 .md 文件）
+- 用户不会因 `commands/*.md` 含旧 ID 在试用时报错
+- 死代码减少，维护负担降低
+- 文档与代码完全一致
+
+### 测试
+
+- 19 个测试全过
+- API snapshot 132 个符号不变
+
 ## 1.0.0-rc.20
 
 ### 修复：commander 用 bash 绕过 write 禁令自己写文件（rc.12 留下的漏洞）

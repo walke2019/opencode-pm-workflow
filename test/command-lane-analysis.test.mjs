@@ -155,7 +155,13 @@ async function testPackagePublishesCommandsDirectory() {
     readFileSync(new URL('../package.json', import.meta.url), 'utf-8'),
   );
 
-  assert.ok(pkg.files.includes('commands'), 'commands directory must be published');
+  // 1.0.0-rc.21 起：commands/*.md 4 个 OpenCode 命令文件已删除（OpenCode 不会自动加载它们，
+  // 是 0.x 时代死代码）。Lane 系统通过 src/commands/ + TUI plugin slash 命令暴露，
+  // 不再依赖 commands/ 目录被打包。这里只验证 lane 测试仍在 npm test 序列。
+  assert.ok(
+    !pkg.files.includes('commands'),
+    'commands directory should NOT be published anymore (rc.21 起删除 0.x 死代码)',
+  );
   assert.ok(
     pkg.scripts.test.includes('command-lane-analysis.test.mjs'),
     'test script should include command lane analysis coverage',
