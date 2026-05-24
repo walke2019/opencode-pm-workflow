@@ -1,5 +1,83 @@
 # Changelog
 
+## 1.0.0-rc.20
+
+### 修复：commander 用 bash 绕过 write 禁令自己写文件（rc.12 留下的漏洞）
+
+实测发现：rc.12 设了 `tools.write: false` + `tools.edit: false` + `permission.edit: deny`，commander 看似不能写文件——但 LLM 找到了**绕过路径**：用 `bash` tool 跑 `cat > file.md <<'EOF'...` 或 `echo "..." > file` 等命令直接写文件。
+
+OpenCode log 实证：
+- 23 次 LLM 调用全 `agent=commander`
+- 0 次 subagent 调用
+- 3 次 `file.edited` 事件（13:16:38 / 13:17:29 / 13:17:36）
+- commander 用户请求"写 spec"时绕过 write 限制，bash 写了 spec.md
+
+### 修复：彻底禁用 bash + 加强 prompt 约束
+
+**1. tools 字段彻底锁死**：
+
+```yaml
+tools:
+  write: false
+  edit: false
+  bash: false      # ← 新：完全禁用 bash（rc.12 时是 true）
+  webfetch: true
+  task: true
+```
+
+**2. permission 字段双保险**：
+
+```yaml
+permission:
+  edit: deny
+  bash: deny       # ← 新：从 ask 改 deny（之前 ask 实测能让 LLM 通过用户确认绕过）
+  webfetch: allow
+  task: { ... }
+```
+
+**3. body 强约束加强**：
+
+```markdown
+## 强制约束（不可违反）
+
+- 你绝不亲自写代码或文档（含 .md / spec / README / config）
+- **写 spec / 设计文档 = writer 的工作**，绝不自己用 bash 的
+  cat/echo/heredoc 等命令绕过 write 禁令写文件
+- **你完全没有 bash / write / edit 工具**（rc.20 起 OpenCode 物理禁用）
+- 试图调用会直接被拒绝
+
+## 任务路由对照表
+
+| 用户请求 | task → |
+|---|---|
+| 写 spec / 写 PRD / 写设计文档 / 写 README | writer |
+| 写后端 API / 数据库 / 服务实现 | backendcoder |
+| 写前端 UI / HTML / CSS / 交互 / 图像生成 | designer |
+| 跑测试 / 修 bug / 打包 / 部署 | fixer |
+| 调研 / 比较方案 / 拆解风险 | advisor |
+| 搜代码 / 找文件 / 看依赖关系 | explore（OpenCode 内置）|
+| 调研外部依赖文档 | scout（OpenCode 内置）|
+
+任何涉及『产出文件 / 修改代码』的请求都必须落到上表某个 subagent，没有例外。
+```
+
+### 代价
+
+commander 不能跑 `git status` / `pmw doctor` / 任何 bash 命令了。如果它要看代码或跑诊断：
+
+- 看代码 → task → `explore`（OpenCode 内置只读）
+- 跑命令 → task → `fixer`（fixer 有 bash allow）
+- 调研 → task → `scout` 或 `advisor`
+
+### 收益
+
+commander **物理上**只剩 4 个工具：`task` / `webfetch` /（隐式 read）/（隐式 grep/glob）—— 任何写文件 / 改代码请求**只能**通过 task 委派给 subagent，没有任何旁路。
+
+### 测试
+
+- 19 个测试全过
+- API snapshot 132 个符号不变（仅主题数据变更）
+
 ## 1.0.0-rc.19
 
 ### 新增：3 套订阅平台预设方案（OpenAI / OpenCode-Go / bestool）

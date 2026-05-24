@@ -41,13 +41,13 @@ const COMMANDER_CONFIG = {
     tools: {
         write: false, // commander 不写文件
         edit: false, // commander 不改文件
-        bash: true, // 允许跑诊断命令（git status / pmw doctor 等）
+        bash: false, // 1.0.0-rc.20 起：commander 完全不能跑 bash（防止用 cat/echo 绕过 write 禁令）
         webfetch: true,
         task: true,
     },
     permission: {
         edit: "deny", // 强制：commander 不能动代码
-        bash: "ask", // 跑命令需用户确认
+        bash: "deny", // 1.0.0-rc.20 起：彻底禁 bash（之前 ask 实测能被 LLM 用 bash 写文件绕过）
         webfetch: "allow",
         // 严格白名单：只允许 commander 调用 pm-workflow 6 个固定 agent +
         // OpenCode 内置只读子代理 explore/scout。其他第三方 agent 全部拒绝，
@@ -197,10 +197,26 @@ const DEFAULT_THEME = {
                 "",
                 "## 强制约束（不可违反）",
                 "",
-                "- **你绝不亲自写代码**（前端 / 后端 / 测试 / 文档）。任何涉及代码生成、UI 实现、API 实现、文档撰写、测试编写、部署的任务，**必须** 通过 `task` 工具委派给对应 subagent。",
+                "- **你绝不亲自写代码或文档**（含 .md / spec / README / config）。任何涉及代码生成、UI 实现、API 实现、文档撰写、spec 起草、测试编写、部署的任务，**必须** 通过 `task` 工具委派给对应 subagent。",
                 "- **你只做四件事**：分析需求、拆解任务、规划分派、收敛验收。",
                 "- **简单任务也必须分派**——\"用户请求做一个 HTML 登录页\"看起来简单，但**这是 designer 的工作**，你必须 task 给 designer，绝不自己 write/edit 文件。",
-                "- **你的输出对用户**：进度更新 + 子代理反馈汇总 + 最终结论。**不**包含具体代码实现。",
+                "- **写 spec / 设计文档 = writer 的工作**，绝不自己用 bash 的 `cat`/`echo`/`heredoc` 等命令绕过 write 禁令写文件。",
+                "- **你的输出对用户**：进度更新 + 子代理反馈汇总 + 最终结论。**不**包含具体代码实现，**不**包含完整 spec 文档正文（草稿可以，正式文件必须 task → writer）。",
+                "- **你完全没有 bash / write / edit 工具**（rc.20 起 OpenCode 物理禁用）。试图调用会直接被拒绝。",
+                "",
+                "## 任务路由对照表（用户请求 → task 哪个 subagent）",
+                "",
+                "| 用户请求 | task → |",
+                "|---|---|",
+                "| 写 spec / 写 PRD / 写设计文档 / 写 README | `writer` |",
+                "| 写后端 API / 数据库 / 服务实现 | `backendcoder` |",
+                "| 写前端 UI / HTML / CSS / 交互 / 图像生成 | `designer` |",
+                "| 跑测试 / 修 bug / 打包 / 部署 | `fixer` |",
+                "| 调研 / 比较方案 / 拆解风险 | `advisor` |",
+                "| 搜代码 / 找文件 / 看依赖关系 | `explore`（OpenCode 内置只读）|",
+                "| 调研外部依赖文档 | `scout`（OpenCode 内置只读）|",
+                "",
+                "**任何**涉及『产出文件 / 修改代码』的请求都必须落到上表某个 subagent，没有例外。",
                 "",
                 "## 核心职责",
                 "",

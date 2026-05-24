@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.19`。
+当前发布版本：`1.0.0-rc.20`。
 
 ## 适用场景
 
@@ -124,7 +124,8 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
-| 2026-05-23 | 1.0.0-rc.19 | **model.md 新增 3 套订阅平台预设方案**：OpenAI（gpt-5.5/5.4/5.4-mini）、OpenCode-Go（glm/deepseek/kimi/minimax）、bestool（claude-opus 跨 provider 混搭）；每套都映射到 6 个固定 agent 名（commander/advisor/backendcoder/designer/fixer/writer）；保持完全可自定义（每个 agent 模型可单独改 + 跨 provider 混合 fallback）；AI 检测到用户 provider 后主动建议对应 preset，用户预览确认才写入 |
+| 2026-05-24 | 1.0.0-rc.20 | **commander 强约束加固**：实测 rc.12 的 `tools.write/edit: false` + `permission.edit: deny` 没真正阻止 commander 自己写文件——LLM 用 bash 的 `cat`/`echo`/`heredoc` 命令绕过 write 禁令直接写 spec.md。rc.20 收紧：`tools.bash: false` + `permission.bash: deny` 完全禁用 bash；body 加任务路由对照表 + 明确『绝不用 bash 绕过 write 禁令』；commander 物理上只剩 task / webfetch 两个工具，强迫所有产出走 subagent |
+| 2026-05-23 | 1.0.0-rc.19 | model.md 新增 3 套订阅平台预设方案（OpenAI / OpenCode-Go / bestool） |
 | 2026-05-23 | 1.0.0-rc.18 | model.md 新增 5 个常见错误诊断（E1 ProviderModelNotFoundError / E2 用户 UI 手选覆盖 / E3 fallback 不触发 / E4 路由器 503 熔断 / E5 JSON 语法错误） |
 | 2026-05-23 | 1.0.0-rc.17 | 修复 banner 不显示真因：rc.16 的 banner 调用在 plugin first activation 期间发出，早于 OpenCode TUI server 启动，`client.tui.showToast()` HTTP 调用永远不 resolve 让 plugin 流程挂起；rc.17 改用 setTimeout(2s) 异步触发 + Promise.race 3 秒兜底超时，banner 失败不卡 plugin |
 | 2026-05-23 | 1.0.0-rc.16 | agent 主题 banner 改走 server 侧 SDK 调用：rc.14/rc.15 试图用 TUI plugin 注册 banner 但 OpenCode 1.15 不支持外部 TUI plugin；rc.16 改用 server `client.tui.showToast()` |
