@@ -1,4 +1,5 @@
 import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
+import type { AgentThemeBannerHelpers } from "./agent-theme-banner.js";
 type TuiApi = Parameters<NonNullable<TuiPluginModule["tui"]>>[0];
 type ToastHelpers = {
     showConfigToast: (duration?: number) => void;
@@ -22,7 +23,7 @@ type ToastHelpers = {
     showLaneToast: (lane: "quick" | "medium" | "full" | "debug", duration?: number) => void;
     switchModeToast: (nextMode: "off" | "observe" | "assist" | "strict", duration?: number) => void;
 };
-export declare function listPmWorkflowCommandSpecs(helpers: ToastHelpers): {
+export declare function listPmWorkflowCommandSpecs(helpers: ToastHelpers, themeBanner?: AgentThemeBannerHelpers): {
     title: string;
     value: string;
     description: string;
@@ -41,5 +42,5 @@ export declare function listPmWorkflowCommandSpecs(helpers: ToastHelpers): {
  *
  * 通过 runtime 检测选择路径，避免引入额外的 peer 依赖类型，同时保证不同 OpenCode 版本下都能正常工作。
  */
-export declare function registerPmWorkflowCommands(api: TuiApi, helpers: ToastHelpers): void;
+export declare function registerPmWorkflowCommands(api: TuiApi, helpers: ToastHelpers, themeBanner?: AgentThemeBannerHelpers): void;
 export {};

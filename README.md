@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.13`。
+当前发布版本：`1.0.0-rc.14`。
 
 ## 适用场景
 
@@ -124,7 +124,8 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
-| 2026-05-23 | 1.0.0-rc.13 | **修复 skill 引导漏洞**：rc.7-rc.12 的 model.md 错误教 AI 把模型配置写到 `pm-workflow.config.json`（OpenCode 不读，无效）；rc.13 改为明确教 AI 写到 `opencode.json` 的 agent 段（OpenCode 唯一权威位置）；T11 故障诊断加入"无效配置残留检测 + 清理"流程；SKILL.md 核心约束表新增"模型配置写在 opencode.json"作为最高优先级约束 |
+| 2026-05-23 | 1.0.0-rc.14 | **TUI agent 主题名 banner（实验）**：弥补 OpenCode UI 切换器只显示文件名（designer）不显示 frontmatter display_name（貂蝉）的限制。新增 src/tui/agent-theme-banner.ts：启动时弹 toast 显示当前主题 + 6 个 agent 角色名映射；新增 `/pm-theme-banner` 与 `/pm-agent-roster` 两条 slash 命令供用户主动查询；先用 toast 验证体验，rc.15 评估是否升级到 slot JSX 渲染 |
+| 2026-05-23 | 1.0.0-rc.13 | 修复 skill 引导漏洞：rc.7-rc.12 的 model.md 错误教 AI 把模型配置写到 pm-workflow.config.json（OpenCode 不读，无效）；rc.13 改为明确教 AI 写到 opencode.json 的 agent 段（OpenCode 唯一权威位置） |
 | 2026-05-23 | 1.0.0-rc.12 | commander 强制分派：tools.write/edit=false + permission.edit=deny + body 加强制约束段，物理上阻止 commander 自己写代码 |
 | 2026-05-23 | 1.0.0-rc.11 | skill 子目录组织（OpenCode/Claude Code 标准）：reference/ workflows/ troubleshooting/ scripts/ 4 个子目录，SKILL.md 仅做导航 |
 | 2026-05-23 | 1.0.0-rc.10 | 3 个 skill 合并为单一 `pm-workflow` skill：之前 rc.9 有 3 个独立 skill 冗余且分散触发词，rc.10 合并为唯一入口；7 个顶层 .md 文件 |

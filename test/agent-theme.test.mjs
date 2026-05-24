@@ -248,7 +248,7 @@ function testApplyForcesThemePermissionOverUserCustom() {
   assert.ok(after.includes('mode: primary'), 'commander mode 应是 primary');
 
   // 主题强制 commander 的 permission：edit/bash 都是 ask（防止误操作）
-  assert.ok(after.includes('edit: ask'), 'commander permission.edit 应被主题强制为 ask');
+  assert.ok(after.includes('edit: deny'), 'commander permission.edit 应被主题强制为 deny（rc.12 起）');
   assert.ok(after.includes('bash: ask'), 'commander permission.bash 应被主题强制为 ask');
   // 用户原本的 edit/bash: allow 应被覆盖
   assert.ok(!after.match(/edit: allow/), '用户原 edit:allow 应被主题覆盖');

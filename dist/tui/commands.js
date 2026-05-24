@@ -1,4 +1,4 @@
-export function listPmWorkflowCommandSpecs(helpers) {
+export function listPmWorkflowCommandSpecs(helpers, themeBanner) {
     const { showConfigToast, showDispatchToast, showDoctorToast, showDryRunDispatchToast, showDryRunLoopToast, showExecutePermissionToggleToast, showExecutionReceiptsToast, showExecutionPlanToast, showExecutionSummaryToast, showHistoryToast, showLastExecutionToast, showMigrationReportToast, showModeToast, showPermissionsToast, showProjectStageToast, showRecoverySummaryToast, showReviewGateToast, showSafetyReportToast, showLaneToast, switchModeToast, } = helpers;
     return [
         {
@@ -225,6 +225,23 @@ export function listPmWorkflowCommandSpecs(helpers) {
             slash: { name: "pm-execution-summary" },
             onSelect: () => showExecutionSummaryToast(8000),
         },
+        // rc.14 实验：agent 主题名 banner（弥补 OpenCode UI 切换器只显示文件名）
+        {
+            title: "pm-workflow agent 主题名",
+            value: "pm-theme-banner",
+            description: "弹出 toast 显示当前主题与 6 个 agent 的角色名映射",
+            category: "pm-workflow",
+            slash: { name: "pm-theme-banner" },
+            onSelect: () => themeBanner?.showStartupBanner(7000),
+        },
+        {
+            title: "pm-workflow agent 角色清单",
+            value: "pm-agent-roster",
+            description: "弹出 toast 列出 6 个 agent 的 ID + display_name 完整映射",
+            category: "pm-workflow",
+            slash: { name: "pm-agent-roster" },
+            onSelect: () => themeBanner?.showAgentRosterToast(8000),
+        },
     ];
 }
 /**
@@ -236,8 +253,8 @@ export function listPmWorkflowCommandSpecs(helpers) {
  *
  * 通过 runtime 检测选择路径，避免引入额外的 peer 依赖类型，同时保证不同 OpenCode 版本下都能正常工作。
  */
-export function registerPmWorkflowCommands(api, helpers) {
-    const buildCommands = () => listPmWorkflowCommandSpecs(helpers);
+export function registerPmWorkflowCommands(api, helpers, themeBanner) {
+    const buildCommands = () => listPmWorkflowCommandSpecs(helpers, themeBanner);
     const keymap = api.keymap;
     if (keymap && typeof keymap.registerLayer === "function") {
         keymap.registerLayer({ commands: buildCommands() });

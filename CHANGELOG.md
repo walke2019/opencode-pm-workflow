@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.0.0-rc.14
+
+### 新增（实验）：TUI agent 主题名 banner
+
+OpenCode UI 切换器只识别 agent 文件名（如 `designer`），不识别 frontmatter 自定义字段（如 `display_name: "貂蝉"`）——这是 OpenCode 设计限制，无法绕过。但用户的真实诉求是"切了三国主题，UI 上能看到角色名"。
+
+rc.14 用 **OpenCode 官方 plugin API（toast）** 弥补这个空缺。
+
+### 实现
+
+- **新增 `src/tui/agent-theme-banner.ts`**：
+  - `showStartupBanner()` — OpenCode 启动后弹 toast，显示当前主题（"三国"）+ 6 个 agent 的角色名映射（"诸葛亮(commander) / 司马懿(advisor) / ..."）
+  - `showAgentRosterToast()` — 用户主动查询，列出全部 6 个 agent 的 ID + display_name 映射
+  - `showSingleAgentToast(agentId)` — 单个 agent 的角色名 + description + 主题标签
+- **新增 2 条 slash 命令**：
+  - `/pm-theme-banner` — 触发启动 banner toast
+  - `/pm-agent-roster` — 触发完整角色清单 toast
+- **plugin 启动 hook**（`src/tui/plugin.ts`）：装配阶段自动调一次 startup banner
+
+### 设计约束
+
+- **只读**：不修改 OpenCode 原生 UI，不替换 agent 文件名
+- **容错**：agent md 不存在 / 没 display_name / 没 theme 字段时优雅降级（不显示空 banner）
+- **跨主题**：default 主题下 display_name 也存在（"主协调官"等），不会空显示
+- **零 JSX**：不引入 Solid JSX 编译链路（rc.14 阶段 B 验证用 toast 够不够）
+
+### 后续 rc.15 决策路径
+
+如果 toast banner 用户体验够用 → 保持现状
+如果用户希望 UI 上**实时**看到主题角色名（不只是启动 toast）→ rc.15 评估 `api.slots.register()` + `@opentui/solid` JSX 渲染 sidebar slot
+
+### 测试
+
+- 19 个测试文件全过（含 agent-theme rc.12 deny 期望修正）
+- TUI plugin 类型检查通过
+
 ## 1.0.0-rc.13
 
 ### 修复：skill 引导漏洞——model 配置写到了错误位置
