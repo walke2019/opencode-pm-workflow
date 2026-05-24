@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.14`。
+当前发布版本：`1.0.0-rc.15`。
 
 ## 适用场景
 
@@ -124,7 +124,8 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
-| 2026-05-23 | 1.0.0-rc.14 | **TUI agent 主题名 banner（实验）**：弥补 OpenCode UI 切换器只显示文件名（designer）不显示 frontmatter display_name（貂蝉）的限制。新增 src/tui/agent-theme-banner.ts：启动时弹 toast 显示当前主题 + 6 个 agent 角色名映射；新增 `/pm-theme-banner` 与 `/pm-agent-roster` 两条 slash 命令供用户主动查询；先用 toast 验证体验，rc.15 评估是否升级到 slot JSX 渲染 |
+| 2026-05-23 | 1.0.0-rc.15 | **修复 TUI plugin 不加载**：rc.14 加了 banner / 命令但 OpenCode 只加载 server plugin（路径 `@walke/opencode-pm-workflow@rc`），TUI plugin 完全没机会注册；rc.15 在 package.json 加 `"oc-plugin": ["server", "tui"]` 字段（OpenCode 1.3.8+ 标准），让 OpenCode 自动检测两个入口都加载；用户**无需修改 opencode.json**——升级 + 重启 OpenCode 即可看到 banner / `/pm-theme-banner` slash 命令 |
+| 2026-05-23 | 1.0.0-rc.14 | TUI agent 主题名 banner（实验）：弥补 OpenCode UI 切换器只显示文件名（designer）不显示 frontmatter display_name（貂蝉）的限制 |
 | 2026-05-23 | 1.0.0-rc.13 | 修复 skill 引导漏洞：rc.7-rc.12 的 model.md 错误教 AI 把模型配置写到 pm-workflow.config.json（OpenCode 不读，无效）；rc.13 改为明确教 AI 写到 opencode.json 的 agent 段（OpenCode 唯一权威位置） |
 | 2026-05-23 | 1.0.0-rc.12 | commander 强制分派：tools.write/edit=false + permission.edit=deny + body 加强制约束段，物理上阻止 commander 自己写代码 |
 | 2026-05-23 | 1.0.0-rc.11 | skill 子目录组织（OpenCode/Claude Code 标准）：reference/ workflows/ troubleshooting/ scripts/ 4 个子目录，SKILL.md 仅做导航 |

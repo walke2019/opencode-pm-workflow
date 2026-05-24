@@ -1,5 +1,50 @@
 # Changelog
 
+## 1.0.0-rc.15
+
+### 修复：TUI plugin 不加载（rc.14 banner 失败的真因）
+
+实测发现：rc.14 加了 banner / `/pm-theme-banner` slash 命令，但 OpenCode 启动时**只加载了 server plugin**，TUI plugin 完全没机会注册。
+
+### 真因
+
+OpenCode 1.3.8+ 通过 `package.json` 的 **`oc-plugin`** 字段（参见 GitHub issue #20139）告诉 plugin loader 加载哪些子路径作为 plugin 入口。
+
+参考 `@aexol/opencode-tui` 的 package.json：
+
+```json
+"oc-plugin": ["server", "tui"],
+"exports": {
+  "./server": {...},
+  "./tui": {...}
+}
+```
+
+OpenCode 看到 `oc-plugin` 列表会**同时加载** `./server` 和 `./tui` 两个入口；缺这个字段就只加载默认 `"."` 入口（我们的默认入口指向 server）。
+
+### 修复
+
+`package.json` 加：
+
+```json
+"oc-plugin": ["server", "tui"],
+```
+
+不删除原有的 `"."` / `"./index"` / `"./shared"` exports（保持向后兼容，老用户的 `import` 写法仍工作）。
+
+### 影响
+
+- **用户**：升级 plugin 后**不需要修改 opencode.json**，照旧写 `@walke/opencode-pm-workflow@rc` 一行即可
+- **行为**：OpenCode 启动时同时加载 server 和 tui plugin
+- **rc.14 加的 banner / slash 命令**：现在真正可用
+  - `/pm-theme-banner`
+  - `/pm-agent-roster`
+
+### 不动代码
+
+- 不改 plugin 源码 / 6 个 agent 定义 / 测试
+- 仅改 package.json 元数据
+
 ## 1.0.0-rc.14
 
 ### 新增（实验）：TUI agent 主题名 banner
