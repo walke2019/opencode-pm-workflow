@@ -163,23 +163,35 @@ export const PmWorkflowPlugin = async (
     // OpenCode 1.15 不支持外部 TUI plugin 注册（rc.14/rc.15 实测验证），所以
     // 不再依赖 src/tui/agent-theme-banner.ts，改用 SDK v1 的 client.tui.showToast()
     // 直接从 server 侧推 toast。失败不阻断 plugin 加载。
-    try {
-      const bannerResult = await showAgentThemeBanner({
-        client: ctx.client as unknown as Parameters<
-          typeof showAgentThemeBanner
-        >[0]["client"],
-      });
-      await log(ctx.client, "info", "pm-workflow agent theme banner", {
-        shown: bannerResult.shown,
-        reason: bannerResult.reason,
-      });
-    } catch (err) {
-      // 兜底：theoretically showAgentThemeBanner 已经吃掉所有错误。这里只接住
-      // 极端情况（client.tui 不存在等运行时类型问题）；不阻断加载。
-      await log(ctx.client, "warn", "pm-workflow agent theme banner crashed", {
-        message: err instanceof Error ? err.message : String(err),
-      });
-    }
+    //
+    // 1.0.0-rc.16 调整：用 setTimeout 异步触发，**不 await**——
+    // server plugin 的 first activation 早于 TUI 启动，直接 await showToast 会卡住
+    // 等 TUI server 起来。把 banner 调用挪到 setTimeout(2s) 里让 plugin 立刻完成
+    // first activation，TUI 起来后再发 toast。
+    setTimeout(() => {
+      void (async () => {
+        try {
+          const bannerResult = await showAgentThemeBanner({
+            client: ctx.client as unknown as Parameters<
+              typeof showAgentThemeBanner
+            >[0]["client"],
+          });
+          await log(ctx.client, "info", "pm-workflow agent theme banner", {
+            shown: bannerResult.shown,
+            reason: bannerResult.reason,
+          });
+        } catch (err) {
+          await log(
+            ctx.client,
+            "warn",
+            "pm-workflow agent theme banner crashed",
+            {
+              message: err instanceof Error ? err.message : String(err),
+            },
+          );
+        }
+      })();
+    }, 2000);
   }
 
   return {

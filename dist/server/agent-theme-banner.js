@@ -152,12 +152,18 @@ export async function showAgentThemeBanner(input) {
         return { shown: false, reason: "no-agents-installed" };
     }
     try {
-        await input.client.tui.showToast({
-            title: content.title,
-            message: content.message,
-            variant: "info",
-            duration: input.duration ?? 6500,
-        });
+        // SDK v1 的 client.tui.showToast 走 HTTP POST 到 OpenCode 后端的 /tui/show-toast。
+        // 极端情况下 TUI 服务还没起来就调用会让 promise 永远不 resolve（OpenCode 1.x 这版没显式 timeout）。
+        // 这里用 Promise.race 加 3 秒兜底，避免 plugin first activation 流程被 banner 永久挂起。
+        await Promise.race([
+            input.client.tui.showToast({
+                title: content.title,
+                message: content.message,
+                variant: "info",
+                duration: input.duration ?? 6500,
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("showToast timeout after 3s")), 3000)),
+        ]);
         return { shown: true };
     }
     catch (err) {

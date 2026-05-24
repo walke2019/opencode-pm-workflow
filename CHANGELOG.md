@@ -1,5 +1,55 @@
 # Changelog
 
+## 1.0.0-rc.17
+
+### 修复：banner 不显示的真因（rc.16 留下的坑）
+
+rc.16 把 banner 移到 server 侧但 log 里**始终没出现** banner 调用记录。
+
+### 真因
+
+server plugin 的 first activation 阶段发生在 OpenCode TUI server 启动**之前**。`client.tui.showToast()` 是 HTTP POST 到 `/tui/show-toast`，TUI server 还没起来时这个 endpoint 没人接，**Promise 永远不 resolve**——await 阻塞，plugin first activation 挂起，后续 log 也没机会发。
+
+### 修复（双保险）
+
+**A. 异步触发**（src/server/plugin.ts）：
+
+```typescript
+setTimeout(() => {
+  void (async () => {
+    const result = await showAgentThemeBanner({ client: ctx.client });
+    await log(ctx.client, "info", "pm-workflow agent theme banner", { ... });
+  })();
+}, 2000);
+```
+
+- 不 await：plugin first activation 立刻完成，banner 异步独立触发
+- setTimeout 2s：让 OpenCode TUI server 有时间启动
+
+**B. 3 秒超时兜底**（src/server/agent-theme-banner.ts）：
+
+```typescript
+await Promise.race([
+  client.tui.showToast({...}),
+  new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("showToast timeout after 3s")), 3000)
+  ),
+]);
+```
+
+即便 setTimeout 那 2s 不够 TUI 启动，banner 调用也会在 3s 后超时返回 `{ shown: false, reason: "toast-failed: ..." }`，进 log 留诊断痕迹，**绝不会卡 plugin**。
+
+### 影响
+
+- 用户：启动 OpenCode 后 ~3-4 秒看到 banner toast（之前 rc.16 永远看不到）
+- log：现在能看到 `pm-workflow agent theme banner shown=true` 或 `shown=false reason=...`
+- plugin 加载：rc.16 那条 await 卡住其实不影响其他功能（plugin 已 loaded），但 log 缺这条会让诊断混乱。rc.17 修了
+
+### 测试
+
+- 19 个测试全过
+- 新增 timeout 不影响 banner 测试（mock client 同步 resolve，0ms 完成）
+
 ## 1.0.0-rc.16
 
 ### 修复：agent 主题 banner 真正生效（改走 server 侧 SDK 调用）

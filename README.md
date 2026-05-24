@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.16`。
+当前发布版本：`1.0.0-rc.17`。
 
 ## 适用场景
 
@@ -124,7 +124,8 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
-| 2026-05-23 | 1.0.0-rc.16 | **agent 主题 banner 改走 server 侧 SDK 调用**：rc.14/rc.15 试图用 TUI plugin + slot 注册 banner，但实测 OpenCode 1.15 不支持外部 npm plugin 注册 TUI hook（所有 service=tui.plugin 都是 internal:*）；rc.16 改用 server plugin 通过 `client.tui.showToast()` 直接推 toast 到 OpenCode TUI（v1 SDK 公开 API）；删除 TUI 死代码 / 命令；用户启动 OpenCode 后 1.5 秒自动看到主题 banner |
+| 2026-05-23 | 1.0.0-rc.17 | **修复 banner 不显示真因**：rc.16 的 banner 调用在 plugin first activation 期间发出，早于 OpenCode TUI server 启动，`client.tui.showToast()` HTTP 调用永远不 resolve 让 plugin 流程挂起；rc.17 改用 setTimeout(2s) 异步触发 + Promise.race 3 秒兜底超时，banner 失败不卡 plugin |
+| 2026-05-23 | 1.0.0-rc.16 | agent 主题 banner 改走 server 侧 SDK 调用：rc.14/rc.15 试图用 TUI plugin 注册 banner 但 OpenCode 1.15 不支持外部 TUI plugin；rc.16 改用 server `client.tui.showToast()` |
 | 2026-05-23 | 1.0.0-rc.15 | 修复 TUI plugin 不加载：在 package.json 加 `oc-plugin: ["server", "tui"]` 字段——**事后实测 OpenCode 1.15 不读这个字段**，rc.16 改走 server 侧调用 |
 | 2026-05-23 | 1.0.0-rc.14 | TUI agent 主题名 banner（实验）：弥补 OpenCode UI 切换器只显示文件名（designer）不显示 frontmatter display_name（貂蝉）的限制 |
 | 2026-05-23 | 1.0.0-rc.13 | 修复 skill 引导漏洞：rc.7-rc.12 的 model.md 错误教 AI 把模型配置写到 pm-workflow.config.json（OpenCode 不读，无效）；rc.13 改为明确教 AI 写到 opencode.json 的 agent 段（OpenCode 唯一权威位置） |
