@@ -1,7 +1,6 @@
 import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { createAgentThemeBanner } from "./agent-theme-banner.js";
 import { registerPmWorkflowCommands } from "./commands.js";
 import { createToastHelpers } from "./toasts.js";
 
@@ -45,19 +44,19 @@ export const plugin: TuiPluginModule = {
   tui: async (api) => {
     const projectDir = getProjectDir(api);
     const toasts = createToastHelpers(api, projectDir);
-    // rc.14 实验：agent 主题名 banner — 启动时显示当前主题与 6 个 agent 的角色名映射。
-    // 弥补 OpenCode UI 切换器只显示 agent 文件名（如 designer）不显示
-    // frontmatter display_name（如 貂蝉）的限制。
-    const themeBanner = createAgentThemeBanner(api);
+
+    // 注：rc.14 起的 agent 主题 banner 已搬到 server 侧（src/server/agent-theme-banner.ts）
+    // 经 rc.15 实测：OpenCode 1.15 不支持外部 npm plugin 注册 TUI hook，
+    // 所以本 TUI plugin 文件实际上不会被 OpenCode 加载——保留是为了兼容
+    // 未来 OpenCode 升级支持外部 TUI plugin 时直接可用。
 
     setTimeout(() => {
-      themeBanner.showStartupBanner(6500);
       toasts.showProjectStageToast(4500);
       toasts.showReviewGateToast(5500);
       toasts.showDispatchToast(6500);
     }, 1500);
 
-    registerPmWorkflowCommands(api, toasts, themeBanner);
+    registerPmWorkflowCommands(api, toasts);
   },
 };
 

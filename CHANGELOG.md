@@ -1,5 +1,55 @@
 # Changelog
 
+## 1.0.0-rc.16
+
+### 修复：agent 主题 banner 真正生效（改走 server 侧 SDK 调用）
+
+rc.14 + rc.15 试图通过 TUI plugin 注册 toast banner + slash 命令，但**实测 OpenCode 1.15 不支持外部 npm plugin 注册 TUI hook**：
+
+- log 里所有 `service=tui.plugin` 都是 `internal:*`（OpenCode 内置 11 个 + which-key），**0 个外部 plugin** 的 tui hook 被加载
+- rc.15 加的 `oc-plugin: ["server", "tui"]` 字段 OpenCode 1.15 不读
+- 试 `@walke/opencode-pm-workflow/tui@rc` 子路径写法 OpenCode 当作包名 Bun install，报"Invalid package name"
+
+### 真正可用的通道：v1 SDK `client.tui.showToast()`
+
+OpenCode SDK v1 直接暴露 `/tui/show-toast` HTTP endpoint，server plugin 拿到的 client 顶层就有 `tui.showToast()`：
+
+```typescript
+await ctx.client.tui.showToast({
+  title: "pm-workflow 主题：三国",
+  message: "诸葛亮(commander) / 司马懿(advisor) / ...",
+  variant: "info",
+  duration: 6500,
+});
+```
+
+server plugin 已正常加载（log 里有 `pm-workflow plugin loaded`），所以这条路径 100% 工作。
+
+### 修改
+
+- **新增 `src/server/agent-theme-banner.ts`**：
+  - `readGlobalAgentsDisplayInfo()` 读 6 个 agent md 的 display_name + theme
+  - `buildAgentThemeBannerContent()` 纯函数构造 toast 标题与正文
+  - `showAgentThemeBanner({ client })` 入口：读 → 构造 → showToast；失败静默吞掉不阻断 plugin
+- **`src/server/plugin.ts` first activation 调用** `showAgentThemeBanner(...)`，结果写入 plugin log
+- **删 TUI 死代码**：
+  - `src/tui/plugin.ts` 移除 `createAgentThemeBanner` 引用与 setTimeout 调用
+  - `src/tui/commands.ts` 移除 `/pm-theme-banner` 与 `/pm-agent-roster` 两条命令
+  - `src/tui/agent-theme-banner.ts` 文件保留（rc.14 引入），等 OpenCode 后续版本若支持外部 TUI plugin 时直接复用
+
+### 用户体验
+
+- **启动 OpenCode 后约 1-2 秒** 自动弹出 toast：
+  - 标题：`pm-workflow 主题：三国`（或当前主题）
+  - 正文：`诸葛亮(commander) / 司马懿(advisor) / 吕布(backendcoder) / 貂蝉(designer) / 赵云(fixer) / 鲁肃(writer)`
+  - duration 6500ms，不打扰
+- **6 个 agent md 不存在时**（新装用户）静默不弹，不打扰
+
+### 测试
+
+- 19 个测试全过
+- API snapshot 132 个符号不变（新增的 `showAgentThemeBanner` 是 server-only，不进 public API 快照）
+
 ## 1.0.0-rc.15
 
 ### 修复：TUI plugin 不加载（rc.14 banner 失败的真因）

@@ -21,6 +21,7 @@ import {
   type PluginHealthThresholds,
 } from "./hooks-health.js";
 import { syncPackagedSkillsToOpenCode } from "./skill-installer.js";
+import { showAgentThemeBanner } from "./agent-theme-banner.js";
 import { createAdminTools } from "./tools/admin-tools.js";
 import { createDiagnosticTools } from "./tools/diagnostic-tools.js";
 import { createDispatchTools } from "./tools/dispatch-tools.js";
@@ -157,6 +158,28 @@ export const PmWorkflowPlugin = async (
       },
     });
     await reportPluginHealth(ctx, health);
+
+    // 1.0.0-rc.16 起：从 server 侧推 toast 显示当前主题与 6 个 agent 的角色名。
+    // OpenCode 1.15 不支持外部 TUI plugin 注册（rc.14/rc.15 实测验证），所以
+    // 不再依赖 src/tui/agent-theme-banner.ts，改用 SDK v1 的 client.tui.showToast()
+    // 直接从 server 侧推 toast。失败不阻断 plugin 加载。
+    try {
+      const bannerResult = await showAgentThemeBanner({
+        client: ctx.client as unknown as Parameters<
+          typeof showAgentThemeBanner
+        >[0]["client"],
+      });
+      await log(ctx.client, "info", "pm-workflow agent theme banner", {
+        shown: bannerResult.shown,
+        reason: bannerResult.reason,
+      });
+    } catch (err) {
+      // 兜底：theoretically showAgentThemeBanner 已经吃掉所有错误。这里只接住
+      // 极端情况（client.tui 不存在等运行时类型问题）；不阻断加载。
+      await log(ctx.client, "warn", "pm-workflow agent theme banner crashed", {
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   return {
