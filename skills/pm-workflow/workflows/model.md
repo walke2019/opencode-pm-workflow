@@ -90,6 +90,228 @@ OpenCode 的 model 字段接受两种形式：
 | `advisor` | **轻量**（Haiku / GPT-5-mini / DeepSeek Flash） | 调研类大量 token 但不深推理 |
 | `writer` | **轻量** | 文档创作不需要深推理 |
 
+## 订阅平台预设方案（preset）
+
+如果用户已订阅常见 OpenCode 兼容平台，下面给出**开箱即用的 model 分配** —— AI 检测到用户的 provider 后可以**主动建议**对应方案，用户确认后写入。
+
+### 设计原则
+
+- **保持 6 个 agent 名永不改**：commander / advisor / backendcoder / designer / fixer / writer
+- **预设是建议**，不是强制；用户可改任意一个 agent 的模型
+- **混合 provider 完全合法**：commander 用 OpenAI、designer 用 OpenCode-Go 是 OK 的，OpenCode 接受跨 provider 的 fallback 链
+- **模型 ID 必须含 provider 前缀**：详见上文 § 模型 ID 格式 + 下文 § E1 错误诊断
+
+---
+
+### Preset A：OpenAI 订阅（OpenCode Zen / openai provider）
+
+适合 OpenCode Zen 订阅、OpenAI API 直连、走 `openai/*` provider 的用户。
+
+```json
+{
+  "agent": {
+    "commander": {
+      "model": "openai/gpt-5.5",
+      "fallback_models": ["openai/gpt-5.4", "openai/gpt-5.4-mini"]
+    },
+    "advisor": {
+      "model": "openai/gpt-5.4-mini",
+      "fallback_models": ["openai/gpt-5.5"]
+    },
+    "backendcoder": {
+      "model": "openai/gpt-5.5",
+      "fallback_models": ["openai/gpt-5.4"]
+    },
+    "designer": {
+      "model": "openai/gpt-5.4-mini",
+      "fallback_models": ["openai/gpt-5.5"]
+    },
+    "fixer": {
+      "model": "openai/gpt-5.4-mini",
+      "fallback_models": ["openai/gpt-5.5"]
+    },
+    "writer": {
+      "model": "openai/gpt-5.4-mini",
+      "fallback_models": []
+    }
+  }
+}
+```
+
+设计要点：
+
+- commander / backendcoder：`gpt-5.5`（强决策与代码）
+- advisor / designer / fixer / writer：`gpt-5.4-mini`（中等成本，OpenAI 体系内 mini 性能足够）
+- 主模型 5.5 撞限额时降级到 5.4 / 5.4-mini
+
+---
+
+### Preset B：OpenCode-Go 订阅（opencode-go provider）
+
+适合 OpenCode Go 订阅用户，可用 deepseek / kimi / glm / minimax 等多种国产高质量模型。
+
+```json
+{
+  "agent": {
+    "commander": {
+      "model": "opencode-go/glm-5.1",
+      "fallback_models": [
+        "opencode-go/deepseek-v4-pro",
+        "opencode-go/kimi-k2.6"
+      ]
+    },
+    "advisor": {
+      "model": "opencode-go/minimax-m2.7",
+      "fallback_models": [
+        "opencode-go/deepseek-v4-flash",
+        "opencode-go/glm-5.1"
+      ]
+    },
+    "backendcoder": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "fallback_models": [
+        "opencode-go/kimi-k2.6",
+        "opencode-go/glm-5.1"
+      ]
+    },
+    "designer": {
+      "model": "opencode-go/kimi-k2.6",
+      "fallback_models": [
+        "opencode-go/deepseek-v4-pro",
+        "opencode-go/qwen3.6-plus"
+      ]
+    },
+    "fixer": {
+      "model": "opencode-go/deepseek-v4-flash",
+      "fallback_models": [
+        "opencode-go/deepseek-v4-pro",
+        "opencode-go/kimi-k2.6"
+      ]
+    },
+    "writer": {
+      "model": "opencode-go/minimax-m2.7",
+      "fallback_models": [
+        "opencode-go/deepseek-v4-flash"
+      ]
+    }
+  }
+}
+```
+
+设计要点：
+
+- commander：`glm-5.1`（强中文推理 + 决策）
+- backendcoder：`deepseek-v4-pro`（业界顶级代码模型）
+- designer：`kimi-k2.6`（前端/视觉理解强）
+- advisor / writer：`minimax-m2.7`（中等成本，速度快）
+- fixer：`deepseek-v4-flash`（快速验证 / 测试）
+
+---
+
+### Preset C：bestool 路由器（多 provider 一站式）
+
+适合通过 `route.bestool.cc` 这类聚合路由器订阅、可用 Anthropic / OpenAI / Google / DeepSeek 等任意模型的用户。
+
+```json
+{
+  "agent": {
+    "commander": {
+      "model": "bestool/claude-opus-4.x",
+      "fallback_models": [
+        "bestool/cx/gpt-5.5-medium",
+        "bestool/cx/gpt-5.5",
+        "bestool/cx/gpt-5.4"
+      ]
+    },
+    "advisor": {
+      "model": "bestool/claude-haiku-4.5",
+      "fallback_models": [
+        "bestool/cx/gpt-5.5-low",
+        "bestool/cx/gpt-5.4-mini",
+        "bestool/opencode-go/deepseek-v4-flash"
+      ]
+    },
+    "backendcoder": {
+      "model": "bestool/cx/gpt-5.4",
+      "fallback_models": [
+        "bestool/cx/gpt-5.3-codex",
+        "bestool/opencode-go/qwen3.6-plus"
+      ]
+    },
+    "designer": {
+      "model": "bestool/cx/gpt-5.5",
+      "fallback_models": [
+        "bestool/cx/gpt-5.4",
+        "bestool/opencode-go/qwen3.6-plus"
+      ]
+    },
+    "fixer": {
+      "model": "bestool/claude-sonnet-4.5",
+      "fallback_models": [
+        "bestool/opencode-go/deepseek-v4-pro",
+        "bestool/opencode-go/kimi-k2.6"
+      ]
+    },
+    "writer": {
+      "model": "bestool/claude-haiku-4.5",
+      "fallback_models": [
+        "bestool/cx/gpt-5.5-low",
+        "bestool/cx/gpt-5.4-mini",
+        "bestool/opencode-go/deepseek-v4-flash"
+      ]
+    }
+  }
+}
+```
+
+设计要点：
+
+- 跨 provider 混搭：claude / gpt / deepseek 各取所长
+- commander：claude-opus-4.x（最强决策能力）
+- 兜底走 cx/gpt-5.* 与 opencode-go/* 多家路由器分担风险
+- 注意 model ID 都以 `bestool/` 开头（详见 § E1）
+
+---
+
+### 让 AI 检测 + 推荐 preset 的工作流
+
+在 § 工作流程 Step 2 探索 inventory 之后，AI 应该：
+
+1. 看 `provider` 段有哪些 key（`openai` / `opencode-go` / `bestool` / 等）
+2. 选择匹配的 preset：
+   - 单一 `openai` → Preset A
+   - 单一 `opencode-go` → Preset B
+   - `bestool` 含多种子分类 → Preset C
+   - 其他单一 provider → 询问用户偏好后**类推 Preset A 风格**生成
+3. 把对应 preset 的 JSON 给用户**预览**，让用户改任意 agent 的模型
+4. 用户确认后**按 § Step 4 工作流写入** `~/.config/opencode/opencode.json`
+
+### 自定义改任意一项
+
+每个 agent 都可独立改：
+
+```python
+# 比如用户想把 commander 改成 anthropic Opus（直连），其他保持 OpenAI
+import json
+p = '/Users/walkemac/.config/opencode/opencode.json'
+d = json.load(open(p))
+d['agent']['commander'] = {
+    'model': 'anthropic/claude-opus-4-20250514',
+    'fallback_models': ['openai/gpt-5.5'],
+}
+json.dump(d, open(p, 'w'), indent=2, ensure_ascii=False)
+```
+
+混合 provider 完全合法——OpenCode 按 model ID 前缀路由到对应 provider，fallback 链跨 provider 也支持。
+
+### 不在 preset 列表里的 provider 怎么办
+
+直接照 Preset A 的结构类推：
+
+- 找该 provider 模型清单：`jq '.provider.<provider-id>.models | keys' opencode.json`
+- 按模型档位（强 / 中 / 轻）映射到 6 个 agent（参见 § 6 个 agent 推荐模型分配）
+- 主模型从该 provider 选，fallback 可跨 provider 也可同 provider 不同模型
+
 ## 工作流程
 
 ### Step 1：澄清

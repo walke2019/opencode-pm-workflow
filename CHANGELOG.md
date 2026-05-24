@@ -1,5 +1,90 @@
 # Changelog
 
+## 1.0.0-rc.19
+
+### 新增：3 套订阅平台预设方案（OpenAI / OpenCode-Go / bestool）
+
+之前 model.md 教用户**手动**为 6 个 agent 分配模型——但用户用 OpenAI 订阅、OpenCode-Go 订阅或 bestool 这种聚合路由器时，**每次都重新设计分配方案**很费劲。rc.19 把常见订阅平台的最佳分配做成 preset，AI 检测到用户的 provider 后主动建议。
+
+### 3 套 preset
+
+**Preset A：OpenAI 订阅**（适合 OpenCode Zen 订阅 / OpenAI 直连）
+
+```json
+"agent": {
+  "commander":    { "model": "openai/gpt-5.5", "fallback_models": ["openai/gpt-5.4", "openai/gpt-5.4-mini"] },
+  "backendcoder": { "model": "openai/gpt-5.5", "fallback_models": ["openai/gpt-5.4"] },
+  "designer":     { "model": "openai/gpt-5.4-mini", "fallback_models": ["openai/gpt-5.5"] },
+  "fixer":        { "model": "openai/gpt-5.4-mini", "fallback_models": ["openai/gpt-5.5"] },
+  "advisor":      { "model": "openai/gpt-5.4-mini", "fallback_models": ["openai/gpt-5.5"] },
+  "writer":       { "model": "openai/gpt-5.4-mini", "fallback_models": [] }
+}
+```
+
+**Preset B：OpenCode-Go 订阅**（国产高质量模型混搭）
+
+```json
+"agent": {
+  "commander":    { "model": "opencode-go/glm-5.1", "fallback_models": ["opencode-go/deepseek-v4-pro", "opencode-go/kimi-k2.6"] },
+  "backendcoder": { "model": "opencode-go/deepseek-v4-pro", "fallback_models": ["opencode-go/kimi-k2.6", "opencode-go/glm-5.1"] },
+  "designer":     { "model": "opencode-go/kimi-k2.6", "fallback_models": ["opencode-go/deepseek-v4-pro", "opencode-go/qwen3.6-plus"] },
+  "fixer":        { "model": "opencode-go/deepseek-v4-flash", "fallback_models": ["opencode-go/deepseek-v4-pro", "opencode-go/kimi-k2.6"] },
+  "advisor":      { "model": "opencode-go/minimax-m2.7", "fallback_models": ["opencode-go/deepseek-v4-flash", "opencode-go/glm-5.1"] },
+  "writer":       { "model": "opencode-go/minimax-m2.7", "fallback_models": ["opencode-go/deepseek-v4-flash"] }
+}
+```
+
+**Preset C：bestool 路由器**（多 provider 一站式，跨厂商混搭）
+
+```json
+"agent": {
+  "commander":    { "model": "bestool/claude-opus-4.x", "fallback_models": ["bestool/cx/gpt-5.5-medium", "bestool/cx/gpt-5.5", "bestool/cx/gpt-5.4"] },
+  "backendcoder": { "model": "bestool/cx/gpt-5.4", "fallback_models": [...] },
+  "designer":     { "model": "bestool/cx/gpt-5.5", "fallback_models": [...] },
+  ...
+}
+```
+
+### 设计原则
+
+- **6 个 agent 名永不改**：commander / advisor / backendcoder / designer / fixer / writer
+- **preset 是建议，不是强制**：用户可改任意 agent 模型 / fallback 链
+- **混合 provider 完全合法**：commander 用 OpenAI、designer 用 OpenCode-Go 是 OK 的；OpenCode 接受跨 provider fallback 链
+- **每个 preset 都按"成本/质量平衡"调校**：commander/backendcoder 用强模型，advisor/writer 用轻模型，designer/fixer 中等
+
+### AI 自动检测 + 推荐工作流
+
+```
+1. 看 opencode.json provider 段有哪些 key（openai / opencode-go / bestool / ...）
+2. 单一 openai → Preset A
+   单一 opencode-go → Preset B
+   bestool 含多种子分类 → Preset C
+   其他单一 provider → 按 Preset A 风格类推
+3. 把对应 preset JSON 给用户预览
+4. 用户改任意 agent 模型 → 写入 opencode.json
+```
+
+### SKILL.md 主入口
+
+新增触发词：
+
+| 用户说什么 | 跳转 |
+|---|---|
+| "我是 OpenAI / OpenCode-Go / bestool 订阅用户" / "推荐模型方案" | [workflows/model.md § 订阅平台预设](workflows/model.md) |
+
+子目录索引行也更新："3 套订阅平台 preset + 5 个常见错误诊断"。
+
+### 影响
+
+- 用户在 OpenCode 内说"我是 OpenAI 订阅，帮我配模型" → AI 直接推 Preset A，省去手动设计的过程
+- 不在 preset 列表的 provider（如 anthropic 直连 / google）→ 文档教 AI 类推（找 inventory 模型清单 + 按档位映射）
+- 100% 保持自定义自由：preset 是起点不是终点
+
+### 测试
+
+- 19 个测试全过
+- API snapshot 132 个符号不变（仅文档变更）
+
 ## 1.0.0-rc.18
 
 ### 新增：model.md 5 个常见错误诊断（覆盖 rc 系列实测发现的全部模型配置坑）

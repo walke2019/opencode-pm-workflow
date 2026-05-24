@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.18`。
+当前发布版本：`1.0.0-rc.19`。
 
 ## 适用场景
 
@@ -124,7 +124,8 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
-| 2026-05-23 | 1.0.0-rc.18 | **model.md 新增 5 个常见错误诊断**：E1 ProviderModelNotFoundError（缺 provider 前缀，含批量修复脚本）/ E2 用户 UI 手选 model 覆盖 opencode.json 配置 / E3 主模型限额但 fallback 不触发（isRetryable=false 真因）/ E4 路由器层 503 熔断 / E5 opencode.json JSON 语法错误（合并 provider 时漏 `,` 多 `}`）；SKILL.md 主入口加触发词 "ProviderModelNotFoundError / 模型不识别 / 不生效 / 报错 / 限额"，覆盖 1.0.0-rc 系列实测发现的全部模型配置坑 |
+| 2026-05-23 | 1.0.0-rc.19 | **model.md 新增 3 套订阅平台预设方案**：OpenAI（gpt-5.5/5.4/5.4-mini）、OpenCode-Go（glm/deepseek/kimi/minimax）、bestool（claude-opus 跨 provider 混搭）；每套都映射到 6 个固定 agent 名（commander/advisor/backendcoder/designer/fixer/writer）；保持完全可自定义（每个 agent 模型可单独改 + 跨 provider 混合 fallback）；AI 检测到用户 provider 后主动建议对应 preset，用户预览确认才写入 |
+| 2026-05-23 | 1.0.0-rc.18 | model.md 新增 5 个常见错误诊断（E1 ProviderModelNotFoundError / E2 用户 UI 手选覆盖 / E3 fallback 不触发 / E4 路由器 503 熔断 / E5 JSON 语法错误） |
 | 2026-05-23 | 1.0.0-rc.17 | 修复 banner 不显示真因：rc.16 的 banner 调用在 plugin first activation 期间发出，早于 OpenCode TUI server 启动，`client.tui.showToast()` HTTP 调用永远不 resolve 让 plugin 流程挂起；rc.17 改用 setTimeout(2s) 异步触发 + Promise.race 3 秒兜底超时，banner 失败不卡 plugin |
 | 2026-05-23 | 1.0.0-rc.16 | agent 主题 banner 改走 server 侧 SDK 调用：rc.14/rc.15 试图用 TUI plugin 注册 banner 但 OpenCode 1.15 不支持外部 TUI plugin；rc.16 改用 server `client.tui.showToast()` |
 | 2026-05-23 | 1.0.0-rc.15 | 修复 TUI plugin 不加载：在 package.json 加 `oc-plugin: ["server", "tui"]` 字段——**事后实测 OpenCode 1.15 不读这个字段**，rc.16 改走 server 侧调用 |
