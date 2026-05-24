@@ -1,5 +1,73 @@
 # Changelog
 
+## 1.0.0-rc.18
+
+### 新增：model.md 5 个常见错误诊断（覆盖 rc 系列实测发现的全部模型配置坑）
+
+rc.13 修了 model.md 的核心引导（写到 opencode.json 而非 pm-workflow.config.json），但**rc.13-rc.17 实测又发现 5 个高频坑**，这些之前 model.md **完全没覆盖**——下次用户踩到 AI 没现成方案。
+
+rc.18 在 `workflows/model.md` 新增"常见错误诊断（深入）"章节，每个错误一段：症状 / 根因 / 修复脚本 / 验证。
+
+### E1: ProviderModelNotFoundError — 缺 provider 前缀
+
+OpenCode 1.15 解析 model 字段时，把第一个 `/` 之前当 provider ID。
+`antigravity/gemini-3.1-pro-low`（不带 bestool/）会让 OpenCode 找名为 antigravity 的 provider 失败。
+所有子分类 model 必须以**已注册 provider** 名开头：`bestool/antigravity/gemini-3.1-pro-low`。
+
+提供 Python 批量修复脚本：自动给所有缺前缀的 model ID 加上默认 provider 前缀。
+
+### E2: 用户 UI 手选 model 覆盖 opencode.json 配置
+
+OpenCode session state 记住用户在 UI 里手动切过的模型，优先级高于 opencode.json。
+模型选择优先级：session 手选 > opencode.json `agent.<id>.model` > 全局 model。
+
+### E3: 主模型限额但 fallback 不触发 — isRetryable: false
+
+OpenCode 看 isRetryable 决定是否走 fallback：
+- 5xx / 429 → 通常 true，触发 fallback
+- **402 配额满** → 路由器主动标 false，**不触发 fallback**
+- 401/403/400 → false，不触发
+
+修法：把容易撞限额的模型从主模型位置移除，只放 fallback 链尾兜底。
+
+### E4: 路由器层 503 熔断
+
+bestool / 类似路由器在底层 provider 出问题时主动熔断，对应模型几分钟内全部 503。
+症状：返回 `{"error":{"message":"Provider antigravity circuit breaker is open","code":"provider_circuit_open"}}`。
+非配置错，路由器层行为；改 fallback 链或等熔断恢复。
+
+提供 curl 验证脚本：探测哪些模型可用。
+
+### E5: opencode.json JSON 语法错误
+
+用户手动改 opencode.json 时常见两种错误：
+- 缺 `,`：合并 provider 时多个字段挤一行（`"baseURL": "..." "apiKey": "..."`）
+- 多 `}`：合并段时根对象被错误闭合后又添加内容（`mcp` / `formatter` 段跑到根对象外）
+
+提供自动修复 Python 脚本：删除孤立 `^},$` 行 + 平衡 `{}` 配对。
+预防：手动改 opencode.json 后**永远先 `jq empty`** 验证。
+
+### SKILL.md 主入口
+
+新增触发词：
+
+| 用户说什么 | 跳转 |
+|---|---|
+| "ProviderModelNotFoundError" / "模型不识别 / 不生效 / 报错 / 限额" | [workflows/model.md § 常见错误诊断](workflows/model.md) |
+
+子目录索引行也更新，告诉 AI model.md 含"5 个常见错误诊断"。
+
+### 影响
+
+- AI 在用户报"模型不识别 / 不生效 / 报错"时直接读 model.md 的 E1-E5 给出精确诊断
+- 每个错误都有可直接执行的修复脚本（Python / bash），不需要 AI 现编
+- 验证脚本告诉用户怎么确认修复生效
+
+### 测试
+
+- 19 个测试全过
+- API snapshot 132 个符号不变（仅文档变更）
+
 ## 1.0.0-rc.17
 
 ### 修复：banner 不显示的真因（rc.16 留下的坑）

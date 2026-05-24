@@ -27,7 +27,8 @@ bash ${CLAUDE_SKILL_DIR}/scripts/check.sh
 | "怎么装 pm-workflow" / "怎么用 commander" | [workflows/install.md](workflows/install.md) |
 | "升级到最新版" / "我要用最新 rc" | [workflows/upgrade.md](workflows/upgrade.md) |
 | "切三国主题" / "改 designer 的展示名" / "回滚到默认主题" | [workflows/theme.md](workflows/theme.md) |
-| "给 commander 配 Opus" / "designer 用 GPT-5" | [workflows/model.md](workflows/model.md) |
+| "给 commander 配 Opus" / "designer 用 GPT-5" / "为 agent 分配模型" | [workflows/model.md](workflows/model.md) |
+| "ProviderModelNotFoundError" / "模型不识别 / 不生效 / 报错 / 限额" | [workflows/model.md § 常见错误诊断](workflows/model.md) |
 | "彻底卸载 pm-workflow" | [workflows/uninstall.md](workflows/uninstall.md) |
 | "pmw doctor 报错" / "OpenCode 加载失败" / "mkdir 失败" | [troubleshooting/install.md](troubleshooting/install.md) |
 | "切换列表显示太多" / "writer 跑不了 git log" / "commander 不调子代理" | [troubleshooting/agent-md.md](troubleshooting/agent-md.md) |
@@ -42,7 +43,7 @@ bash ${CLAUDE_SKILL_DIR}/scripts/check.sh
 - [install.md](workflows/install.md) — 首次安装
 - [upgrade.md](workflows/upgrade.md) — 升级
 - [theme.md](workflows/theme.md) — 主题切换（5 套内置：default/sanguo/xiyou/marvel/workplace）
-- [model.md](workflows/model.md) — 为 agent 分配模型
+- [model.md](workflows/model.md) — 为 agent 分配模型 + 5 个常见错误诊断（ProviderModelNotFoundError / 用户 UI 手选覆盖 / fallback 不触发 / 路由器熔断 / JSON 语法错误）
 - [uninstall.md](workflows/uninstall.md) — 完全卸载
 
 **reference/** — 完整规范参考（OpenCode 官方文档摘要 + pm-workflow 标准）
