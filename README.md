@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0`。
+当前发布版本：`1.0.1`。
 
 ## 适用场景
 
@@ -124,7 +124,8 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
-| 2026-05-25 | 1.0.0 | **首个正式版**。从 0.3.1 走到 1.0.0 经过 23 个 RC 验证。核心能力：6 个固定 agent（commander / advisor / backendcoder / designer / fixer / writer）+ 5 套主题 + 强制分派约束 + skill auto-install + agent 主题 banner + 多 provider 模型 fallback 链。详细修复历程见 1.0.0-rc.23 及之前每个 rc 条目 |
+| 2026-05-25 | 1.0.1 | **修复 commander stream 7 分钟超时**：实测 commander 不真调 task tool，而在 stream 里"演戏"假装多角色对话直到 stream 累积过长被 OpenCode 服务端 terminated（log 显示 +428449ms）。1.0.1 给 commander 加 `steps: 5` 强制最多 5 步内部迭代后必须收敛输出，逼 LLM 真调 task 而不是写长 stream。`AgentThemeRoleSkin` 类型新增 `steps?: number` 字段，渲染时写入 frontmatter |
+| 2026-05-25 | 1.0.0 | 首个正式版。从 0.3.1 走到 1.0.0 经过 23 个 RC 验证 |
 | 2026-05-25 | 1.0.0-rc.23 | 修复 advisor bash 漏洞：审计 6 个 agent permission 时发现 advisor 可以用 bash 绕过 tools.write/edit: false；rc.23 改 advisor.permission.bash 为 21 条只读白名单 |
 | 2026-05-25 | 1.0.0-rc.22 | 修复 writer bash 白名单太严：rc.6 起白名单只放 4 条命令，writer 写文档前无法 ls/find/cat 收集材料；rc.22 扩展到 17 条只读命令 |
 | 2026-05-24 | 1.0.0-rc.21 | 清理 0.x 死代码与冗余：删除 commands/ 4 个 OpenCode 命令文件；删除 src/tui/agent-theme-banner.ts；修 e2e-checklist / workflow-flow.svg / config.example.json 残留旧 agent ID |

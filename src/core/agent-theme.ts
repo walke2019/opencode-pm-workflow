@@ -307,6 +307,11 @@ function renderAgentMd(input: {
   // 白名单是 pm-workflow 路由设计的核心）。
   topLevel.temperature = String(skin.temperature);
 
+  // 1.0.1 起：steps 字段（仅 commander 设，限制内部迭代次数防 LLM 演戏 stream 超时）
+  if (typeof skin.steps === "number" && skin.steps > 0) {
+    topLevel.steps = String(skin.steps);
+  }
+
   // tools 是嵌套对象 → 渲染成 YAML 嵌套块
   nestedRaw.tools = renderToolsBlock(skin.tools);
 

@@ -94,6 +94,19 @@ export interface AgentThemeRoleSkin {
         /** 仅 commander 设；按 OpenCode glob 模式控制可调用的 subagent 白名单 */
         task?: Record<string, "allow" | "ask" | "deny">;
     };
+    /**
+     * OpenCode steps 字段（1.0.1 起按角色限制内部 LLM 迭代次数）。
+     *
+     * 防止 LLM"演戏"——commander 不调用 task tool 而在 stream 里假装多角色对话，
+     * stream 累积过长被 OpenCode 服务端 terminated。
+     *
+     * 推荐值：
+     * - commander 5（强制早收敛，逼它真调 task 而不是写长 stream）
+     * - 其他 subagent 不设（它们有具体活要干，不限制）
+     *
+     * 不设此字段时 OpenCode 不限步数，LLM 自由迭代到模型主动停止或 stream 超时。
+     */
+    steps?: number;
 }
 export interface AgentThemeDefinition {
     id: AgentThemeId;

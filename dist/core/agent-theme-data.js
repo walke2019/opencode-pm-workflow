@@ -38,6 +38,11 @@
 const COMMANDER_CONFIG = {
     mode: "primary",
     temperature: 0.2,
+    // 1.0.1 起：限制 commander 最多 5 步内部迭代。
+    // 防止 LLM "演戏"——commander 不调用 task tool 而在 stream 里假装多角色对话，
+    // stream 累积过长被 OpenCode 服务端 terminated（实测 7 分钟才 terminated）。
+    // steps=5 强制 commander 在 5 个 LLM 步内必须收敛输出，逼它真调 task 而不是写长 stream。
+    steps: 5,
     tools: {
         write: false, // commander 不写文件
         edit: false, // commander 不改文件

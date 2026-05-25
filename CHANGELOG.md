@@ -1,5 +1,91 @@
 # Changelog
 
+## 1.0.1
+
+### 修复：commander stream 7 分钟超时（"LLM 演戏"问题）
+
+实测 1.0.0 用户写文档任务时 OpenCode 报 `error={"error":"terminated"}`。深入诊断发现：
+
+| 数据 | 含义 |
+|---|---|
+| commander LLM 调用次数 | 1 次 |
+| 该次调用持续时长 | **+428449ms（7 分钟）** |
+| task tool 启动次数 | **0 次** |
+| subagent LLM 调用 | **0 次** |
+
+commander 在用户对话中说"调研返回了 / 打包给 writer / 文件已生成"——**全是 LLM 在 stream 里编造的虚构对话**。它**根本没调用过 task tool**，而是在一次 stream 里"扮演" advisor / writer / commander 多角色，stream 累积过长（7 分钟）被 OpenCode 服务端 terminated。
+
+### 真因
+
+prompt 强约束（"必须 task / 绝不写代码"）+ 物理工具禁用（write/edit/bash: false）都到位了，但 LLM 看到任务复杂时仍倾向**自己解释**而非**调工具**。Opus 模型在 prompt 强约束下仍偏向"演戏"输出。
+
+### 修复
+
+`AgentThemeRoleSkin` 类型新增 `steps?: number` 字段，渲染时写入 frontmatter：
+
+```typescript
+export interface AgentThemeRoleSkin {
+  // ... 原有字段
+  steps?: number;
+}
+```
+
+commander 强制 `steps: 5`：
+
+```typescript
+const COMMANDER_CONFIG: SharedAgentConfig = {
+  mode: "primary",
+  temperature: 0.2,
+  steps: 5,         // ← 新：限 5 步内部迭代
+  // ...
+};
+```
+
+OpenCode 看到 `steps: 5` 会在 commander 跑完 5 个 LLM 步后**强制让它输出最终响应**（OpenCode 内置机制）。这意味着 commander 必须在前 5 步内**真调 task tool**完成分派，否则就被截断必须给用户当前为止的总结。
+
+### 工作机制
+
+旧行为（无 steps）：
+```
+commander step 1 → 思考 → 输出"我打算..."
+commander step 2 → 继续输出"调研返回..."
+commander step 3 → 输出"打包给 writer..."
+... 累积 7 分钟 → terminated
+```
+
+新行为（steps: 5）：
+```
+commander step 1 → 思考任务 → 必须调 task → advisor / writer
+commander step 2 → 收到反馈 → 决定下一步分派
+... 第 5 步必须收敛输出最终结论
+```
+
+### 影响
+
+- ✓ commander 不再"演戏" 7 分钟被 terminated
+- ✓ 强制 commander 在前 5 步内真调 task tool
+- ✓ 其他 5 个 subagent 不限 steps（它们有具体活要干，自由迭代）
+- ✓ 用户体验：commander 响应更快收敛，不再卡住
+
+### 测试
+
+- 19 个测试全过
+- typecheck 通过（`SharedAgentConfig` Pick 类型同步加 `steps`）
+- API snapshot 132 个符号不变
+
+### 升级方法
+
+```bash
+npm install -g @walke/opencode-pm-workflow
+# 或在 opencode.json：自动跟随 latest tag
+```
+
+完全 quit + 重启 OpenCode + 重新 apply 主题让 commander.md 升级到 1.0.1 规范：
+
+```bash
+pmw agents theme apply <你的主题> --scope global
+```
+
 ## 1.0.0
 
 ### 首个正式版
