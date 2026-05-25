@@ -130,17 +130,39 @@ const WRITER_CONFIG = {
     tools: {
         write: true,
         edit: true,
-        bash: false,
+        bash: true, // 1.0.0-rc.22 起：开启 bash tool（writer 写文档前需要 ls/find/cat 收集材料）
         webfetch: true,
     },
     permission: {
         edit: "allow",
-        // writer 细粒度 bash：默认 deny，只放行整理发布说明与文档构建相关命令
+        // writer 细粒度 bash（rc.22 起扩展白名单）：
+        // - 写类命令（rm / mv / cp 写盘 / > 重定向 / 修改类）保持 deny
+        // - 只读类命令（ls/find/cat/head/tail/wc/grep/tree/git log/diff/status）allow
+        // - 文档构建命令（npm run docs:*）allow
+        // 实测 rc.6-rc.21 只放 4 条命令导致 writer 写文档前无法收集材料（cat / find 都被拒）
         bash: {
             "*": "deny",
+            // 只读类（rc.22 新增）
+            "ls *": "allow",
+            "ls": "allow",
+            "find *": "allow",
+            "cat *": "allow",
+            "head *": "allow",
+            "tail *": "allow",
+            "wc *": "allow",
+            "grep *": "allow",
+            "rg *": "allow",
+            "tree *": "allow",
+            "tree": "allow",
+            "pwd": "allow",
+            "echo *": "allow",
+            // git 只读（已有）
             "git log*": "allow",
             "git diff*": "allow",
             "git status*": "allow",
+            "git show*": "allow",
+            "git blame*": "allow",
+            // 文档构建（已有）
             "npm run docs:*": "allow",
         },
         webfetch: "allow",

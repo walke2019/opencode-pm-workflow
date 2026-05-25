@@ -1,5 +1,78 @@
 # Changelog
 
+## 1.0.0-rc.22
+
+### 修复：writer bash 白名单太严，写文档前无法收集材料
+
+实测发现：用户让 commander task → writer 写文档时，writer **报"权限错误"**——OpenCode log 里 writer 想跑 bash 命令收集材料但被 deny。
+
+### 真因
+
+rc.6 起 writer 的 bash permission 是细粒度白名单，只放 4 条命令：
+
+```yaml
+bash:
+  "*": deny
+  "git log*": allow
+  "git diff*": allow
+  "git status*": allow
+  "npm run docs:*": allow
+```
+
+但 LLM 写文档前需要做的事远不止这 4 条：
+- `ls /path` / `find . -name "*.md"` 找文档结构
+- `cat README.md` / `head -50 file.ts` 看内容
+- `wc -l file` / `grep "pattern"` 统计与搜索
+- `tree docs/` 看目录树
+
+这些**只读类**命令全被 `*: deny` 拦下——writer 物理上没法准备写文档。
+
+### 修复
+
+**1. `tools.bash: false` → `true`**：开启 bash tool（之前 false 让 LLM 完全看不到 bash，连尝试都没机会）
+
+**2. 扩展 bash 白名单到 17 条**（rc.22 新规范）：
+
+```yaml
+bash:
+  "*": deny
+  # 只读类（rc.22 新增 13 条）
+  "ls *": allow
+  "ls": allow
+  "find *": allow
+  "cat *": allow
+  "head *": allow
+  "tail *": allow
+  "wc *": allow
+  "grep *": allow
+  "rg *": allow
+  "tree *": allow
+  "tree": allow
+  "pwd": allow
+  "echo *": allow
+  # git 只读（rc.6 已有 3 条，rc.22 加 2 条）
+  "git log*": allow
+  "git diff*": allow
+  "git status*": allow
+  "git show*": allow      # ← rc.22 新增
+  "git blame*": allow     # ← rc.22 新增
+  # 文档构建（rc.6 已有）
+  "npm run docs:*": allow
+```
+
+**3. 写类命令保持 deny**：`rm` / `mv` / `cp` / `>` 重定向 / 任何修改类——writer 通过 `edit`/`write` tool 改文件，不用 bash 写
+
+### 影响
+
+- writer 现在能正常 ls / find / cat 收集材料 → 写文档前能理解项目
+- writer 仍然不能用 bash 修改 / 删文件（保持 rc.6 设计原则：writer 只动文档不破坏项目）
+- 其他 5 个 agent（commander / advisor / backendcoder / designer / fixer）的 permission 不变
+
+### 测试
+
+- 19 个测试全过
+- API snapshot 132 个符号不变（仅主题数据变更）
+
 ## 1.0.0-rc.21
 
 ### 清理 0.x 死代码与冗余

@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.21`。
+当前发布版本：`1.0.0-rc.22`。
 
 ## 适用场景
 
@@ -124,7 +124,8 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
-| 2026-05-24 | 1.0.0-rc.21 | **清理 0.x 死代码与冗余**：删除 `commands/` 4 个 OpenCode 命令文件（OpenCode 不会自动加载，0.x 时代死代码；用旧 `pm_lead` ID）；删除 `src/tui/agent-theme-banner.ts`（rc.16 起 banner 改走 server，TUI 端死代码 200 行）；修 `docs/sandbox/e2e-checklist.md` 与 `docs/workflow-flow.svg` 与 `pm-workflow.config.example.json` dispatch_map 里残留的旧 agent ID（pm_lead/pm_advisor 等 → commander/advisor 等）；package.json 不再发布 commands/ |
+| 2026-05-25 | 1.0.0-rc.22 | **修复 writer bash 白名单太严**：实测 writer 写文档前需要 `ls/find/cat/head/tail/wc/grep/tree` 等只读命令收集材料，但 rc.6 起的白名单只放 4 条（git log/diff/status, npm run docs:*）—— writer 物理上没法写文档报"权限错误"。rc.22 扩展白名单含 17 条只读命令（含 git 只读子命令），所有写类（rm/mv/重定向）保持 deny |
+| 2026-05-24 | 1.0.0-rc.21 | 清理 0.x 死代码与冗余：删除 commands/ 4 个 OpenCode 命令文件；删除 src/tui/agent-theme-banner.ts；修 e2e-checklist / workflow-flow.svg / config.example.json 残留旧 agent ID |
 | 2026-05-24 | 1.0.0-rc.20 | commander 强约束加固：rc.12 的 `tools.write/edit: false` + `permission.edit: deny` 实测被 LLM 用 bash 的 cat/echo 绕过；rc.20 收紧 `tools.bash: false` + `permission.bash: deny`，body 加任务路由对照表 |
 | 2026-05-23 | 1.0.0-rc.19 | model.md 新增 3 套订阅平台预设方案（OpenAI / OpenCode-Go / bestool） |
 | 2026-05-23 | 1.0.0-rc.18 | model.md 新增 5 个常见错误诊断（E1 ProviderModelNotFoundError / E2 用户 UI 手选覆盖 / E3 fallback 不触发 / E4 路由器 503 熔断 / E5 JSON 语法错误） |
