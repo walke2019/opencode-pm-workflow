@@ -1,5 +1,63 @@
 # Changelog
 
+## 1.0.0
+
+### 首个正式版
+
+从 0.3.1 走到 1.0.0 经过 23 个 RC 版本的反复实测验证。所有核心 bug 已修，配套 skill / 文档 / 测试已完整。
+
+### 核心能力
+
+**6 个固定语义 agent**（永不可改的语义 ID）：
+
+| ID | 职责 | mode | tools.bash |
+|---|---|---|---|
+| `commander` | 主控、决策、协调、分派 | primary | false |
+| `advisor` | 调研、分析、拆解、决策顾问 | subagent | true（21 条只读白名单）|
+| `backendcoder` | 后端代码（API、数据库、服务、性能）| subagent | allow |
+| `designer` | 设计 + 前端代码 + 交互原型 + 图像生成 | subagent | allow |
+| `fixer` | 测试 + 修复 + 打包 + 部署 + CI/CD | subagent | allow |
+| `writer` | 文档撰写 + 发布说明 + 注释 + ADR | subagent | true（17 条只读白名单）|
+
+**5 套内置主题**：default / sanguo / xiyou / marvel / workplace
+
+**关键架构特性**：
+
+- commander 强制分派：物理上不能 write/edit/bash，只能通过 task tool 委派给 5 个固定 subagent
+- 严格 task 白名单：commander 只能调用 6 个固定 agent + OpenCode 内置 explore/scout
+- 模型分配：通过 `opencode.json` 的 `agent` 段配置，支持 fallback 链 + 跨 provider 混搭
+- 主题系统：每个 agent display_name 主题化（如 sanguo 下 commander = 诸葛亮），不影响语义 ID
+- skill auto-install：plugin 启动时自动同步包内 skills 到 `~/.config/opencode/skills/`
+- agent 主题 banner：plugin 加载后通过 SDK push toast 显示当前主题角色名映射
+
+**配套 skill `pm-workflow/`**：
+
+```
+SKILL.md（主入口）
+├── reference/      6 个规范参考文件
+├── workflows/      5 个场景流程（install / upgrade / theme / model / uninstall）
+├── troubleshooting/ 12 种常见错误诊断树
+└── scripts/        4 个可执行脚本（check / upgrade / reset-agents / full-clean）
+```
+
+`workflows/model.md` 含 3 套订阅平台预设方案（OpenAI / OpenCode-Go / bestool）+ 5 个错误诊断（E1-E5）。
+
+### 升级指引
+
+```bash
+npm install -g @walke/opencode-pm-workflow
+# 或在 opencode.json 锁版本：
+#   "plugin": ["@walke/opencode-pm-workflow@1.0.0"]
+```
+
+完全 quit + 重启 OpenCode 即可。plugin auto-install 会同步 skill / 创建 pm-workflow.config.json / 写入 6 个 agent md。
+
+遇到问题参考 `~/.config/opencode/skills/pm-workflow/troubleshooting/`。
+
+### 详细修复历程
+
+参见 1.0.0-rc.0 至 1.0.0-rc.23 各版本条目。
+
 ## 1.0.0-rc.23
 
 ### 修复：advisor bash 漏洞（审计 6 个 agent permission 时发现）
