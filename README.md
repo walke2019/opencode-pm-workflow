@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.0-rc.22`。
+当前发布版本：`1.0.0-rc.23`。
 
 ## 适用场景
 
@@ -124,7 +124,8 @@ npm view @walke/opencode-pm-workflow version
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
-| 2026-05-25 | 1.0.0-rc.22 | **修复 writer bash 白名单太严**：实测 writer 写文档前需要 `ls/find/cat/head/tail/wc/grep/tree` 等只读命令收集材料，但 rc.6 起的白名单只放 4 条（git log/diff/status, npm run docs:*）—— writer 物理上没法写文档报"权限错误"。rc.22 扩展白名单含 17 条只读命令（含 git 只读子命令），所有写类（rm/mv/重定向）保持 deny |
+| 2026-05-25 | 1.0.0-rc.23 | **修复 advisor bash 漏洞**：审计发现 advisor.permission.bash 是 `allow`，理论上可以 `rm -rf` 删文件、用 `cat > / echo >` 绕过 `tools.write/edit: false` 写文件——跟 commander rc.20 修复前的漏洞一致。rc.23 把 advisor 的 bash 改为**只读白名单**（21 条命令：ls/find/cat/head/tail/wc/grep/rg/tree/pwd/echo + git log/diff/status/show/blame + npm list/view + yarn list）；advisor 仍能调研代码但物理上无法修改文件 |
+| 2026-05-25 | 1.0.0-rc.22 | 修复 writer bash 白名单太严：rc.6 起白名单只放 4 条命令，writer 写文档前无法 ls/find/cat 收集材料；rc.22 扩展到 17 条只读命令 |
 | 2026-05-24 | 1.0.0-rc.21 | 清理 0.x 死代码与冗余：删除 commands/ 4 个 OpenCode 命令文件；删除 src/tui/agent-theme-banner.ts；修 e2e-checklist / workflow-flow.svg / config.example.json 残留旧 agent ID |
 | 2026-05-24 | 1.0.0-rc.20 | commander 强约束加固：rc.12 的 `tools.write/edit: false` + `permission.edit: deny` 实测被 LLM 用 bash 的 cat/echo 绕过；rc.20 收紧 `tools.bash: false` + `permission.bash: deny`，body 加任务路由对照表 |
 | 2026-05-23 | 1.0.0-rc.19 | model.md 新增 3 套订阅平台预设方案（OpenAI / OpenCode-Go / bestool） |

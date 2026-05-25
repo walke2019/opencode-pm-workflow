@@ -97,7 +97,37 @@ const ADVISOR_CONFIG: SharedAgentConfig = {
   },
   permission: {
     edit: "deny",
-    bash: "allow",
+    // 1.0.0-rc.23 起：advisor 的 bash 改为只读白名单（跟 writer 同款）。
+    // advisor 是调研类 agent，应该能用 ls/find/cat/grep 看代码与文档，
+    // 但不应该用 bash 的 cat > / echo > / sed -i 等命令绕过 write/edit 禁令修改文件。
+    // 之前 bash: allow 实测可以 rm -rf 任意删文件——跟 commander rc.20 修复前的漏洞一致。
+    bash: {
+      "*": "deny",
+      // 只读类
+      "ls *": "allow",
+      "ls": "allow",
+      "find *": "allow",
+      "cat *": "allow",
+      "head *": "allow",
+      "tail *": "allow",
+      "wc *": "allow",
+      "grep *": "allow",
+      "rg *": "allow",
+      "tree *": "allow",
+      "tree": "allow",
+      "pwd": "allow",
+      "echo *": "allow",
+      // git 只读（advisor 调研时常用）
+      "git log*": "allow",
+      "git diff*": "allow",
+      "git status*": "allow",
+      "git show*": "allow",
+      "git blame*": "allow",
+      // 包管理只读（看依赖时用）
+      "npm list*": "allow",
+      "npm view*": "allow",
+      "yarn list*": "allow",
+    },
     webfetch: "allow",
   },
 };

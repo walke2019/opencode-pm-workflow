@@ -1,5 +1,85 @@
 # Changelog
 
+## 1.0.0-rc.23
+
+### 修复：advisor bash 漏洞（审计 6 个 agent permission 时发现）
+
+rc.22 解决了 writer 的 bash 白名单太严问题后，对 6 个 agent 做完整审计：
+
+| Agent | tools.bash | permission.bash | 风险评估 |
+|---|---|---|---|
+| commander | false | deny | ✓ rc.20 收紧 |
+| **advisor** | **true** | **allow** | ⚠ **bash 全开** |
+| backendcoder | true | allow | ✓ 标准开发 |
+| designer | true | allow | ✓ 标准设计 |
+| fixer | true | allow | ✓ 测试 + 部署 |
+| writer | true | 17 条白名单 | ✓ rc.22 修过 |
+
+advisor 的 `tools.write/edit: false`（不能用 write/edit tool 修改文件），但 `permission.bash: allow` 让它可以用 bash 绕过：
+
+- `cat > file.md <<'EOF' ... EOF` 直接写文件
+- `echo "..." > file` 直接覆盖文件
+- `sed -i 's/old/new/' file` 修改文件
+- 极端情况 `rm -rf` 删除任何文件
+
+**这跟 commander rc.20 修复前的漏洞一模一样**。
+
+### 修复
+
+把 advisor 的 bash 改为只读白名单（21 条命令）：
+
+```yaml
+bash:
+  "*": deny
+  # 只读类
+  "ls *": allow / "ls": allow
+  "find *": allow
+  "cat *": allow
+  "head *": allow / "tail *": allow
+  "wc *": allow
+  "grep *": allow / "rg *": allow
+  "tree *": allow / "tree": allow
+  "pwd": allow
+  "echo *": allow
+  # git 只读
+  "git log*": allow
+  "git diff*": allow
+  "git status*": allow
+  "git show*": allow
+  "git blame*": allow
+  # 包管理只读（advisor 调研依赖时常用）
+  "npm list*": allow
+  "npm view*": allow
+  "yarn list*": allow
+```
+
+### advisor 现在能做什么
+
+- ✓ 用 `find` / `ls` / `tree` 看代码结构
+- ✓ 用 `cat` / `head` / `grep` 读代码内容
+- ✓ 用 `git log` / `git show` 看变更历史
+- ✓ 用 `npm list` / `npm view` 调研依赖
+- ✓ 用 webfetch 拉外部文档
+
+### advisor 现在不能做什么
+
+- ✗ `rm` / `mv` / `cp` 修改文件
+- ✗ `cat > file` / `echo > file` / `sed -i` 通过 bash 写文件
+- ✗ 任何修改文件系统的命令
+
+之前 advisor 已经不能用 write/edit tool（`tools.write/edit: false`），rc.23 关上 bash 这个旁路，**物理上**保证 advisor 是纯只读调研 agent。
+
+### 影响
+
+- advisor 仍能正常完成调研工作
+- 安全性提升：advisor 物理上无法修改文件
+- 设计原则统一：commander（无 bash）+ writer（细粒度白名单）+ advisor（细粒度白名单）三个非"动手"agent 都用同一种约束模式
+
+### 测试
+
+- 19 个测试全过
+- API snapshot 132 个符号不变（仅主题数据变更）
+
 ## 1.0.0-rc.22
 
 ### 修复：writer bash 白名单太严，写文档前无法收集材料
