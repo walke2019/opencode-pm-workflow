@@ -45,22 +45,23 @@ CLI 是 rc.9 但 OpenCode plugin cache 还是 rc.7。
 ### 修复
 
 ```bash
-${CLAUDE_SKILL_DIR}/scripts/upgrade.sh
+pmw repair opencode-cache
 ```
 
-或手动：
+该命令会把版本不一致或损坏的 pm-workflow OpenCode/Kilo plugin cache 改名为 `.bak-<timestamp>`。然后完全 quit + 重启 OpenCode，让它重新拉当前版本。
+
+旧版 CLI 没有该命令时，先升级：
 
 ```bash
-pkill -9 -f OpenCode && sleep 2
-rm -rf ~/.cache/opencode/packages/@walke/opencode-pm-workflow@rc
-# 用户双击启动 OpenCode（会让 Bun 重新拉新版）
+npm install -g @walke/opencode-pm-workflow@latest
+pmw repair opencode-cache
 ```
 
 ### 验证
 
 ```bash
-${CLAUDE_SKILL_DIR}/scripts/check.sh | grep -A 3 "plugin cache"
-# 应看到 "✓ CLI 与 plugin 版本一致"
+pmw repair opencode-cache --dry-run --json
+# staleCount 应为 0
 ```
 
 ---
@@ -220,4 +221,3 @@ pm-workflow 的健康判断标准：
 满足这 4 条就算 pm-workflow 健康。
 
 ---
-

@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.1`。
+当前发布版本：`1.0.2`。
 
 ## 适用场景
 
@@ -120,10 +120,21 @@ npm publish --access public
 npm view @walke/opencode-pm-workflow version
 ```
 
+## 缓存自愈
+
+OpenCode 会把 npm plugin 缓存在 `~/.cache/opencode/packages/`（Kilo 场景还会有 `~/.cache/kilo/packages/`）。如果日志里出现旧版 `mkdir '/.pm-workflow' failed`，或插件缓存版本落后于 CLI，可运行：
+
+```bash
+pmw repair opencode-cache
+```
+
+该命令会把旧/坏的 pm-workflow plugin 缓存安全改名为 `.bak-<timestamp>`，下次完全重启 OpenCode 时由 OpenCode 重新安装当前版本。
+
 ## Change Log
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-28 | 1.0.2 | 新增 `pmw repair opencode-cache`：自动检测并备份 OpenCode/Kilo 中旧版或损坏的 pm-workflow npm plugin 缓存，解决旧缓存导致插件启动前崩溃、无法显示 `/pm-workflow` 入口的问题 |
 | 2026-05-25 | 1.0.1 | **修复 commander stream 7 分钟超时**：实测 commander 不真调 task tool，而在 stream 里"演戏"假装多角色对话直到 stream 累积过长被 OpenCode 服务端 terminated（log 显示 +428449ms）。1.0.1 给 commander 加 `steps: 5` 强制最多 5 步内部迭代后必须收敛输出，逼 LLM 真调 task 而不是写长 stream。`AgentThemeRoleSkin` 类型新增 `steps?: number` 字段，渲染时写入 frontmatter |
 | 2026-05-25 | 1.0.0 | 首个正式版。从 0.3.1 走到 1.0.0 经过 23 个 RC 验证 |
 | 2026-05-25 | 1.0.0-rc.23 | 修复 advisor bash 漏洞：审计 6 个 agent permission 时发现 advisor 可以用 bash 绕过 tools.write/edit: false；rc.23 改 advisor.permission.bash 为 21 条只读白名单 |

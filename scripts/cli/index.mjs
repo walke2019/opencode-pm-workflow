@@ -22,6 +22,7 @@
  *   pmw agents theme preview <id> [--scope project|global]   预览主题渲染（不写盘）
  *   pmw agents theme apply <id> [--scope project|global] [--no-preserve-model]   应用主题，写 6 个 md 到目标目录
  *   pmw models init --model <id> [--fallback <id>]  初始化 agent 模型与回退模型
+ *   pmw repair opencode-cache [--dry-run] [--json]  备份旧/坏 OpenCode npm plugin 缓存
  *   pmw docs check [--json]          检查 README / 主文档 / Change Log 治理规则
  *   pmw verify                       本地 typecheck + build + smoke + pack-dry-run
  *   pmw --help                       命令一览
@@ -32,8 +33,8 @@
  * - 不写文件（除非 doctor 自动 bootstrap 状态）；CLI 默认只读。
  */
 
-import { readFileSync } from "node:fs";
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
@@ -100,6 +101,7 @@ function printHelp() {
     "  agents theme preview <id>   预览主题渲染（不写盘，--scope project|global 决定目标目录）",
     "  agents theme apply <id>     应用主题：把 6 个 agent 的 md 写入目标目录",
     "  models init           初始化 agent 主模型与回退模型（默认写全局配置）",
+    "  repair opencode-cache  检查并备份旧/坏 OpenCode npm plugin 缓存",
     "  docs check            检查 README 版本、主文档数量、Change Log 与旧路径引用",
     "  verify                本地跑 typecheck + build + smoke + pack-dry-run",
     "  --help                显示本帮助",
@@ -124,6 +126,8 @@ function printHelp() {
     "  pmw agents theme apply default --scope project --agents backendcoder,designer",
     "  pmw models init --model opencode/gpt-5 --fallback opencode/gpt-5-mini",
     "  pmw models init --scope project --agent backendcoder --model cx/gpt-5.5 --fallback cx/gpt-5.4",
+    "  pmw repair opencode-cache",
+    "  pmw repair opencode-cache --dry-run --json",
     "  pmw docs check",
     "  pmw verify",
   ];
@@ -146,6 +150,129 @@ function emit(args, payload) {
     return;
   }
   console.log(JSON.stringify(payload, null, 2));
+}
+
+function resolveCacheBase() {
+  return process.env.XDG_CACHE_HOME || join(homedir(), ".cache");
+}
+
+function readJsonMaybe(path) {
+  try {
+    return JSON.parse(readFileSync(path, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+function readCachedPluginVersion(cacheDir) {
+  const packageJson = readJsonMaybe(
+    join(cacheDir, "node_modules", "@walke", "opencode-pm-workflow", "package.json"),
+  );
+  if (packageJson && typeof packageJson.version === "string") {
+    return packageJson.version;
+  }
+  return undefined;
+}
+
+function buildCacheBackupPath(cacheDir, timestamp) {
+  let candidate = `${cacheDir}.bak-${timestamp}`;
+  let index = 2;
+  while (existsSync(candidate)) {
+    candidate = `${cacheDir}.bak-${timestamp}-${index}`;
+    index += 1;
+  }
+  return candidate;
+}
+
+function inspectPmWorkflowCache({ cacheRoot, label, expectedVersion, timestamp, dryRun }) {
+  const scopeDir = join(cacheRoot, "packages", "@walke");
+  const findings = [];
+  if (!existsSync(scopeDir)) return findings;
+
+  for (const entry of readdirSync(scopeDir)) {
+    if (!entry.startsWith("opencode-pm-workflow@")) continue;
+    if (entry.includes(".bak-")) continue;
+    const cacheDir = join(scopeDir, entry);
+    const cachedVersion = readCachedPluginVersion(cacheDir);
+    const stale = cachedVersion !== expectedVersion;
+    const reason = cachedVersion
+      ? stale
+        ? `cached version ${cachedVersion} != expected ${expectedVersion}`
+        : `cached version ${cachedVersion} matches expected ${expectedVersion}`
+      : "cached package.json missing or unreadable";
+    const backupPath = stale ? buildCacheBackupPath(cacheDir, timestamp) : null;
+    if (stale && backupPath && !dryRun) {
+      renameSync(cacheDir, backupPath);
+    }
+    findings.push({
+      label,
+      cacheDir,
+      cachedVersion: cachedVersion ?? null,
+      expectedVersion,
+      stale,
+      reason,
+      action: stale ? (dryRun ? "would-backup" : "backed-up") : "kept",
+      backupPath,
+    });
+  }
+  return findings;
+}
+
+function repairOpenCodeCache(args) {
+  const pkg = loadPackageJson();
+  const expectedVersion = args.options["expected-version"]
+    ? String(args.options["expected-version"])
+    : pkg.version;
+  const dryRun = Boolean(args.flags["dry-run"]);
+  const cacheBase = resolve(args.options["cache-base"] || resolveCacheBase());
+  const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\..+$/, "");
+  const targets = [
+    { label: "opencode", cacheRoot: join(cacheBase, "opencode") },
+    { label: "kilo", cacheRoot: join(cacheBase, "kilo") },
+  ];
+  const findings = targets.flatMap((target) =>
+    inspectPmWorkflowCache({
+      ...target,
+      expectedVersion,
+      timestamp,
+      dryRun,
+    }),
+  );
+  const staleCount = findings.filter((finding) => finding.stale).length;
+  const report = {
+    ok: true,
+    expectedVersion,
+    cacheBase,
+    dryRun,
+    staleCount,
+    repairedCount: dryRun ? 0 : staleCount,
+    findings,
+  };
+
+  if (args.flags.json) {
+    emit(args, report);
+    return 0;
+  }
+
+  const lines = [
+    "pmw repair opencode-cache",
+    `- expected version: ${expectedVersion}`,
+    `- cache base: ${cacheBase}`,
+    `- dry-run: ${dryRun ? "yes" : "no"}`,
+    `- stale caches: ${staleCount}`,
+  ];
+  if (findings.length === 0) {
+    lines.push("", "未发现 pm-workflow OpenCode/Kilo plugin 缓存。");
+  } else {
+    lines.push("", "findings:");
+    for (const finding of findings) {
+      lines.push(`  - [${finding.action}] ${finding.label}: ${finding.cacheDir}`);
+      lines.push(`    ${finding.reason}`);
+      if (finding.backupPath) lines.push(`    backup: ${finding.backupPath}`);
+    }
+  }
+  console.log(lines.join("\n"));
+  return 0;
 }
 
 async function runDoctor(args) {
@@ -712,6 +839,13 @@ async function main() {
       if (sub === "init") return await runModelsInit(args);
       console.error(`未知 models 子命令: ${sub ?? "<empty>"}`);
       console.error("当前支持: pmw models init --model <id> [--fallback <id>]");
+      return 2;
+    }
+    case "repair": {
+      const sub = args._[1];
+      if (sub === "opencode-cache") return repairOpenCodeCache(args);
+      console.error(`未知 repair 子命令: ${sub ?? "<empty>"}`);
+      console.error("当前支持: pmw repair opencode-cache [--dry-run] [--json]");
       return 2;
     }
     case "docs": {

@@ -278,4 +278,121 @@ function runCli(args, options = {}) {
   }
 }
 
+function writeCachedPluginVersion(cacheBase, family, entry, version) {
+  const packageDir = join(
+    cacheBase,
+    family,
+    'packages',
+    '@walke',
+    entry,
+    'node_modules',
+    '@walke',
+    'opencode-pm-workflow',
+  );
+  mkdirSync(packageDir, { recursive: true });
+  writeFileSync(
+    join(packageDir, 'package.json'),
+    JSON.stringify({ name: '@walke/opencode-pm-workflow', version }),
+    'utf-8',
+  );
+}
+
+// 15) repair opencode-cache --dry-run 只报告旧缓存，不移动目录
+{
+  const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-cache-dry-run-'));
+  const cacheBase = join(projectDir, 'cache-home');
+  try {
+    writeCachedPluginVersion(cacheBase, 'opencode', 'opencode-pm-workflow@latest', '0.3.1');
+    const r = runCli(
+      [
+        'repair',
+        'opencode-cache',
+        '--expected-version',
+        '1.0.1',
+        '--cache-base',
+        cacheBase,
+        '--dry-run',
+        '--json',
+      ],
+    );
+    assert.strictEqual(r.status, 0, `repair dry-run 应成功，stderr:\n${r.stderr}`);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.dryRun, true);
+    assert.strictEqual(parsed.staleCount, 1);
+    assert.strictEqual(parsed.repairedCount, 0);
+    assert.strictEqual(parsed.findings[0].action, 'would-backup');
+    assert.ok(
+      readFileSync(
+        join(
+          cacheBase,
+          'opencode',
+          'packages',
+          '@walke',
+          'opencode-pm-workflow@latest',
+          'node_modules',
+          '@walke',
+          'opencode-pm-workflow',
+          'package.json',
+        ),
+        'utf-8',
+      ).includes('0.3.1'),
+      'dry-run 不应移动缓存目录',
+    );
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
+// 16) repair opencode-cache 备份旧缓存并保留版本一致的缓存
+{
+  const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-cache-repair-'));
+  const cacheBase = join(projectDir, 'cache-home');
+  const staleDir = join(
+    cacheBase,
+    'opencode',
+    'packages',
+    '@walke',
+    'opencode-pm-workflow@latest',
+  );
+  const freshDir = join(
+    cacheBase,
+    'kilo',
+    'packages',
+    '@walke',
+    'opencode-pm-workflow@1.0.1',
+  );
+  try {
+    writeCachedPluginVersion(cacheBase, 'opencode', 'opencode-pm-workflow@latest', '0.3.1');
+    writeCachedPluginVersion(cacheBase, 'kilo', 'opencode-pm-workflow@1.0.1', '1.0.1');
+    const r = runCli(
+      [
+        'repair',
+        'opencode-cache',
+        '--expected-version',
+        '1.0.1',
+        '--cache-base',
+        cacheBase,
+        '--json',
+      ],
+    );
+    assert.strictEqual(r.status, 0, `repair 应成功，stdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.staleCount, 1);
+    assert.strictEqual(parsed.repairedCount, 1);
+    assert.strictEqual(parsed.findings.find((item) => item.label === 'opencode').action, 'backed-up');
+    assert.strictEqual(parsed.findings.find((item) => item.label === 'kilo').action, 'kept');
+    assert.throws(
+      () => readFileSync(join(staleDir, 'node_modules', '@walke', 'opencode-pm-workflow', 'package.json')),
+      /ENOENT/,
+      '旧缓存目录应被移动到备份路径',
+    );
+    assert.ok(
+      readFileSync(join(freshDir, 'node_modules', '@walke', 'opencode-pm-workflow', 'package.json'), 'utf-8').includes('1.0.1'),
+      '版本一致的缓存应保留',
+    );
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
 console.log('cli tests passed');

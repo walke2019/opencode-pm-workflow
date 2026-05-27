@@ -37,7 +37,7 @@ pmw --version
 OpenCode log（`~/.local/share/opencode/log/*.log`）出现：
 
 ```
-ERROR service=plugin path=@walke/opencode-pm-workflow@rc
+ERROR service=plugin path=@walke/opencode-pm-workflow
       error=ENOENT: no such file or directory, mkdir '/.pm-workflow'
       failed to load plugin
 ```
@@ -46,7 +46,7 @@ ERROR service=plugin path=@walke/opencode-pm-workflow@rc
 
 ### 根因
 
-rc.4 之前 `getProjectDir()` 兜底逻辑不够强：
+旧版缓存包（典型是 0.3.1 或 rc.4 之前版本）的 `getProjectDir()` 兜底逻辑不够强：
 
 - OpenCode server 在 system service 模式下 `process.cwd()` 是 `/`
 - 旧版 `ctx.worktree || ctx.directory || process.cwd()` 得到 `/`
@@ -55,13 +55,24 @@ rc.4 之前 `getProjectDir()` 兜底逻辑不够强：
 
 ### 修复
 
-升级到 rc.4+：
+先用新版 CLI 备份旧/坏缓存：
 
 ```bash
-${CLAUDE_SKILL_DIR}/scripts/upgrade.sh
+pmw repair opencode-cache
 ```
 
-升级后必须**完全 quit + 重启 OpenCode**，让 OpenCode 用 Bun 重新拉新版到 cache。
+如果需要先看会动哪些目录：
+
+```bash
+pmw repair opencode-cache --dry-run --json
+```
+
+然后**完全 quit + 重启 OpenCode**，让 OpenCode 用 Bun 重新拉新版到 cache。若 `pmw` 还是旧版或找不到，先：
+
+```bash
+npm install -g @walke/opencode-pm-workflow@latest
+pmw --version
+```
 
 ### 验证
 
@@ -73,5 +84,11 @@ grep "mkdir '/.pm-workflow'" "$LATEST"
 # 应无输出
 ```
 
----
+同时确认缓存版本：
 
+```bash
+pmw repair opencode-cache --dry-run --json
+# staleCount 应为 0
+```
+
+---

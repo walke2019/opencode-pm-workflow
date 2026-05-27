@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.0.2
+
+### 修复：旧 OpenCode plugin 缓存阻止新版加载
+
+用户在 `opencode.json` 配置 `@walke/opencode-pm-workflow` 后，OpenCode 仍加载缓存里的旧包 `0.3.1`，日志出现：
+
+```text
+ERROR service=plugin path=@walke/opencode-pm-workflow
+error=ENOENT: no such file or directory, mkdir '/.pm-workflow'
+failed to load plugin
+```
+
+这是旧缓存包在插件初始化早期崩溃，新版插件代码没有机会运行自愈逻辑；同时旧缓存导致 skill/agent/command 入口都无法完整出现。
+
+### 修复
+
+新增离线 CLI 命令：
+
+```bash
+pmw repair opencode-cache
+pmw repair opencode-cache --dry-run --json
+```
+
+命令会扫描：
+
+- `~/.cache/opencode/packages/@walke/opencode-pm-workflow*`
+- `~/.cache/kilo/packages/@walke/opencode-pm-workflow*`
+
+若缓存中的 `@walke/opencode-pm-workflow/package.json` 版本与当前 CLI 包版本不一致，或 package.json 缺失/不可读，则把缓存目录安全改名为 `.bak-<timestamp>`，让 OpenCode 下次完全重启时重新安装当前版本。支持 `--expected-version` 和 `--cache-base`，便于测试、CI 与特殊安装路径。
+
+### 文档
+
+- README 新增缓存自愈说明
+- 使用与运维手册新增 `pmw repair opencode-cache` 用法
+- 待办与演进清单补 OpenCode 缓存自愈能力
+- skill troubleshooting / CLI reference 补新版命令
+
+### 测试
+
+- CLI 回归测试新增 dry-run 不移动缓存目录
+- CLI 回归测试新增真实 repair 备份旧缓存、保留匹配版本缓存
+
 ## 1.0.1
 
 ### 修复：commander stream 7 分钟超时（"LLM 演戏"问题）

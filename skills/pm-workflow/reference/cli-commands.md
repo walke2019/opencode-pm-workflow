@@ -17,9 +17,11 @@ pmw agents theme apply <id> [--scope project|global] [--agents X,Y]  # 落盘
 pmw models init --model <id> [--fallback <id>]   # 初始化 agent 主模型
 pmw models list                                  # 列出当前模型分配
 
+pmw repair opencode-cache                        # 备份旧/坏 OpenCode/Kilo plugin 缓存
+pmw repair opencode-cache --dry-run --json       # 只报告，不移动目录
+
 pmw docs check [--json]                          # 检查 README / 主文档治理规则
 pmw verify                                       # 本地跑 typecheck + build + smoke
 ```
 
 ---
-
