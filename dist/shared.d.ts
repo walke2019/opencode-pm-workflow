@@ -3,10 +3,10 @@ export { resolveLaneContext, shouldCreateTodoForLane, buildTodoPolicySummary, } 
 export { inferTopologyFromAnalysis } from "./commands/topology.js";
 export { summarizeLaneDispatch } from "./commands/result.js";
 export { getGlobalOpenCodeConfigPath, isGlobalOpenCodeModelKey, listGlobalOpenCodeModelKeys, readGlobalOpenCodeModelInventory, } from "./core/model-inventory.js";
-export { configureWorkflowAgentModels } from "./core/model-setup.js";
+export { buildDefaultOpenCodeAgentModelAssignments, configureOpenCodeAgentModels, configureWorkflowAgentModels, } from "./core/model-setup.js";
 export { resolveWorkflowAgentDefinition } from "./core/agent-registry.js";
 export type { OpenCodeModelInventory, OpenCodeModelInventoryEntry, } from "./core/model-inventory.js";
-export type { IModelSetupInput, IModelSetupResult, ModelSetupScope, } from "./core/model-setup.js";
+export type { IModelSetupInput, IModelSetupResult, IOpenCodeAgentModelAssignment, IOpenCodeAgentModelInput, IOpenCodeAgentModelResult, ModelSetupScope, OpenCodeAgentModelScope, } from "./core/model-setup.js";
 export type { WorkflowConfigOverrides } from "./core/config.js";
 export { DOC_FILENAMES, REVIEW_MARKER_FILENAME, ensureProjectStorageDirs, ensureStateDir, getConfigPath, getFeedbackReadRoots, getHistoryPath, getMigrationManifestPath, getProjectDocsDir, getProjectFeedbackDir, getProjectScopedDocPath, getStatePath, resolveDocReadPath, resolveDocWritePath, } from "./core/project.js";
 export { appendHistory, ensureHistoryBootstrap, getLastFailure, queryHistory, readHistory, } from "./core/history.js";
@@ -38,7 +38,8 @@ export type { AgentTaskPermission, ResolvedAgentRouting, TaskPermissionValue, } 
 export { buildHistoryReportSummary, renderHistoryReportHtml, } from "./core/report.js";
 export type { ReportSummary } from "./core/report.js";
 export { doctorAgentLibrary, listAgentLibrary, promoteProjectAgentToGlobal, } from "./core/agent-library.js";
-export { applyAgentTheme, listAgentThemes, previewAgentTheme, renderAgentMdForTheme, resolveThemeTargetDir, } from "./core/agent-theme.js";
+export { applyAgentThemeOverrides, applyAgentTheme, listAgentThemes, previewAgentTheme, renderAgentMdForTheme, resolveThemeTargetDir, } from "./core/agent-theme.js";
+export type { AgentThemeOverrideInput, AgentThemeOverrideResult, } from "./core/agent-theme.js";
 export { FIXED_AGENT_IDS, getBuiltinTheme, getDefaultTheme, listBuiltinThemes, } from "./core/agent-theme-data.js";
 export { buildDocsCheckReport } from "./core/docs-check.js";
 export type { DocsCheckSeverity, IDocsCheckFinding, IDocsCheckReport, } from "./core/docs-check.js";

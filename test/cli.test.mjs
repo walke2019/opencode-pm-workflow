@@ -278,6 +278,104 @@ function runCli(args, options = {}) {
   }
 }
 
+// 14b) models set 写入 OpenCode 官方 opencode.json.agent.<id>.model
+{
+  const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-models-set-'));
+  const configHome = join(projectDir, 'config-home');
+  const opencodeDir = join(configHome, 'opencode');
+  mkdirSync(opencodeDir, { recursive: true });
+  writeFileSync(
+    join(opencodeDir, 'opencode.json'),
+    JSON.stringify({
+      provider: {
+        cx: {
+          models: {
+            'gpt-5.5': {},
+          },
+        },
+      },
+    }),
+    'utf-8',
+  );
+  try {
+    const r = runCli(
+      [
+        'models',
+        'set',
+        '--cwd',
+        projectDir,
+        '--agent',
+        'commander,advisor,writer,explore',
+        '--model',
+        'cx/gpt-5.5',
+        '--json',
+      ],
+      { env: { XDG_CONFIG_HOME: configHome } },
+    );
+    assert.strictEqual(r.status, 0, `models set 应成功，stdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.ok, true);
+    assert.strictEqual(parsed.assignments.length, 4);
+
+    const opencode = JSON.parse(readFileSync(join(opencodeDir, 'opencode.json'), 'utf-8'));
+    assert.strictEqual(opencode.agent.commander.model, 'cx/gpt-5.5');
+    assert.strictEqual(opencode.agent.advisor.model, 'cx/gpt-5.5');
+    assert.strictEqual(opencode.agent.writer.model, 'cx/gpt-5.5');
+    assert.strictEqual(opencode.agent.explore.model, 'cx/gpt-5.5');
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
+// 14c) models apply --map 支持给 6 个 agent + explore 写不同模型并校验模型 ID
+{
+  const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-models-apply-'));
+  const configHome = join(projectDir, 'config-home');
+  const opencodeDir = join(configHome, 'opencode');
+  mkdirSync(opencodeDir, { recursive: true });
+  writeFileSync(
+    join(opencodeDir, 'opencode.json'),
+    JSON.stringify({
+      provider: {
+        cx: { models: { 'gpt-5.5': {}, 'gpt-5.4': {} } },
+        kr: { models: { 'claude-sonnet-4.5': {} } },
+      },
+    }),
+    'utf-8',
+  );
+  try {
+    const r = runCli(
+      [
+        'models',
+        'apply',
+        '--cwd',
+        projectDir,
+        '--map',
+        [
+          'commander=cx/gpt-5.5',
+          'advisor=kr/claude-sonnet-4.5',
+          'backendcoder=cx/gpt-5.5',
+          'designer=cx/gpt-5.5',
+          'fixer=cx/gpt-5.4',
+          'writer=cx/gpt-5.4',
+          'explore=cx/gpt-5.4',
+        ].join(','),
+        '--json',
+      ],
+      { env: { XDG_CONFIG_HOME: configHome } },
+    );
+    assert.strictEqual(r.status, 0, `models apply 应成功，stdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.assignments.length, 7);
+    const opencode = JSON.parse(readFileSync(join(opencodeDir, 'opencode.json'), 'utf-8'));
+    assert.strictEqual(opencode.agent.commander.model, 'cx/gpt-5.5');
+    assert.strictEqual(opencode.agent.advisor.model, 'kr/claude-sonnet-4.5');
+    assert.strictEqual(opencode.agent.explore.model, 'cx/gpt-5.4');
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
 function writeCachedPluginVersion(cacheBase, family, entry, version) {
   const packageDir = join(
     cacheBase,

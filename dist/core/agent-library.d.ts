@@ -29,6 +29,7 @@ export type AgentLibraryEntry = {
     description?: string;
     mode?: string;
     model?: string;
+    modelSource: "frontmatter" | "opencode-project" | "opencode-global" | "default";
     /** frontmatter 是否声明了 permission.task */
     hasTaskPermission: boolean;
     /** frontmatter 完整性 finding（空数组表示完整） */

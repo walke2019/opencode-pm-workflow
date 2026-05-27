@@ -83,6 +83,39 @@ const MINIMAL_AGENT = ['---', 'mode: subagent', '---', '后端'].join('\n');
   }
 }
 
+// 1b) listAgentLibrary：缺 frontmatter model 时读取 opencode.json.agent 的真实模型来源
+{
+  const projectDir = makeProject({
+    'writer.md': ['---', 'description: writer', 'mode: subagent', '---', '正文'].join('\n'),
+  });
+  const xdgHome = mkdtempSync(join(tmpdir(), 'pmw-xdg-model-source-'));
+  mkdirSync(join(xdgHome, 'opencode'), { recursive: true });
+  writeFileSync(
+    join(xdgHome, 'opencode', 'opencode.json'),
+    JSON.stringify({
+      agent: {
+        writer: { model: 'cx/gpt-5.4' },
+      },
+    }),
+    'utf-8',
+  );
+  try {
+    process.env.XDG_CONFIG_HOME = xdgHome;
+    const report = listAgentLibrary(projectDir);
+    const writer = report.agents.find((a) => a.id === 'writer');
+    assert.strictEqual(writer.model, 'cx/gpt-5.4');
+    assert.strictEqual(writer.modelSource, 'opencode-global');
+    assert.ok(
+      !writer.findings.some((finding) => finding.field === 'model'),
+      'opencode.json.agent 已配置 model 时不应再提示缺 model',
+    );
+  } finally {
+    delete process.env.XDG_CONFIG_HOME;
+    rmSync(projectDir, { recursive: true, force: true });
+    rmSync(xdgHome, { recursive: true, force: true });
+  }
+}
+
 // 2) listAgentLibrary：项目覆盖全局
 {
   const projectDir = makeProject({ 'commander.md': COMPLETE_AGENT });

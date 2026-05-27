@@ -26,7 +26,11 @@ export {
   listGlobalOpenCodeModelKeys,
   readGlobalOpenCodeModelInventory,
 } from "./core/model-inventory.js";
-export { configureWorkflowAgentModels } from "./core/model-setup.js";
+export {
+  buildDefaultOpenCodeAgentModelAssignments,
+  configureOpenCodeAgentModels,
+  configureWorkflowAgentModels,
+} from "./core/model-setup.js";
 export { resolveWorkflowAgentDefinition } from "./core/agent-registry.js";
 export type {
   OpenCodeModelInventory,
@@ -35,7 +39,11 @@ export type {
 export type {
   IModelSetupInput,
   IModelSetupResult,
+  IOpenCodeAgentModelAssignment,
+  IOpenCodeAgentModelInput,
+  IOpenCodeAgentModelResult,
   ModelSetupScope,
+  OpenCodeAgentModelScope,
 } from "./core/model-setup.js";
 export type { WorkflowConfigOverrides } from "./core/config.js";
 export {
@@ -196,11 +204,16 @@ export {
   promoteProjectAgentToGlobal,
 } from "./core/agent-library.js";
 export {
+  applyAgentThemeOverrides,
   applyAgentTheme,
   listAgentThemes,
   previewAgentTheme,
   renderAgentMdForTheme,
   resolveThemeTargetDir,
+} from "./core/agent-theme.js";
+export type {
+  AgentThemeOverrideInput,
+  AgentThemeOverrideResult,
 } from "./core/agent-theme.js";
 export {
   FIXED_AGENT_IDS,

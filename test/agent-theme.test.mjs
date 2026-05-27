@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   applyAgentTheme,
+  applyAgentThemeOverrides,
   FIXED_AGENT_IDS,
   getBuiltinTheme,
   listAgentThemes,
@@ -106,6 +107,34 @@ function testApplyThemeToProjectScopeWritesFiles() {
     assert.ok(content.includes('theme: sanguo'));
     assert.ok(content.includes('display_name: '));
   }
+}
+
+function testThemeOverrideChangesOnlyDisplayName() {
+  const sandbox = mkdtempSync(join(tmpdir(), 'agent-theme-override-'));
+  const apply = applyAgentTheme({
+    projectDir: sandbox,
+    themeId: 'sanguo',
+    scope: 'project',
+  });
+  const before = readFileSync(join(apply.targetDir, 'commander.md'), 'utf-8');
+  assert.ok(before.includes('theme: sanguo'));
+
+  const result = applyAgentThemeOverrides({
+    projectDir: sandbox,
+    scope: 'project',
+    names: {
+      commander: '刘备',
+      advisor: '庞统',
+      writer: '陈寿',
+    },
+  });
+
+  assert.strictEqual(result.skipped.length, 0);
+  assert.strictEqual(result.updated.length, 3);
+  const after = readFileSync(join(apply.targetDir, 'commander.md'), 'utf-8');
+  assert.ok(after.includes('display_name: 刘备'), '应覆盖 commander display_name');
+  assert.ok(after.includes('theme: sanguo'), '不应重置主题字段');
+  assert.ok(after.includes('permission:'), '不应删除 permission');
 }
 
 function testApplyThemeToGlobalScopeRespectsXdgConfigHome() {
@@ -410,6 +439,7 @@ testGetBuiltinThemeReturnsCopy();
 testGetBuiltinThemeUnknownReturnsUndefined();
 testRenderAgentMdProducesValidFrontmatter();
 testApplyThemeToProjectScopeWritesFiles();
+testThemeOverrideChangesOnlyDisplayName();
 testApplyThemeToGlobalScopeRespectsXdgConfigHome();
 testDryRunDoesNotWriteFiles();
 testApplyPreservesExistingModelAndMode();

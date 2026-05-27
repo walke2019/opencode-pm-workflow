@@ -44,6 +44,28 @@ import {
   listBuiltinThemes,
 } from "./agent-theme-data.js";
 
+export interface AgentThemeOverrideInput {
+  projectDir: string;
+  scope: AgentThemeWriteScope;
+  names: Partial<Record<DispatchAgent, string>>;
+  targetDirOverride?: string;
+  dryRun?: boolean;
+}
+
+export interface AgentThemeOverrideResult {
+  scope: AgentThemeWriteScope;
+  targetDir: string;
+  dryRun: boolean;
+  updated: Array<{
+    agent: DispatchAgent;
+    filePath: string;
+    displayName: string;
+    exists: boolean;
+    content?: string;
+  }>;
+  skipped: Array<{ agent: string; reason: string }>;
+}
+
 const DEFAULT_PRESERVE: AgentThemePreserveExisting = {
   model: true,
   mode: true,
@@ -531,4 +553,78 @@ export function renderAgentMdForTheme(input: {
     filePath: input.filePath || `/dev/null/${input.agent}.md`,
     preserve,
   });
+}
+
+/**
+ * 局部覆盖已有 agent md 的 `display_name`。用于"只改几个人物名"的场景，
+ * 不重渲染整套主题，也不改语义 ID / mode / permission / model。
+ */
+export function applyAgentThemeOverrides(
+  input: AgentThemeOverrideInput,
+): AgentThemeOverrideResult {
+  const targetDir =
+    input.targetDirOverride ?? resolveThemeTargetDir(input.scope, input.projectDir);
+  const dryRun = input.dryRun === true;
+  const updated: AgentThemeOverrideResult["updated"] = [];
+  const skipped: AgentThemeOverrideResult["skipped"] = [];
+
+  if (!dryRun && !existsSync(targetDir)) {
+    mkdirSync(targetDir, { recursive: true });
+  }
+
+  for (const [agent, rawName] of Object.entries(input.names)) {
+    const displayName = String(rawName || "").trim();
+    if (!displayName) {
+      skipped.push({ agent, reason: "display_name 不能为空" });
+      continue;
+    }
+    if (!(FIXED_AGENT_IDS as readonly string[]).includes(agent)) {
+      skipped.push({ agent, reason: "仅支持 pm-workflow 6 个固定 agent" });
+      continue;
+    }
+
+    const typedAgent = agent as DispatchAgent;
+    const filePath = join(targetDir, `${typedAgent}.md`);
+    const exists = existsSync(filePath);
+    if (!exists) {
+      skipped.push({
+        agent,
+        reason: `agent 文件不存在: ${filePath}；请先运行 pmw agents theme apply <theme>`,
+      });
+      continue;
+    }
+
+    try {
+      const raw = readFileSync(filePath, "utf-8");
+      const parsed = parseFrontmatter(raw);
+      const topLevel = { ...parsed.topLevel, display_name: displayName };
+      const content = `${renderFrontmatter({
+        topLevel,
+        nestedRaw: parsed.nestedRaw,
+      })}\n\n${parsed.bodyAfter.replace(/^\n+/, "")}`;
+      if (!dryRun) {
+        writeFileSync(filePath, content, "utf-8");
+      }
+      updated.push({
+        agent: typedAgent,
+        filePath,
+        displayName,
+        exists,
+        content: dryRun ? content : undefined,
+      });
+    } catch (err) {
+      skipped.push({
+        agent,
+        reason: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return {
+    scope: input.scope,
+    targetDir,
+    dryRun,
+    updated,
+    skipped,
+  };
 }

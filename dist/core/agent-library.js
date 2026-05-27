@@ -22,12 +22,16 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSyn
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { parseFrontmatterTaskPermission } from "./agent-routing.js";
+import { getGlobalOpenCodeConfigPath } from "./model-inventory.js";
 function getProjectAgentsDir(projectDir) {
     return join(projectDir, ".opencode", "agents");
 }
 function getGlobalAgentsDir() {
     const configHome = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
     return join(configHome, "opencode", "agents");
+}
+function getProjectOpenCodeConfigPath(projectDir) {
+    return join(projectDir, "opencode.json");
 }
 function listMarkdownFiles(dir) {
     if (!existsSync(dir))
@@ -67,6 +71,49 @@ function extractTopLevelFields(raw) {
         }
     }
     return result;
+}
+function readOpenCodeAgentModels(path) {
+    if (!existsSync(path))
+        return {};
+    try {
+        const parsed = JSON.parse(readFileSync(path, "utf-8"));
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+            return {};
+        const agentRoot = parsed.agent;
+        if (!agentRoot || typeof agentRoot !== "object" || Array.isArray(agentRoot)) {
+            return {};
+        }
+        const result = {};
+        for (const [agentId, value] of Object.entries(agentRoot)) {
+            if (!value || typeof value !== "object" || Array.isArray(value))
+                continue;
+            const model = value.model;
+            if (typeof model === "string" && model.trim()) {
+                result[agentId] = model.trim();
+            }
+        }
+        return result;
+    }
+    catch {
+        return {};
+    }
+}
+function resolveAgentModel(input) {
+    if (input.frontmatterModel) {
+        return { model: input.frontmatterModel, modelSource: "frontmatter" };
+    }
+    const projectModel = input.projectModels[input.id];
+    if (projectModel)
+        return { model: projectModel, modelSource: "opencode-project" };
+    const globalModel = input.globalModels[input.id];
+    if (globalModel)
+        return { model: globalModel, modelSource: "opencode-global" };
+    return { model: undefined, modelSource: "default" };
+}
+function removeModelFindingWhenConfigured(findings, model) {
+    if (!model)
+        return findings;
+    return findings.filter((finding) => finding.field !== "model");
 }
 function evaluateAgentFile(filePath) {
     const raw = (() => {
@@ -113,6 +160,7 @@ function evaluateAgentFile(filePath) {
         description: fields.description,
         mode: fields.mode,
         model: fields.model,
+        frontmatterModel: fields.model,
         hasTaskPermission,
         findings,
     };
@@ -123,17 +171,29 @@ function evaluateAgentFile(filePath) {
 export function listAgentLibrary(projectDir) {
     const projectFiles = listMarkdownFiles(getProjectAgentsDir(projectDir));
     const globalFiles = listMarkdownFiles(getGlobalAgentsDir());
+    const projectModels = readOpenCodeAgentModels(getProjectOpenCodeConfigPath(projectDir));
+    const globalModels = readOpenCodeAgentModels(getGlobalOpenCodeConfigPath());
     const projectIds = new Set(projectFiles.map((p) => basename(p, ".md")));
     const globalIds = new Set(globalFiles.map((p) => basename(p, ".md")));
     const agents = [];
     for (const filePath of projectFiles) {
         const id = basename(filePath, ".md");
         const meta = evaluateAgentFile(filePath);
+        const { frontmatterModel, ...entryMeta } = meta;
+        const resolvedModel = resolveAgentModel({
+            id,
+            frontmatterModel,
+            projectModels,
+            globalModels,
+        });
         agents.push({
             id,
             filePath,
             source: "project",
-            ...meta,
+            ...entryMeta,
+            model: resolvedModel.model,
+            modelSource: resolvedModel.modelSource,
+            findings: removeModelFindingWhenConfigured(entryMeta.findings, resolvedModel.model),
         });
     }
     for (const filePath of globalFiles) {
@@ -141,11 +201,21 @@ export function listAgentLibrary(projectDir) {
         if (projectIds.has(id))
             continue; // 已被 project 覆盖，不重复列
         const meta = evaluateAgentFile(filePath);
+        const { frontmatterModel, ...entryMeta } = meta;
+        const resolvedModel = resolveAgentModel({
+            id,
+            frontmatterModel,
+            projectModels,
+            globalModels,
+        });
         agents.push({
             id,
             filePath,
             source: "global",
-            ...meta,
+            ...entryMeta,
+            model: resolvedModel.model,
+            modelSource: resolvedModel.modelSource,
+            findings: removeModelFindingWhenConfigured(entryMeta.findings, resolvedModel.model),
         });
     }
     agents.sort((a, b) => a.id.localeCompare(b.id));

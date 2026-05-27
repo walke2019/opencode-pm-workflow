@@ -18,6 +18,29 @@
  * - agent-theme 负责"主题维度的工具"（list / preview / apply）。
  */
 import type { AgentThemeId, AgentThemePreserveExisting, AgentThemeWriteScope, ApplyAgentThemeInput, ApplyAgentThemeResult, DispatchAgent, RenderedAgentMd } from "./types.js";
+export interface AgentThemeOverrideInput {
+    projectDir: string;
+    scope: AgentThemeWriteScope;
+    names: Partial<Record<DispatchAgent, string>>;
+    targetDirOverride?: string;
+    dryRun?: boolean;
+}
+export interface AgentThemeOverrideResult {
+    scope: AgentThemeWriteScope;
+    targetDir: string;
+    dryRun: boolean;
+    updated: Array<{
+        agent: DispatchAgent;
+        filePath: string;
+        displayName: string;
+        exists: boolean;
+        content?: string;
+    }>;
+    skipped: Array<{
+        agent: string;
+        reason: string;
+    }>;
+}
 /** 列出所有内置主题的元数据（id / label / summary）。 */
 export declare function listAgentThemes(): Array<{
     id: AgentThemeId;
@@ -55,3 +78,8 @@ export declare function renderAgentMdForTheme(input: {
     filePath?: string;
     preserveExisting?: Partial<AgentThemePreserveExisting>;
 }): RenderedAgentMd;
+/**
+ * 局部覆盖已有 agent md 的 `display_name`。用于"只改几个人物名"的场景，
+ * 不重渲染整套主题，也不改语义 ID / mode / permission / model。
+ */
+export declare function applyAgentThemeOverrides(input: AgentThemeOverrideInput): AgentThemeOverrideResult;

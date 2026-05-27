@@ -25,7 +25,7 @@ import {
 
 ## 2. 公开 API 分类
 
-总计 **120 个符号**（不含 `__esModule` / `default`）。按职责分类如下。
+总计 **135 个符号**（不含 `__esModule` / `default`）。按职责分类如下。
 
 ### 2.1 OpenCode 插件入口
 
@@ -55,6 +55,8 @@ import {
 | `readGlobalWorkflowConfigOverrides` | function | 读取全局 overrides |
 | `validateWorkflowConfigAgentModels` | function | 校验 agent.model 在全局清单中存在 |
 | `configureWorkflowAgentModels` | function | 0.11.1 起的 `pmw models init` 内部实现 |
+| `configureOpenCodeAgentModels` | function | 1.0.3 起写入 OpenCode 官方 `opencode.json.agent.<id>.model` |
+| `buildDefaultOpenCodeAgentModelAssignments` | function | 1.0.3 起生成 6 个 pm-workflow agent + explore 的模型分配 |
 
 ### 2.3 模型清单（Global OpenCode）
 
@@ -234,6 +236,7 @@ import {
 | `listAgentLibrary` | function | 列项目 + 全局 agent，识别 shadow |
 | `promoteProjectAgentToGlobal` | function | 安全复制项目 agent 到全局 |
 | `doctorAgentLibrary` | function | frontmatter 完整性检查 |
+| `applyAgentThemeOverrides` | function | 1.0.3 起局部覆盖固定 agent 的 `display_name` |
 
 ### 2.19 OpenCode agent 配置生成
 
@@ -269,4 +272,5 @@ npm run api-snapshot:update
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-28 | 1.0.3 | 新增 3 个公开 API：`applyAgentThemeOverrides`、`configureOpenCodeAgentModels`、`buildDefaultOpenCodeAgentModelAssignments`；快照更新到 135 个符号 |
 | 2026-05-23 | 0.12.0 | 新建：把 `dist/index.js` 全部 120 个公开 export 按 19 个职责分类列出；与 `tools/api-snapshot.json` 互相校验；prepare-publish 自动跑 api-snapshot check + docs check |

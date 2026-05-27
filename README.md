@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.2`。
+当前发布版本：`1.0.3`。
 
 ## 适用场景
 
@@ -130,10 +130,26 @@ pmw repair opencode-cache
 
 该命令会把旧/坏的 pm-workflow plugin 缓存安全改名为 `.bak-<timestamp>`，下次完全重启 OpenCode 时由 OpenCode 重新安装当前版本。
 
+## 局部主题与模型配置
+
+只改少数 agent 的展示名，不重渲染整套主题：
+
+```bash
+pmw agents theme override --scope global --names commander=诸葛亮,advisor=司马懿,writer=陈寿
+```
+
+把模型写入 OpenCode 官方 `opencode.json.agent`：
+
+```bash
+pmw models set --agent commander,advisor,writer,explore --model cx/gpt-5.5
+pmw models apply --map commander=cx/gpt-5.5,advisor=kr/claude-sonnet-4.5,writer=cx/gpt-5.4
+```
+
 ## Change Log
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-28 | 1.0.3 | 新增 `pmw agents theme override` 局部覆盖 display_name；新增 `pmw models set/apply` 写入 OpenCode 官方 `opencode.json.agent.<id>.model` 并校验模型 ID；`agents list/doctor` 显示真实模型来源，避免 `model=(default)` 误导 |
 | 2026-05-28 | 1.0.2 | 新增 `pmw repair opencode-cache`：自动检测并备份 OpenCode/Kilo 中旧版或损坏的 pm-workflow npm plugin 缓存，解决旧缓存导致插件启动前崩溃、无法显示 `/pm-workflow` 入口的问题 |
 | 2026-05-25 | 1.0.1 | **修复 commander stream 7 分钟超时**：实测 commander 不真调 task tool，而在 stream 里"演戏"假装多角色对话直到 stream 累积过长被 OpenCode 服务端 terminated（log 显示 +428449ms）。1.0.1 给 commander 加 `steps: 5` 强制最多 5 步内部迭代后必须收敛输出，逼 LLM 真调 task 而不是写长 stream。`AgentThemeRoleSkin` 类型新增 `steps?: number` 字段，渲染时写入 frontmatter |
 | 2026-05-25 | 1.0.0 | 首个正式版。从 0.3.1 走到 1.0.0 经过 23 个 RC 验证 |

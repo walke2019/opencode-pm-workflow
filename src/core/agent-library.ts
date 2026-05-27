@@ -30,6 +30,7 @@ import {
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { parseFrontmatterTaskPermission } from "./agent-routing.js";
+import { getGlobalOpenCodeConfigPath } from "./model-inventory.js";
 
 export type AgentLibraryEntry = {
   /** agent id（不含 .md 扩展名） */
@@ -42,6 +43,7 @@ export type AgentLibraryEntry = {
   description?: string;
   mode?: string;
   model?: string;
+  modelSource: "frontmatter" | "opencode-project" | "opencode-global" | "default";
   /** frontmatter 是否声明了 permission.task */
   hasTaskPermission: boolean;
   /** frontmatter 完整性 finding（空数组表示完整） */
@@ -72,6 +74,10 @@ function getProjectAgentsDir(projectDir: string) {
 function getGlobalAgentsDir() {
   const configHome = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
   return join(configHome, "opencode", "agents");
+}
+
+function getProjectOpenCodeConfigPath(projectDir: string) {
+  return join(projectDir, "opencode.json");
 }
 
 function listMarkdownFiles(dir: string): string[] {
@@ -111,10 +117,60 @@ function extractTopLevelFields(raw: string): Record<string, string> {
   return result;
 }
 
+function readOpenCodeAgentModels(path: string): Record<string, string> {
+  if (!existsSync(path)) return {};
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf-8")) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const agentRoot = (parsed as Record<string, unknown>).agent;
+    if (!agentRoot || typeof agentRoot !== "object" || Array.isArray(agentRoot)) {
+      return {};
+    }
+    const result: Record<string, string> = {};
+    for (const [agentId, value] of Object.entries(
+      agentRoot as Record<string, unknown>,
+    )) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+      const model = (value as Record<string, unknown>).model;
+      if (typeof model === "string" && model.trim()) {
+        result[agentId] = model.trim();
+      }
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+function resolveAgentModel(input: {
+  id: string;
+  frontmatterModel?: string;
+  projectModels: Record<string, string>;
+  globalModels: Record<string, string>;
+}): { model?: string; modelSource: AgentLibraryEntry["modelSource"] } {
+  if (input.frontmatterModel) {
+    return { model: input.frontmatterModel, modelSource: "frontmatter" };
+  }
+  const projectModel = input.projectModels[input.id];
+  if (projectModel) return { model: projectModel, modelSource: "opencode-project" };
+  const globalModel = input.globalModels[input.id];
+  if (globalModel) return { model: globalModel, modelSource: "opencode-global" };
+  return { model: undefined, modelSource: "default" };
+}
+
+function removeModelFindingWhenConfigured(
+  findings: AgentLibraryFinding[],
+  model?: string,
+): AgentLibraryFinding[] {
+  if (!model) return findings;
+  return findings.filter((finding) => finding.field !== "model");
+}
+
 function evaluateAgentFile(filePath: string): {
   description?: string;
   mode?: string;
   model?: string;
+  frontmatterModel?: string;
   hasTaskPermission: boolean;
   findings: AgentLibraryFinding[];
 } {
@@ -165,6 +221,7 @@ function evaluateAgentFile(filePath: string): {
     description: fields.description,
     mode: fields.mode,
     model: fields.model,
+    frontmatterModel: fields.model,
     hasTaskPermission,
     findings,
   };
@@ -176,6 +233,10 @@ function evaluateAgentFile(filePath: string): {
 export function listAgentLibrary(projectDir: string): AgentLibraryReport {
   const projectFiles = listMarkdownFiles(getProjectAgentsDir(projectDir));
   const globalFiles = listMarkdownFiles(getGlobalAgentsDir());
+  const projectModels = readOpenCodeAgentModels(
+    getProjectOpenCodeConfigPath(projectDir),
+  );
+  const globalModels = readOpenCodeAgentModels(getGlobalOpenCodeConfigPath());
 
   const projectIds = new Set<string>(
     projectFiles.map((p) => basename(p, ".md")),
@@ -188,22 +249,48 @@ export function listAgentLibrary(projectDir: string): AgentLibraryReport {
   for (const filePath of projectFiles) {
     const id = basename(filePath, ".md");
     const meta = evaluateAgentFile(filePath);
+    const { frontmatterModel, ...entryMeta } = meta;
+    const resolvedModel = resolveAgentModel({
+      id,
+      frontmatterModel,
+      projectModels,
+      globalModels,
+    });
     agents.push({
       id,
       filePath,
       source: "project",
-      ...meta,
+      ...entryMeta,
+      model: resolvedModel.model,
+      modelSource: resolvedModel.modelSource,
+      findings: removeModelFindingWhenConfigured(
+        entryMeta.findings,
+        resolvedModel.model,
+      ),
     });
   }
   for (const filePath of globalFiles) {
     const id = basename(filePath, ".md");
     if (projectIds.has(id)) continue; // 已被 project 覆盖，不重复列
     const meta = evaluateAgentFile(filePath);
+    const { frontmatterModel, ...entryMeta } = meta;
+    const resolvedModel = resolveAgentModel({
+      id,
+      frontmatterModel,
+      projectModels,
+      globalModels,
+    });
     agents.push({
       id,
       filePath,
       source: "global",
-      ...meta,
+      ...entryMeta,
+      model: resolvedModel.model,
+      modelSource: resolvedModel.modelSource,
+      findings: removeModelFindingWhenConfigured(
+        entryMeta.findings,
+        resolvedModel.model,
+      ),
     });
   }
 

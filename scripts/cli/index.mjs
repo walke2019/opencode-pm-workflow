@@ -22,6 +22,8 @@
  *   pmw agents theme preview <id> [--scope project|global]   预览主题渲染（不写盘）
  *   pmw agents theme apply <id> [--scope project|global] [--no-preserve-model]   应用主题，写 6 个 md 到目标目录
  *   pmw models init --model <id> [--fallback <id>]  初始化 agent 模型与回退模型
+ *   pmw models set --agent <id[,id]> --model <id>   写入 OpenCode opencode.json.agent 模型
+ *   pmw models apply --map a=m,b=m      批量写入 OpenCode opencode.json.agent 模型
  *   pmw repair opencode-cache [--dry-run] [--json]  备份旧/坏 OpenCode npm plugin 缓存
  *   pmw docs check [--json]          检查 README / 主文档 / Change Log 治理规则
  *   pmw verify                       本地 typecheck + build + smoke + pack-dry-run
@@ -100,7 +102,10 @@ function printHelp() {
     "  agents theme list     列出内置主题（default / sanguo / xiyou / marvel / workplace）",
     "  agents theme preview <id>   预览主题渲染（不写盘，--scope project|global 决定目标目录）",
     "  agents theme apply <id>     应用主题：把 6 个 agent 的 md 写入目标目录",
+    "  agents theme override       局部覆盖 agent display_name，不重渲染主题",
     "  models init           初始化 agent 主模型与回退模型（默认写全局配置）",
+    "  models set            写入 OpenCode opencode.json.agent.<id>.model",
+    "  models apply          批量写入 OpenCode opencode.json.agent 模型",
     "  repair opencode-cache  检查并备份旧/坏 OpenCode npm plugin 缓存",
     "  docs check            检查 README 版本、主文档数量、Change Log 与旧路径引用",
     "  verify                本地跑 typecheck + build + smoke + pack-dry-run",
@@ -124,8 +129,11 @@ function printHelp() {
     "  pmw agents theme preview sanguo",
     "  pmw agents theme apply sanguo --scope global",
     "  pmw agents theme apply default --scope project --agents backendcoder,designer",
+    "  pmw agents theme override --scope global --names commander=诸葛亮,advisor=司马懿,writer=陈寿",
     "  pmw models init --model opencode/gpt-5 --fallback opencode/gpt-5-mini",
     "  pmw models init --scope project --agent backendcoder --model cx/gpt-5.5 --fallback cx/gpt-5.4",
+    "  pmw models set --agent commander,advisor,writer,explore --model cx/gpt-5.5",
+    "  pmw models apply --map commander=cx/gpt-5.5,advisor=kr/claude-sonnet-4.5,writer=cx/gpt-5.4",
     "  pmw repair opencode-cache",
     "  pmw repair opencode-cache --dry-run --json",
     "  pmw docs check",
@@ -440,7 +448,7 @@ async function runAgentsList(args) {
     if (report.shadowedGlobals.includes(agent.id)) tags.push("shadows-global");
     if (agent.findings.length > 0) tags.push(`${agent.findings.length} finding(s)`);
     lines.push(
-      `  - ${agent.id} [${tags.join(", ")}] mode=${agent.mode ?? "?"} model=${agent.model ?? "(default)"} taskPerm=${agent.hasTaskPermission ? "yes" : "no"}`,
+      `  - ${agent.id} [${tags.join(", ")}] mode=${agent.mode ?? "?"} model=${agent.model ?? "(inherited/default)"} source=${agent.modelSource ?? "default"} taskPerm=${agent.hasTaskPermission ? "yes" : "no"}`,
     );
     lines.push(`    ${agent.filePath}`);
   }
@@ -570,6 +578,21 @@ function parseThemeAgents(args) {
     .filter(Boolean);
 }
 
+function parseKeyValueList(raw) {
+  if (!raw) return {};
+  const result = {};
+  for (const item of String(raw).split(",")) {
+    const trimmed = item.trim();
+    if (!trimmed) continue;
+    const sep = trimmed.indexOf("=");
+    if (sep === -1) continue;
+    const key = trimmed.slice(0, sep).trim();
+    const value = trimmed.slice(sep + 1).trim();
+    if (key && value) result[key] = value;
+  }
+  return result;
+}
+
 async function runAgentsThemePreview(args) {
   const dist = await loadDist();
   const projectDir = getProjectDir(args);
@@ -678,13 +701,58 @@ async function runAgentsThemeApply(args) {
   return result.skipped.length === 0 ? 0 : 1;
 }
 
+async function runAgentsThemeOverride(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const scope = args.options.scope === "project" ? "project" : "global";
+  const names = parseKeyValueList(args.options.names);
+  if (Object.keys(names).length === 0) {
+    console.error("用法: pmw agents theme override --names commander=诸葛亮,advisor=司马懿");
+    return 2;
+  }
+
+  const result = dist.applyAgentThemeOverrides({
+    projectDir,
+    scope,
+    names,
+    dryRun: Boolean(args.flags["dry-run"]),
+  });
+
+  if (args.flags.json) {
+    emit(args, result);
+    return result.skipped.length === 0 ? 0 : 1;
+  }
+
+  const lines = [
+    "pmw agents theme override",
+    `- scope: ${result.scope}`,
+    `- targetDir: ${result.targetDir}`,
+    `- dry-run: ${result.dryRun ? "yes" : "no"}`,
+    `- updated: ${result.updated.length}`,
+    `- skipped: ${result.skipped.length}`,
+  ];
+  if (result.updated.length > 0) {
+    lines.push("", "updated:");
+    for (const item of result.updated) {
+      lines.push(`  - ${item.agent}: display_name=${item.displayName} -> ${item.filePath}`);
+    }
+  }
+  if (result.skipped.length > 0) {
+    lines.push("", "skipped:");
+    for (const item of result.skipped) lines.push(`  - ${item.agent}: ${item.reason}`);
+  }
+  console.log(lines.join("\n"));
+  return result.skipped.length === 0 ? 0 : 1;
+}
+
 async function runAgentsTheme(args) {
   const sub = args._[2];
   if (sub === "list") return await runAgentsThemeList(args);
   if (sub === "preview") return await runAgentsThemePreview(args);
   if (sub === "apply") return await runAgentsThemeApply(args);
+  if (sub === "override") return await runAgentsThemeOverride(args);
   console.error(`未知 agents theme 子命令: ${sub ?? "<empty>"}`);
-  console.error("当前支持: pmw agents theme list | preview <id> | apply <id>");
+  console.error("当前支持: pmw agents theme list | preview <id> | apply <id> | override --names a=b");
   return 2;
 }
 
@@ -783,6 +851,95 @@ async function runModelsInit(args) {
   return 0;
 }
 
+function parseModelAssignmentsFromMap(raw) {
+  return Object.entries(parseKeyValueList(raw)).map(([agent, model]) => ({
+    agent,
+    model,
+  }));
+}
+
+function formatOpenCodeModelResult(result) {
+  const lines = [
+    result.ok ? "pmw models update ✓" : "pmw models update failed",
+    `- scope: ${result.scope}`,
+    `- opencode.json: ${result.path}`,
+    `- updated: ${result.updated ? "yes" : "no"}`,
+    `- assignments: ${result.assignments.length}`,
+  ];
+  for (const assignment of result.assignments) {
+    lines.push(`  - ${assignment.agent}: ${assignment.model}`);
+  }
+  if (result.warnings.length > 0) {
+    lines.push("", "warnings:", ...result.warnings.map((item) => `  - ${item}`));
+  }
+  if (result.blockers.length > 0) {
+    lines.push("", "blockers:", ...result.blockers.map((item) => `  - ${item}`));
+  }
+  return lines.join("\n");
+}
+
+async function runModelsSet(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const model = args.options.model ? String(args.options.model).trim() : "";
+  const agents = args.options.agent
+    ? String(args.options.agent)
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+  const scope = args.options.scope === "project" ? "project" : "global";
+
+  if (!model || agents.length === 0) {
+    console.error("用法: pmw models set --agent commander,advisor --model <model-id>");
+    return 2;
+  }
+
+  const result = dist.configureOpenCodeAgentModels({
+    projectDir,
+    scope,
+    assignments: agents.map((agent) => ({ agent, model })),
+    allowUnknown: Boolean(args.flags["allow-unknown"]),
+  });
+
+  if (args.flags.json) {
+    emit(args, result);
+    return result.ok ? 0 : 1;
+  }
+  console.log(formatOpenCodeModelResult(result));
+  return result.ok ? 0 : 1;
+}
+
+async function runModelsApply(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const scope = args.options.scope === "project" ? "project" : "global";
+  let assignments = parseModelAssignmentsFromMap(args.options.map);
+  if (assignments.length === 0 && args.options.model) {
+    assignments = dist.buildDefaultOpenCodeAgentModelAssignments(
+      String(args.options.model),
+    );
+  }
+  if (assignments.length === 0) {
+    console.error("用法: pmw models apply --map commander=model,advisor=model 或 --model <model-id>");
+    return 2;
+  }
+
+  const result = dist.configureOpenCodeAgentModels({
+    projectDir,
+    scope,
+    assignments,
+    allowUnknown: Boolean(args.flags["allow-unknown"]),
+  });
+
+  if (args.flags.json) {
+    emit(args, result);
+    return result.ok ? 0 : 1;
+  }
+  console.log(formatOpenCodeModelResult(result));
+  return result.ok ? 0 : 1;
+}
+
 function runVerify() {
   // 直接调用本包的 verify-release 脚本；保留 stdio 流式输出以便 CI 看清。
   try {
@@ -837,8 +994,10 @@ async function main() {
     case "models": {
       const sub = args._[1];
       if (sub === "init") return await runModelsInit(args);
+      if (sub === "set") return await runModelsSet(args);
+      if (sub === "apply") return await runModelsApply(args);
       console.error(`未知 models 子命令: ${sub ?? "<empty>"}`);
-      console.error("当前支持: pmw models init --model <id> [--fallback <id>]");
+      console.error("当前支持: pmw models init | set | apply");
       return 2;
     }
     case "repair": {

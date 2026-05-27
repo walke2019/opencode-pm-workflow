@@ -3,7 +3,7 @@ export { resolveLaneContext, shouldCreateTodoForLane, buildTodoPolicySummary, } 
 export { inferTopologyFromAnalysis } from "./commands/topology.js";
 export { summarizeLaneDispatch } from "./commands/result.js";
 export { getGlobalOpenCodeConfigPath, isGlobalOpenCodeModelKey, listGlobalOpenCodeModelKeys, readGlobalOpenCodeModelInventory, } from "./core/model-inventory.js";
-export { configureWorkflowAgentModels } from "./core/model-setup.js";
+export { buildDefaultOpenCodeAgentModelAssignments, configureOpenCodeAgentModels, configureWorkflowAgentModels, } from "./core/model-setup.js";
 export { resolveWorkflowAgentDefinition } from "./core/agent-registry.js";
 export { DOC_FILENAMES, REVIEW_MARKER_FILENAME, ensureProjectStorageDirs, ensureStateDir, getConfigPath, getFeedbackReadRoots, getHistoryPath, getMigrationManifestPath, getProjectDocsDir, getProjectFeedbackDir, getProjectScopedDocPath, getStatePath, resolveDocReadPath, resolveDocWritePath, } from "./core/project.js";
 export { appendHistory, ensureHistoryBootstrap, getLastFailure, queryHistory, readHistory, } from "./core/history.js";
@@ -29,6 +29,6 @@ export { resolveOpenCodeSkillsDir, resolvePackageSkillsDir, syncPackagedSkillsTo
 export { isSubagentAllowedByDeclarativeRouting, parseFrontmatterTaskPermission, resolveAgentTaskRouting, } from "./core/agent-routing.js";
 export { buildHistoryReportSummary, renderHistoryReportHtml, } from "./core/report.js";
 export { doctorAgentLibrary, listAgentLibrary, promoteProjectAgentToGlobal, } from "./core/agent-library.js";
-export { applyAgentTheme, listAgentThemes, previewAgentTheme, renderAgentMdForTheme, resolveThemeTargetDir, } from "./core/agent-theme.js";
+export { applyAgentThemeOverrides, applyAgentTheme, listAgentThemes, previewAgentTheme, renderAgentMdForTheme, resolveThemeTargetDir, } from "./core/agent-theme.js";
 export { FIXED_AGENT_IDS, getBuiltinTheme, getDefaultTheme, listBuiltinThemes, } from "./core/agent-theme-data.js";
 export { buildDocsCheckReport } from "./core/docs-check.js";

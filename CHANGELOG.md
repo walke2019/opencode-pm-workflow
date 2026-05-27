@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.0.3
+
+### 新增：局部主题 override
+
+新增：
+
+```bash
+pmw agents theme override --scope global --names commander=诸葛亮,advisor=司马懿,writer=陈寿
+```
+
+该命令只覆盖已有 agent md 的 `display_name`，不重渲染整套主题，不改变语义 ID、mode、permission、tools、model，适合只微调 commander/advisor/writer 人物名。
+
+### 新增：OpenCode 官方 agent 模型写入
+
+新增：
+
+```bash
+pmw models set --agent commander,advisor,writer,explore --model cx/gpt-5.5
+pmw models apply --map commander=cx/gpt-5.5,advisor=kr/claude-sonnet-4.5,writer=cx/gpt-5.4
+pmw models apply --model cx/gpt-5.5
+```
+
+`models set/apply` 写入 OpenCode 官方 `opencode.json.agent.<id>.model`，不是 pm-workflow 内部 metadata。写入前会校验模型 ID 是否存在于全局 `provider.*.models` 清单；可用 `--allow-unknown` 显式跳过校验。
+
+`models apply --model <id>` 默认覆盖 6 个 pm-workflow agent + `explore`。
+
+### 改进：agents list/doctor 展示真实模型来源
+
+`pmw agents list` 现在会读取：
+
+- agent markdown frontmatter `model`
+- 项目级 `opencode.json.agent.<id>.model`
+- 全局 `~/.config/opencode/opencode.json.agent.<id>.model`
+
+并显示 `source=frontmatter|opencode-project|opencode-global|default`，避免缺 frontmatter model 时显示 `model=(default)` 造成误导。
+
+### 修复
+
+- `models init` 默认 agent 列表修复：原先 `advisor` 重复、缺 `writer`。
+- 新增公开 API 快照符号：`applyAgentThemeOverrides`、`configureOpenCodeAgentModels`、`buildDefaultOpenCodeAgentModelAssignments`。
+
 ## 1.0.2
 
 ### 修复：旧 OpenCode plugin 缓存阻止新版加载
