@@ -167,6 +167,11 @@ export function guardPluginActivation(
   return "first";
 }
 
+/** 释放 activation 哨兵，供 OpenCode plugin dispose / hot-reload 生命周期使用。 */
+export function releasePluginActivation(pluginId: string) {
+  ACTIVATED_PLUGIN_IDS.delete(pluginId);
+}
+
 /** 仅供测试使用：清空 activation 哨兵状态 */
 export function _resetPluginActivationGuardForTesting() {
   ACTIVATED_PLUGIN_IDS.clear();

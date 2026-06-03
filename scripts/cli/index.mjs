@@ -25,6 +25,8 @@
  *   pmw models set --agent <id[,id]> --model <id>   写入 OpenCode opencode.json.agent 模型
  *   pmw models apply --map a=m,b=m      批量写入 OpenCode opencode.json.agent 模型
  *   pmw repair opencode-cache [--dry-run] [--json]  备份旧/坏 OpenCode npm plugin 缓存
+ *   pmw repair install-sync [--apply] [--json]  对齐 opencode plugin 目标、CLI 与缓存
+ *   pmw repair agents [--theme default]  备份旧 agent 残留并重建 6 个新版 agent md
  *   pmw docs check [--json]          检查 README / 主文档 / Change Log 治理规则
  *   pmw verify                       本地 typecheck + build + smoke + pack-dry-run
  *   pmw --help                       命令一览
@@ -107,6 +109,8 @@ function printHelp() {
     "  models set            写入 OpenCode opencode.json.agent.<id>.model",
     "  models apply          批量写入 OpenCode opencode.json.agent 模型",
     "  repair opencode-cache  检查并备份旧/坏 OpenCode npm plugin 缓存",
+    "  repair install-sync     检查 opencode plugin 目标、CLI 与缓存是否对齐",
+    "  repair agents          备份旧 agent 残留并重建 6 个新版 agent md",
     "  docs check            检查 README 版本、主文档数量、Change Log 与旧路径引用",
     "  verify                本地跑 typecheck + build + smoke + pack-dry-run",
     "  --help                显示本帮助",
@@ -136,6 +140,10 @@ function printHelp() {
     "  pmw models apply --map commander=cx/gpt-5.5,advisor=kr/claude-sonnet-4.5,writer=cx/gpt-5.4",
     "  pmw repair opencode-cache",
     "  pmw repair opencode-cache --dry-run --json",
+    "  pmw repair install-sync --json",
+    "  pmw repair install-sync --apply",
+    "  pmw repair agents --scope global --theme default",
+    "  pmw repair agents --scope project --dry-run",
     "  pmw docs check",
     "  pmw verify",
   ];
@@ -164,6 +172,10 @@ function resolveCacheBase() {
   return process.env.XDG_CACHE_HOME || join(homedir(), ".cache");
 }
 
+function resolveConfigHome() {
+  return process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
+}
+
 function readJsonMaybe(path) {
   try {
     return JSON.parse(readFileSync(path, "utf-8"));
@@ -172,10 +184,113 @@ function readJsonMaybe(path) {
   }
 }
 
+function getPluginRefsFromConfig(config, source) {
+  const refs = [];
+  const plugin = config && typeof config === "object" ? config.plugin : undefined;
+  const plugins = typeof plugin === "string" ? [plugin] : Array.isArray(plugin) ? plugin : [];
+  for (const item of plugins) {
+    if (
+      typeof item === "string" &&
+      (item === "@walke/opencode-pm-workflow" ||
+        item.startsWith("@walke/opencode-pm-workflow@"))
+    ) {
+      refs.push({ ref: item, source });
+    }
+  }
+  return refs;
+}
+
+function findProjectOpenCodeConfigPaths(projectDir) {
+  const dirs = [];
+  let current = resolve(projectDir);
+  while (true) {
+    dirs.push(current);
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+
+  const paths = [];
+  for (const dir of dirs.reverse()) {
+    paths.push(join(dir, "opencode.json"));
+    paths.push(join(dir, ".opencode", "opencode.json"));
+  }
+  return paths;
+}
+
+function collectOpenCodePluginRefs(projectDir, env = process.env) {
+  const sources = [];
+  const globalPath = join(resolveConfigHome(), "opencode", "opencode.json");
+  sources.push({ kind: "global", path: globalPath, config: readJsonMaybe(globalPath) });
+
+  if (env.OPENCODE_CONFIG) {
+    const customPath = resolve(String(env.OPENCODE_CONFIG));
+    sources.push({ kind: "env-file", path: customPath, config: readJsonMaybe(customPath) });
+  }
+
+  for (const path of findProjectOpenCodeConfigPaths(projectDir)) {
+    if (existsSync(path)) {
+      sources.push({ kind: "project", path, config: readJsonMaybe(path) });
+    }
+  }
+
+  if (env.OPENCODE_CONFIG_CONTENT) {
+    let config = null;
+    try {
+      config = JSON.parse(String(env.OPENCODE_CONFIG_CONTENT));
+    } catch {
+      config = null;
+    }
+    sources.push({ kind: "env-content", path: "OPENCODE_CONFIG_CONTENT", config });
+  }
+
+  return sources.flatMap((source) =>
+    getPluginRefsFromConfig(source.config, {
+      kind: source.kind,
+      path: source.path,
+    }),
+  );
+}
+
+function resolvePluginSpec(ref) {
+  if (!ref) return "latest";
+  const packageName = "@walke/opencode-pm-workflow";
+  const rest = ref.startsWith(packageName) ? ref.slice(packageName.length) : "";
+  if (!rest) return "latest";
+  const spec = rest.startsWith("@") ? rest.slice(1) : rest;
+  return spec || "latest";
+}
+
+function isSemverLike(value) {
+  return /^\d+\.\d+\.\d+(?:[-.+][0-9A-Za-z.-]+)?$/.test(value);
+}
+
+function resolveRegistryTargetVersion(spec) {
+  if (isSemverLike(spec)) return spec;
+  try {
+    const raw = execSync("npm view @walke/opencode-pm-workflow dist-tags --json", {
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    const tags = JSON.parse(raw);
+    return typeof tags?.[spec] === "string" ? tags[spec] : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function readCachedPluginVersion(cacheDir) {
   const packageJson = readJsonMaybe(
     join(cacheDir, "node_modules", "@walke", "opencode-pm-workflow", "package.json"),
   );
+  if (packageJson && typeof packageJson.version === "string") {
+    return packageJson.version;
+  }
+  return undefined;
+}
+
+function readPackageDirVersion(packageDir) {
+  const packageJson = readJsonMaybe(join(packageDir, "package.json"));
   if (packageJson && typeof packageJson.version === "string") {
     return packageJson.version;
   }
@@ -190,6 +305,36 @@ function buildCacheBackupPath(cacheDir, timestamp) {
     index += 1;
   }
   return candidate;
+}
+
+function inspectNodeModulesPmWorkflowCache({ cacheRoot, label, expectedVersion, timestamp, dryRun }) {
+  const cacheDir = join(cacheRoot, "node_modules", "@walke", "opencode-pm-workflow");
+  if (!existsSync(cacheDir)) return [];
+
+  const cachedVersion = readPackageDirVersion(cacheDir);
+  const stale = cachedVersion !== expectedVersion;
+  const reason = cachedVersion
+    ? stale
+      ? `cached version ${cachedVersion} != expected ${expectedVersion}`
+      : `cached version ${cachedVersion} matches expected ${expectedVersion}`
+    : "cached package.json missing or unreadable";
+  const backupPath = stale ? buildCacheBackupPath(cacheDir, timestamp) : null;
+  if (stale && backupPath && !dryRun) {
+    renameSync(cacheDir, backupPath);
+  }
+  return [
+    {
+      label,
+      layout: "node_modules",
+      cacheDir,
+      cachedVersion: cachedVersion ?? null,
+      expectedVersion,
+      stale,
+      reason,
+      action: stale ? (dryRun ? "would-backup" : "backed-up") : "kept",
+      backupPath,
+    },
+  ];
 }
 
 function inspectPmWorkflowCache({ cacheRoot, label, expectedVersion, timestamp, dryRun }) {
@@ -214,6 +359,7 @@ function inspectPmWorkflowCache({ cacheRoot, label, expectedVersion, timestamp, 
     }
     findings.push({
       label,
+      layout: "packages",
       cacheDir,
       cachedVersion: cachedVersion ?? null,
       expectedVersion,
@@ -238,14 +384,20 @@ function repairOpenCodeCache(args) {
     { label: "opencode", cacheRoot: join(cacheBase, "opencode") },
     { label: "kilo", cacheRoot: join(cacheBase, "kilo") },
   ];
-  const findings = targets.flatMap((target) =>
-    inspectPmWorkflowCache({
+  const findings = targets.flatMap((target) => [
+    ...inspectNodeModulesPmWorkflowCache({
       ...target,
       expectedVersion,
       timestamp,
       dryRun,
     }),
-  );
+    ...inspectPmWorkflowCache({
+      ...target,
+      expectedVersion,
+      timestamp,
+      dryRun,
+    }),
+  ]);
   const staleCount = findings.filter((finding) => finding.stale).length;
   const report = {
     ok: true,
@@ -274,13 +426,181 @@ function repairOpenCodeCache(args) {
   } else {
     lines.push("", "findings:");
     for (const finding of findings) {
-      lines.push(`  - [${finding.action}] ${finding.label}: ${finding.cacheDir}`);
+      lines.push(`  - [${finding.action}] ${finding.label}/${finding.layout}: ${finding.cacheDir}`);
       lines.push(`    ${finding.reason}`);
       if (finding.backupPath) lines.push(`    backup: ${finding.backupPath}`);
     }
   }
   console.log(lines.join("\n"));
   return 0;
+}
+
+function repairInstallSync(args) {
+  const pkg = loadPackageJson();
+  const projectDir = getProjectDir(args);
+  const apply = Boolean(args.flags.apply);
+  const cacheBase = resolve(args.options["cache-base"] || resolveCacheBase());
+  const refs = collectOpenCodePluginRefs(projectDir);
+  const selected = refs.length > 0 ? refs[refs.length - 1] : null;
+  const targetRef = selected?.ref ?? "@walke/opencode-pm-workflow@latest";
+  const targetSpec = resolvePluginSpec(targetRef);
+  const targetVersion = args.options["expected-version"]
+    ? String(args.options["expected-version"])
+    : resolveRegistryTargetVersion(targetSpec);
+  const cliVersion = pkg.version;
+
+  const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\..+$/, "");
+  const targets = [
+    { label: "opencode", cacheRoot: join(cacheBase, "opencode") },
+    { label: "kilo", cacheRoot: join(cacheBase, "kilo") },
+  ];
+  const findings = targetVersion
+    ? targets.flatMap((target) => [
+        ...inspectNodeModulesPmWorkflowCache({
+          ...target,
+          expectedVersion: targetVersion,
+          timestamp,
+          dryRun: !apply,
+        }),
+        ...inspectPmWorkflowCache({
+          ...target,
+          expectedVersion: targetVersion,
+          timestamp,
+          dryRun: !apply,
+        }),
+      ])
+    : [];
+
+  const staleCount = findings.filter((finding) => finding.stale).length;
+  const cliMatches = Boolean(targetVersion) && cliVersion === targetVersion;
+  const suggestions = [];
+  if (!cliMatches) {
+    suggestions.push(`npm install -g @walke/opencode-pm-workflow@${targetSpec}`);
+  }
+  if (staleCount > 0 && !apply) {
+    suggestions.push("pmw repair install-sync --apply");
+  }
+  if (staleCount > 0 || !cliMatches) {
+    suggestions.push("完全 quit 并重启 OpenCode");
+  }
+
+  const report = {
+    ok: Boolean(targetVersion) && cliMatches && staleCount === 0,
+    projectDir,
+    cacheBase,
+    apply,
+    pluginRefs: refs,
+    selectedPluginRef: selected,
+    targetRef,
+    targetSpec,
+    targetVersion: targetVersion ?? null,
+    cliVersion,
+    cliMatches,
+    staleCount,
+    repairedCount: apply ? staleCount : 0,
+    findings,
+    suggestions,
+  };
+
+  if (args.flags.json) {
+    emit(args, report);
+    return 0;
+  }
+
+  const lines = [
+    "pmw repair install-sync",
+    `- projectDir: ${projectDir}`,
+    `- selected plugin: ${targetRef}${selected ? ` (${selected.source.kind}: ${selected.source.path})` : " (default)"}`,
+    `- target: ${targetSpec}${targetVersion ? ` -> ${targetVersion}` : " -> <unresolved>"}`,
+    `- CLI: ${cliVersion}${cliMatches ? " (match)" : " (mismatch)"}`,
+    `- cache base: ${cacheBase}`,
+    `- apply: ${apply ? "yes" : "no"}`,
+    `- stale caches: ${staleCount}`,
+  ];
+  if (refs.length > 0) {
+    lines.push("", "plugin refs:");
+    for (const ref of refs) {
+      lines.push(`  - ${ref.ref} (${ref.source.kind}: ${ref.source.path})`);
+    }
+  }
+  if (!targetVersion) {
+    lines.push("", `无法解析 npm 目标版本: ${targetSpec}`);
+  }
+  if (findings.length > 0) {
+    lines.push("", "cache findings:");
+    for (const finding of findings) {
+      lines.push(`  - [${finding.action}] ${finding.label}/${finding.layout}: ${finding.cacheDir}`);
+      lines.push(`    ${finding.reason}`);
+      if (finding.backupPath) lines.push(`    backup: ${finding.backupPath}`);
+    }
+  }
+  if (suggestions.length > 0) {
+    lines.push("", "suggestions:", ...suggestions.map((item) => `  - ${item}`));
+  }
+  console.log(lines.join("\n"));
+  return 0;
+}
+
+async function repairAgents(args) {
+  const dist = await loadDist();
+  const projectDir = getProjectDir(args);
+  const scope = args.options.scope === "project" ? "project" : "global";
+  const result = dist.repairAgentInstall({
+    projectDir,
+    scope,
+    themeId: args.options.theme ? String(args.options.theme) : undefined,
+    dryRun: Boolean(args.flags["dry-run"]),
+  });
+
+  if (args.flags.json) {
+    emit(args, {
+      ...result,
+      written: result.written.map(({ content, ...item }) => item),
+    });
+    return result.ok ? 0 : 1;
+  }
+
+  const lines = [
+    result.ok ? "pmw repair agents ✓" : "pmw repair agents completed with warnings",
+    `- scope: ${result.scope}`,
+    `- theme: ${result.themeId}`,
+    `- targetDir: ${result.targetDir}`,
+    `- legacyDir: ${result.legacyDir}`,
+    `- dry-run: ${result.dryRun ? "yes" : "no"}`,
+    `- backed up: ${result.backedUp.length}`,
+    `- written: ${result.written.length}`,
+    `- skipped: ${result.skipped.length}`,
+  ];
+  if (result.backedUp.length > 0) {
+    lines.push("", "backed up:");
+    for (const item of result.backedUp) {
+      lines.push(`  - ${item.filePath}`);
+      lines.push(`    -> ${item.backupPath}`);
+      lines.push(`    ${item.reason}`);
+    }
+  }
+  if (result.removed.length > 0) {
+    lines.push("", "removed:", ...result.removed.map((item) => `  - ${item}`));
+  }
+  if (result.written.length > 0) {
+    lines.push("", "written:");
+    for (const item of result.written) {
+      lines.push(`  - ${item.agent} -> ${item.filePath}`);
+    }
+  }
+  if (result.skipped.length > 0) {
+    lines.push("", "skipped:");
+    for (const item of result.skipped) {
+      lines.push(`  - ${item.agent}: ${item.reason}`);
+    }
+  }
+  if (result.warnings.length > 0) {
+    lines.push("", "warnings:", ...result.warnings.map((item) => `  - ${item}`));
+  }
+  lines.push("");
+  lines.push("提示: agent md 不再保留 model/fallback_models；模型请用 pmw models set/apply 写入 opencode.json.agent。");
+  console.log(lines.join("\n"));
+  return result.ok ? 0 : 1;
 }
 
 async function runDoctor(args) {
@@ -1003,8 +1323,10 @@ async function main() {
     case "repair": {
       const sub = args._[1];
       if (sub === "opencode-cache") return repairOpenCodeCache(args);
+      if (sub === "install-sync") return repairInstallSync(args);
+      if (sub === "agents") return await repairAgents(args);
       console.error(`未知 repair 子命令: ${sub ?? "<empty>"}`);
-      console.error("当前支持: pmw repair opencode-cache [--dry-run] [--json]");
+      console.error("当前支持: pmw repair opencode-cache | install-sync | agents [--dry-run] [--json]");
       return 2;
     }
     case "docs": {

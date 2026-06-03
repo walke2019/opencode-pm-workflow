@@ -32,7 +32,7 @@ pmw set preferred-session-id <session-id>
 $ pmw --version
 1.0.0-rc.9
 
-$ cat ~/.cache/opencode/packages/@walke/opencode-pm-workflow@rc/node_modules/@walke/opencode-pm-workflow/package.json | grep version
+$ cat ~/.cache/opencode/node_modules/@walke/opencode-pm-workflow/package.json | grep version
 "version": "1.0.0-rc.7",
 ```
 

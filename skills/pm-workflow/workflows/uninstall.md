@@ -22,7 +22,7 @@ bash ${CLAUDE_SKILL_DIR}/scripts/full-clean.sh --confirm
 |---|---|---|
 | 1. opencode.json plugin 行 | `~/.config/opencode/opencode.json` | ✓ 清（移除 plugin 行） |
 | 2. 全局 pmw CLI | npm global package | ✓ 清 |
-| 3. OpenCode plugin cache | `~/.cache/opencode/packages/@walke/` | ✓ 清 |
+| 3. OpenCode plugin cache | `~/.cache/opencode/node_modules/@walke/opencode-pm-workflow` + legacy `~/.cache/opencode/packages/@walke/` | ✓ 清 |
 | 4. agent md / skill / pm-workflow 全局配置 | `~/.config/opencode/{agents,skills/pm-workflow-config,skills/agent-theme-config,skills/agent-model-config,pm-workflow.config.json}` | ⚠ 询问用户 |
 | 5. 项目级状态 | `<projectDir>/.pm-workflow/` | ⚠ 询问用户 |
 
@@ -73,7 +73,7 @@ ls -la "$BACKUP"
 cat ~/.config/opencode/opencode.json
 ```
 
-找到 `"plugin"` 数组，移除 `"@walke/opencode-pm-workflow@rc"` 这一行（或类似版本说明）。
+找到 `"plugin"` 数组，移除 `"@walke/opencode-pm-workflow"` / `"@walke/opencode-pm-workflow@latest"` / `"@walke/opencode-pm-workflow@rc"` 这一行（或类似版本说明）。
 
 可以用 jq 自动改：
 
@@ -92,8 +92,9 @@ which pmw
 ### Step 4：清 OpenCode plugin cache
 
 ```bash
+rm -rfv ~/.cache/opencode/node_modules/@walke/opencode-pm-workflow
 rm -rfv ~/.cache/opencode/packages/@walke
-ls ~/.cache/opencode/packages/@walke 2>/dev/null
+ls ~/.cache/opencode/node_modules/@walke/opencode-pm-workflow ~/.cache/opencode/packages/@walke 2>/dev/null
 # 应不存在
 ```
 
@@ -169,7 +170,7 @@ which pmw
 # 应：pmw not found
 
 # OpenCode plugin cache 没了
-ls ~/.cache/opencode/packages/@walke/ 2>/dev/null
+ls ~/.cache/opencode/node_modules/@walke/opencode-pm-workflow ~/.cache/opencode/packages/@walke/ 2>/dev/null
 # 应：No such file or directory
 
 # opencode.json 没 pm-workflow 行
@@ -201,7 +202,7 @@ grep -E "pm-workflow|@walke" "$LATEST"
 ```bash
 # 1. 在 opencode.json 加回 plugin 行
 # 2. 装 CLI
-npm install -g @walke/opencode-pm-workflow@rc
+npm install -g @walke/opencode-pm-workflow@latest
 # 3. 重启 OpenCode（plugin 会沿用现有 agent md / config.json，不会覆盖）
 ```
 
@@ -235,7 +236,7 @@ cp -r "$BACKUP/skills-agent-model-config" ~/.config/opencode/skills/agent-model-
 cp "$BACKUP/pm-workflow.config.json" ~/.config/opencode/pm-workflow.config.json
 
 # 装回 plugin（在 opencode.json 加 plugin 行 + 装 CLI）
-npm install -g @walke/opencode-pm-workflow@rc
+npm install -g @walke/opencode-pm-workflow@latest
 
 # 重启 OpenCode
 ```

@@ -41,6 +41,137 @@ warn() { echo "  $WARN $1"; WARNINGS=$((WARNINGS+1)); }
 blocker() { echo "  $ERR $1"; BLOCKERS=$((BLOCKERS+1)); }
 info() { echo "  ${C_DIM}$1${C_END}"; }
 
+PACKAGE_NAME="@walke/opencode-pm-workflow"
+OPENCODE_CONFIG_FILE="${OPENCODE_CONFIG_FILE:-${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode.json}"
+OPENCODE_CACHE_ROOT="${OPENCODE_CACHE_ROOT:-$HOME/.cache/opencode}"
+OPENCODE_LEGACY_CACHE_BASE="${OPENCODE_CACHE_BASE:-$OPENCODE_CACHE_ROOT/packages}"
+
+read_plugin_ref() {
+  python3 - "$PACKAGE_NAME" "$OPENCODE_CONFIG_FILE" "$PWD" <<'PY' 2>/dev/null || true
+import json
+import os
+import sys
+
+package, global_path, cwd = sys.argv[1], sys.argv[2], sys.argv[3]
+
+def load_path(path):
+    try:
+        with open(os.path.expanduser(path), "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception:
+        return None
+
+def refs_from(data):
+    if not isinstance(data, dict):
+        return []
+    plugins = data.get("plugin", [])
+    if isinstance(plugins, str):
+        plugins = [plugins]
+    return [
+        item for item in plugins
+        if isinstance(item, str) and (
+            item == package
+            or item.startswith(package + "@")
+            or "pm-workflow-local" in item
+            or "opencode-pm-workflow" in item
+        )
+    ]
+
+paths = [global_path]
+env_path = os.environ.get("OPENCODE_CONFIG")
+if env_path:
+    paths.append(env_path)
+
+dirs = []
+current = os.path.abspath(cwd)
+while True:
+    dirs.append(current)
+    parent = os.path.dirname(current)
+    if parent == current:
+        break
+    current = parent
+for directory in reversed(dirs):
+    paths.append(os.path.join(directory, "opencode.json"))
+    paths.append(os.path.join(directory, ".opencode", "opencode.json"))
+
+found = []
+for path in paths:
+    found.extend(refs_from(load_path(path)))
+
+content = os.environ.get("OPENCODE_CONFIG_CONTENT")
+if content:
+    try:
+        found.extend(refs_from(json.loads(content)))
+    except Exception:
+        pass
+
+if found:
+    print(found[-1])
+PY
+}
+
+resolve_plugin_target() {
+  local ref="$1"
+  local spec="latest"
+  if [ -n "$ref" ]; then
+    if [ "$ref" = "$PACKAGE_NAME" ] || [[ "$ref" == "$PACKAGE_NAME@"* ]]; then
+      local rest="${ref#"$PACKAGE_NAME"}"
+      if [ "$rest" != "$ref" ] && [ -n "$rest" ]; then
+        spec="${rest#@}"
+      fi
+    else
+      spec="local"
+    fi
+  fi
+  [ -z "$spec" ] && spec="latest"
+  echo "$spec"
+}
+
+resolve_registry_version() {
+  local spec="$1"
+  if [ "$spec" = "local" ]; then
+    echo ""
+    return 0
+  fi
+  if echo "$spec" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$'; then
+    echo "$spec"
+    return 0
+  fi
+
+  local registry_json
+  registry_json="$(curl -fsSL --max-time 5 "https://registry.npmjs.org/$PACKAGE_NAME" 2>/dev/null || true)"
+  printf '%s' "$registry_json" | python3 -c '
+import json
+import sys
+
+tag = sys.argv[1]
+try:
+    data = json.load(sys.stdin)
+    print(data.get("dist-tags", {}).get(tag, ""))
+except Exception:
+    print("")
+' "$spec" 2>/dev/null || true
+}
+
+PLUGIN_REF="$(read_plugin_ref)"
+TARGET_SPEC="$(resolve_plugin_target "$PLUGIN_REF")"
+TARGET_VERSION="$(resolve_registry_version "$TARGET_SPEC")"
+TARGET_DESC="npm $TARGET_SPEC tag"
+if [ "$TARGET_SPEC" = "local" ]; then
+  TARGET_DESC="本地 plugin"
+fi
+if echo "$TARGET_SPEC" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$'; then
+  TARGET_DESC="指定版本"
+fi
+PLUGIN_PKG_NEW="$OPENCODE_CACHE_ROOT/node_modules/$PACKAGE_NAME/package.json"
+PLUGIN_PKG_LEGACY="$OPENCODE_LEGACY_CACHE_BASE/$PACKAGE_NAME@$TARGET_SPEC/node_modules/$PACKAGE_NAME/package.json"
+PLUGIN_PKG="$PLUGIN_PKG_NEW"
+PLUGIN_CACHE_LAYOUT="node_modules"
+if [ ! -f "$PLUGIN_PKG" ] && [ -f "$PLUGIN_PKG_LEGACY" ]; then
+  PLUGIN_PKG="$PLUGIN_PKG_LEGACY"
+  PLUGIN_CACHE_LAYOUT="packages"
+fi
+
 echo "════════════════════════════════════════════"
 echo " pm-workflow 健康检查"
 echo " 时间: $(date '+%Y-%m-%d %H:%M:%S')"
@@ -76,24 +207,21 @@ heading "pmw CLI"
 PMW_PATH=$(which pmw 2>/dev/null || echo "")
 PMW_VERSION=""
 if [ -z "$PMW_PATH" ]; then
-  blocker "pmw 未安装到全局（运行 npm install -g @walke/opencode-pm-workflow@rc）"
+  blocker "pmw 未安装到全局（运行 npm install -g $PACKAGE_NAME@$TARGET_SPEC）"
 else
   PMW_VERSION=$(pmw --version 2>/dev/null || echo "unknown")
   ok "pmw 路径: $PMW_PATH"
   info "pmw 版本: $PMW_VERSION"
 fi
 
-# 查 npm registry rc tag
-REGISTRY_RC=$(curl -fsSL --max-time 5 https://registry.npmjs.org/@walke/opencode-pm-workflow 2>/dev/null \
-  | python3 -c 'import sys,json
-try: print(json.load(sys.stdin)["dist-tags"]["rc"])
-except: print("")' 2>/dev/null || echo "")
-if [ -z "$REGISTRY_RC" ]; then
-  warn "无法查询 npm registry（网络问题或离线环境）"
+if [ "$TARGET_SPEC" = "local" ]; then
+  ok "本地 plugin 模式：跳过 npm registry 版本对比"
+elif [ -z "$TARGET_VERSION" ]; then
+  warn "无法解析 $TARGET_DESC 目标版本（网络问题、离线环境或 tag 不存在）"
 else
-  info "npm registry rc tag: $REGISTRY_RC"
-  if [ -n "$PMW_VERSION" ] && [ "$PMW_VERSION" != "$REGISTRY_RC" ]; then
-    warn "CLI 版本 ($PMW_VERSION) 落后于 npm rc tag ($REGISTRY_RC)，建议升级"
+  info "$TARGET_DESC 目标版本: $TARGET_VERSION"
+  if [ -n "$PMW_VERSION" ] && [ "$PMW_VERSION" != "$TARGET_VERSION" ]; then
+    warn "CLI 版本 ($PMW_VERSION) ≠ $TARGET_DESC ($TARGET_VERSION)，建议升级"
   fi
 fi
 
@@ -101,17 +229,32 @@ fi
 heading "OpenCode plugin cache"
 # -----------------------------------------------------------------------------
 
-PLUGIN_PKG=~/.cache/opencode/packages/@walke/opencode-pm-workflow@rc/node_modules/@walke/opencode-pm-workflow/package.json
-if [ -f "$PLUGIN_PKG" ]; then
+if [ "$TARGET_SPEC" = "local" ]; then
+  ok "本地 plugin 模式：不需要 OpenCode npm plugin cache"
+  info "plugin 配置: $PLUGIN_REF"
+elif [ -f "$PLUGIN_PKG" ]; then
   CACHED_VERSION=$(python3 -c "import json;print(json.load(open('$PLUGIN_PKG'))['version'])" 2>/dev/null || echo "unknown")
   info "cache 路径: $PLUGIN_PKG"
+  info "cache 布局: $PLUGIN_CACHE_LAYOUT"
   ok "cache 版本: $CACHED_VERSION"
   if [ -n "$PMW_VERSION" ] && [ "$PMW_VERSION" != "$CACHED_VERSION" ]; then
     warn "CLI 版本 ($PMW_VERSION) ≠ cache 版本 ($CACHED_VERSION)（清 cache 并重启 OpenCode 让其同步）"
   fi
+  if [ -n "$TARGET_VERSION" ] && [ "$CACHED_VERSION" != "$TARGET_VERSION" ]; then
+    warn "cache 版本 ($CACHED_VERSION) ≠ $TARGET_DESC ($TARGET_VERSION)（运行 upgrade.sh 或 pmw repair opencode-cache 后重启 OpenCode）"
+  fi
 else
   warn "plugin cache 不存在（OpenCode 可能未启动，或 Bun install 失败）"
-  info "cache 期望路径: $PLUGIN_PKG"
+  info "cache 期望路径: $PLUGIN_PKG_NEW"
+  info "legacy cache 兼容路径: $PLUGIN_PKG_LEGACY"
+fi
+
+LEGACY_STALE_COUNT=0
+if [ -d "$OPENCODE_LEGACY_CACHE_BASE/@walke" ]; then
+  LEGACY_STALE_COUNT=$(find "$OPENCODE_LEGACY_CACHE_BASE/@walke" -maxdepth 1 -type d -name 'opencode-pm-workflow@*' ! -name '*.bak-*' 2>/dev/null | wc -l | tr -d ' ')
+fi
+if [ "$TARGET_SPEC" != "local" ] && [ "$PLUGIN_CACHE_LAYOUT" = "node_modules" ] && [ "$LEGACY_STALE_COUNT" != "0" ]; then
+  warn "发现 $LEGACY_STALE_COUNT 个旧 packages 布局缓存残留（建议运行 pmw repair opencode-cache 清理）"
 fi
 
 # -----------------------------------------------------------------------------
@@ -122,8 +265,8 @@ SKILLS_DIR=~/.config/opencode/skills
 if [ ! -d "$SKILLS_DIR" ]; then
   warn "$SKILLS_DIR 不存在（OpenCode 启动后会自动创建）"
 else
-  # 检查 pm-workflow 的 3 个 skill
-  for skill in pm-workflow-config agent-theme-config agent-model-config; do
+  # 检查当前打包的 pm-workflow skill
+  for skill in pm-workflow; do
     if [ -f "$SKILLS_DIR/$skill/SKILL.md" ]; then
       ok "$skill/SKILL.md（子目录结构正确）"
     elif [ -f "$SKILLS_DIR/$skill.md" ]; then
@@ -240,15 +383,19 @@ fi
 heading "opencode.json 中的 plugin 配置"
 # -----------------------------------------------------------------------------
 
-OPENCODE_JSON=~/.config/opencode/opencode.json
+OPENCODE_JSON="$OPENCODE_CONFIG_FILE"
 if [ ! -f "$OPENCODE_JSON" ]; then
-  warn "$OPENCODE_JSON 不存在（OpenCode 没初始化过配置）"
+  warn "$OPENCODE_JSON 不存在（OpenCode 没初始化过配置，默认按 $PACKAGE_NAME@latest 检查）"
 else
-  if grep -q "@walke/opencode-pm-workflow" "$OPENCODE_JSON"; then
-    PLUGIN_LINE=$(grep "@walke/opencode-pm-workflow" "$OPENCODE_JSON" | head -1 | tr -d ' ",')
-    ok "opencode.json 含 plugin: $PLUGIN_LINE"
+  if [ -n "$PLUGIN_REF" ]; then
+    ok "opencode.json 含 plugin: $PLUGIN_REF"
+    if [ "$TARGET_SPEC" = "local" ]; then
+      info "升级目标: 本地 plugin"
+    else
+      info "升级目标: $PACKAGE_NAME@$TARGET_SPEC"
+    fi
   else
-    warn "opencode.json 没有 @walke/opencode-pm-workflow plugin 行（启动 OpenCode 不会加载 pm-workflow）"
+    warn "opencode.json 没有 $PACKAGE_NAME plugin 行（启动 OpenCode 不会加载 pm-workflow；检查默认按 latest）"
   fi
 fi
 

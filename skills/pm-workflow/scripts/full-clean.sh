@@ -180,12 +180,14 @@ fi
 step "Step 4: 清 OpenCode plugin cache"
 # -----------------------------------------------------------------------------
 
-CACHE_DIR=~/.cache/opencode/packages/@walke
-if [ ! -d "$CACHE_DIR" ]; then
+NODE_CACHE_DIR=~/.cache/opencode/node_modules/@walke/opencode-pm-workflow
+LEGACY_CACHE_DIR=~/.cache/opencode/packages/@walke
+if [ ! -d "$NODE_CACHE_DIR" ] && [ ! -d "$LEGACY_CACHE_DIR" ]; then
   ok "plugin cache 不存在（跳过）"
 else
-  info "清理: $CACHE_DIR"
-  run_or_dry "rm -rf '$CACHE_DIR'"
+  [ -d "$NODE_CACHE_DIR" ] && info "清理: $NODE_CACHE_DIR"
+  [ -d "$LEGACY_CACHE_DIR" ] && info "清理 legacy cache: $LEGACY_CACHE_DIR"
+  run_or_dry "rm -rf '$NODE_CACHE_DIR' '$LEGACY_CACHE_DIR'"
   ok "plugin cache 已清"
 fi
 
@@ -297,7 +299,7 @@ if [ "$CONFIRM" = "true" ]; then
   echo "   cp -r '$BACKUP/agents' ~/.config/opencode/agents"
   echo "   cp -r '$BACKUP/skills-pm-workflow-config' ~/.config/opencode/skills/pm-workflow-config"
   echo "   cp '$BACKUP/pm-workflow.config.json' ~/.config/opencode/"
-  echo "   npm install -g @walke/opencode-pm-workflow@rc"
+  echo "   npm install -g @walke/opencode-pm-workflow@latest"
   echo ""
   echo " 项目级 .pm-workflow/ 状态目录未清（在每个项目里手动清）："
   echo "   find ~ -name '.pm-workflow' -type d 2>/dev/null"

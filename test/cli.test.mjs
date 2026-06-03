@@ -395,6 +395,22 @@ function writeCachedPluginVersion(cacheBase, family, entry, version) {
   );
 }
 
+function writeNodeModulesCachedPluginVersion(cacheBase, family, version) {
+  const packageDir = join(
+    cacheBase,
+    family,
+    'node_modules',
+    '@walke',
+    'opencode-pm-workflow',
+  );
+  mkdirSync(packageDir, { recursive: true });
+  writeFileSync(
+    join(packageDir, 'package.json'),
+    JSON.stringify({ name: '@walke/opencode-pm-workflow', version }),
+    'utf-8',
+  );
+}
+
 // 15) repair opencode-cache --dry-run 只报告旧缓存，不移动目录
 {
   const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-cache-dry-run-'));
@@ -441,7 +457,47 @@ function writeCachedPluginVersion(cacheBase, family, entry, version) {
   }
 }
 
-// 16) repair opencode-cache 备份旧缓存并保留版本一致的缓存
+// 16) repair opencode-cache 支持官方 node_modules 缓存布局
+{
+  const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-cache-node-modules-'));
+  const cacheBase = join(projectDir, 'cache-home');
+  const staleDir = join(
+    cacheBase,
+    'opencode',
+    'node_modules',
+    '@walke',
+    'opencode-pm-workflow',
+  );
+  try {
+    writeNodeModulesCachedPluginVersion(cacheBase, 'opencode', '0.3.1');
+    const r = runCli(
+      [
+        'repair',
+        'opencode-cache',
+        '--expected-version',
+        '1.0.1',
+        '--cache-base',
+        cacheBase,
+        '--json',
+      ],
+    );
+    assert.strictEqual(r.status, 0, `repair node_modules 应成功，stdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.staleCount, 1);
+    assert.strictEqual(parsed.repairedCount, 1);
+    assert.strictEqual(parsed.findings[0].layout, 'node_modules');
+    assert.strictEqual(parsed.findings[0].action, 'backed-up');
+    assert.throws(
+      () => readFileSync(join(staleDir, 'package.json')),
+      /ENOENT/,
+      'node_modules 旧缓存包目录应被移动到备份路径',
+    );
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
+// 17) repair opencode-cache 备份旧缓存并保留版本一致的缓存
 {
   const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-cache-repair-'));
   const cacheBase = join(projectDir, 'cache-home');
@@ -487,6 +543,134 @@ function writeCachedPluginVersion(cacheBase, family, entry, version) {
     assert.ok(
       readFileSync(join(freshDir, 'node_modules', '@walke', 'opencode-pm-workflow', 'package.json'), 'utf-8').includes('1.0.1'),
       '版本一致的缓存应保留',
+    );
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
+// 18) repair agents 备份旧 agent 残留并重建无 model 的新版 agent md
+{
+  const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-repair-agents-'));
+  const configHome = join(projectDir, 'config-home');
+  const agentsDir = join(configHome, 'opencode', 'agents');
+  const legacyDir = join(configHome, 'opencode', 'agent');
+  mkdirSync(agentsDir, { recursive: true });
+  mkdirSync(legacyDir, { recursive: true });
+  writeFileSync(
+    join(agentsDir, 'commander.md'),
+    ['---', 'description: old', 'mode: all', 'model: stale/model', 'theme: default', '---', '', 'old'].join('\n'),
+    'utf-8',
+  );
+  writeFileSync(
+    join(legacyDir, 'pm_lead.md'),
+    ['---', 'description: old lead', 'mode: primary', '---', '', 'old'].join('\n'),
+    'utf-8',
+  );
+  try {
+    const r = runCli(
+      ['repair', 'agents', '--cwd', projectDir, '--scope', 'global', '--json'],
+      { env: { XDG_CONFIG_HOME: configHome } },
+    );
+    assert.strictEqual(r.status, 0, `repair agents 应成功，stdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.ok, true);
+    assert.strictEqual(parsed.written.length, 6);
+    assert.ok(parsed.backedUp.length >= 2, '应备份旧文件');
+
+    const commander = readFileSync(join(agentsDir, 'commander.md'), 'utf-8');
+    assert.match(commander, /mode: primary/);
+    assert.ok(!commander.includes('model: stale/model'), '新版 commander md 不应保留旧 model');
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
+// 19) repair install-sync 使用项目级 plugin 引用作为目标
+{
+  const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-install-sync-'));
+  const configHome = join(projectDir, 'config-home');
+  const globalOpenCodeDir = join(configHome, 'opencode');
+  const cacheBase = join(projectDir, 'cache-home');
+  mkdirSync(globalOpenCodeDir, { recursive: true });
+  writeFileSync(
+    join(globalOpenCodeDir, 'opencode.json'),
+    JSON.stringify({ plugin: ['@walke/opencode-pm-workflow@latest'] }),
+    'utf-8',
+  );
+  writeFileSync(
+    join(projectDir, 'opencode.json'),
+    JSON.stringify({ plugin: ['@walke/opencode-pm-workflow@1.0.1'] }),
+    'utf-8',
+  );
+  try {
+    writeNodeModulesCachedPluginVersion(cacheBase, 'opencode', '0.3.1');
+    const r = runCli(
+      [
+        'repair',
+        'install-sync',
+        '--expected-version',
+        '1.0.1',
+        '--cache-base',
+        cacheBase,
+        '--json',
+      ],
+      { cwd: projectDir, env: { XDG_CONFIG_HOME: configHome } },
+    );
+    assert.strictEqual(r.status, 0, `install-sync 应成功，stdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.targetSpec, '1.0.1');
+    assert.strictEqual(parsed.targetVersion, '1.0.1');
+    assert.strictEqual(parsed.selectedPluginRef.ref, '@walke/opencode-pm-workflow@1.0.1');
+    assert.strictEqual(parsed.staleCount, 1);
+    assert.ok(parsed.suggestions.some((item) => item.includes('npm install -g @walke/opencode-pm-workflow@1.0.1')));
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
+// 20) repair install-sync --apply 备份旧 node_modules cache
+{
+  const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-install-sync-apply-'));
+  const configHome = join(projectDir, 'config-home');
+  const globalOpenCodeDir = join(configHome, 'opencode');
+  const cacheBase = join(projectDir, 'cache-home');
+  const staleDir = join(
+    cacheBase,
+    'opencode',
+    'node_modules',
+    '@walke',
+    'opencode-pm-workflow',
+  );
+  mkdirSync(globalOpenCodeDir, { recursive: true });
+  writeFileSync(
+    join(globalOpenCodeDir, 'opencode.json'),
+    JSON.stringify({ plugin: ['@walke/opencode-pm-workflow@latest'] }),
+    'utf-8',
+  );
+  try {
+    writeNodeModulesCachedPluginVersion(cacheBase, 'opencode', '0.3.1');
+    const r = runCli(
+      [
+        'repair',
+        'install-sync',
+        '--expected-version',
+        '1.0.1',
+        '--cache-base',
+        cacheBase,
+        '--apply',
+        '--json',
+      ],
+      { cwd: projectDir, env: { XDG_CONFIG_HOME: configHome } },
+    );
+    assert.strictEqual(r.status, 0, `install-sync --apply 应成功，stdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.repairedCount, 1);
+    assert.strictEqual(parsed.findings[0].action, 'backed-up');
+    assert.throws(
+      () => readFileSync(join(staleDir, 'package.json')),
+      /ENOENT/,
+      'install-sync --apply 应移动旧 node_modules cache',
     );
   } finally {
     rmSync(projectDir, { recursive: true, force: true });

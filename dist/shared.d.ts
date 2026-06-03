@@ -29,7 +29,7 @@ export { buildForegroundFallbackPlan, detectFallbackTrigger, pickNextFallbackMod
 export type { FallbackPlanRuntime, FallbackTriggerKind, FallbackTriggerSignal, } from "./core/fallback-runtime.js";
 export { detectFeedbackStopSignal, evaluateAutoContinueGuard, markAutoContinueAborted, markAutoContinueChainStart, recordAutoContinueStep, } from "./core/auto-continue.js";
 export type { AutoContinueGuardDecision, AutoContinueGuardInput, } from "./core/auto-continue.js";
-export { DEFAULT_HEALTH_THRESHOLDS, _resetPluginActivationGuardForTesting, evaluatePluginHealth, guardPluginActivation, reportPluginHealth, } from "./server/hooks-health.js";
+export { DEFAULT_HEALTH_THRESHOLDS, _resetPluginActivationGuardForTesting, evaluatePluginHealth, guardPluginActivation, releasePluginActivation, reportPluginHealth, } from "./server/hooks-health.js";
 export type { PluginActivationGuardResult, PluginHealthFinding, PluginHealthInputs, PluginHealthReport, PluginHealthThresholds, } from "./server/hooks-health.js";
 export { resolveOpenCodeSkillsDir, resolvePackageSkillsDir, syncPackagedSkillsToOpenCode, } from "./server/skill-installer.js";
 export type { SkillSyncFinding, SkillSyncOutcome, SkillSyncReport, } from "./server/skill-installer.js";
@@ -38,8 +38,8 @@ export type { AgentTaskPermission, ResolvedAgentRouting, TaskPermissionValue, } 
 export { buildHistoryReportSummary, renderHistoryReportHtml, } from "./core/report.js";
 export type { ReportSummary } from "./core/report.js";
 export { doctorAgentLibrary, listAgentLibrary, promoteProjectAgentToGlobal, } from "./core/agent-library.js";
-export { applyAgentThemeOverrides, applyAgentTheme, listAgentThemes, previewAgentTheme, renderAgentMdForTheme, resolveThemeTargetDir, } from "./core/agent-theme.js";
-export type { AgentThemeOverrideInput, AgentThemeOverrideResult, } from "./core/agent-theme.js";
+export { applyAgentThemeOverrides, applyAgentTheme, listAgentThemes, previewAgentTheme, repairAgentInstall, renderAgentMdForTheme, resolveThemeTargetDir, } from "./core/agent-theme.js";
+export type { AgentThemeOverrideInput, AgentThemeOverrideResult, IRepairAgentInstallInput, IRepairAgentInstallResult, } from "./core/agent-theme.js";
 export { FIXED_AGENT_IDS, getBuiltinTheme, getDefaultTheme, listBuiltinThemes, } from "./core/agent-theme-data.js";
 export { buildDocsCheckReport } from "./core/docs-check.js";
 export type { DocsCheckSeverity, IDocsCheckFinding, IDocsCheckReport, } from "./core/docs-check.js";

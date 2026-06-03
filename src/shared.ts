@@ -164,6 +164,7 @@ export {
   _resetPluginActivationGuardForTesting,
   evaluatePluginHealth,
   guardPluginActivation,
+  releasePluginActivation,
   reportPluginHealth,
 } from "./server/hooks-health.js";
 export type {
@@ -208,12 +209,15 @@ export {
   applyAgentTheme,
   listAgentThemes,
   previewAgentTheme,
+  repairAgentInstall,
   renderAgentMdForTheme,
   resolveThemeTargetDir,
 } from "./core/agent-theme.js";
 export type {
   AgentThemeOverrideInput,
   AgentThemeOverrideResult,
+  IRepairAgentInstallInput,
+  IRepairAgentInstallResult,
 } from "./core/agent-theme.js";
 export {
   FIXED_AGENT_IDS,

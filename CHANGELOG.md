@@ -1,5 +1,72 @@
 # Changelog
 
+## 1.1.0
+
+### 新增：安装版本一致性诊断
+
+新增：
+
+```bash
+pmw repair install-sync
+pmw repair install-sync --apply --json
+```
+
+该命令按 OpenCode 配置来源收集 `@walke/opencode-pm-workflow` plugin 引用（全局、`OPENCODE_CONFIG`、项目向上查找、`OPENCODE_CONFIG_CONTENT`），选择最后一个有效引用作为目标，检查：
+
+- npm tag / 固定版本目标
+- 当前 `pmw` CLI 包版本
+- OpenCode/Kilo 当前 `node_modules` cache
+- OpenCode/Kilo legacy `packages` cache
+
+默认只报告建议动作；`--apply` 只备份不一致缓存，不自动改 `opencode.json`，也不强行执行全局 npm install。
+
+### 改进：适配 OpenCode 最新生命周期与配置加载
+
+- `check.sh` / `upgrade.sh` 也按全局、env、项目级配置解析有效 plugin 引用，避免项目级 `@rc` / 固定版本被全局 `@latest` 覆盖误判。
+- server plugin 接入 OpenCode `dispose` 生命周期，清理延迟 toast timer，并释放 hot-reload activation guard。
+
+### 修复：pm-workflow skill 脚本按实际 plugin tag 检查与升级
+
+`skills/pm-workflow/scripts/check.sh` 与 `upgrade.sh` 不再硬编码 `dist-tags.rc` / `@rc`，并兼容 OpenCode 当前 `~/.cache/opencode/node_modules/` 缓存布局与旧 `packages/` 布局。
+
+现在脚本会读取 `~/.config/opencode/opencode.json` 中的实际 plugin 引用：
+
+- `@walke/opencode-pm-workflow` / `@latest` → 对比并安装 `latest`
+- `@walke/opencode-pm-workflow@rc` → 对比并安装 `rc`
+- `@walke/opencode-pm-workflow@<version>` → 按指定版本检查
+
+这避免稳定版用户在 `latest=1.0.3`、`rc=1.0.0-rc.23` 时被误报为“落后于 rc”，也避免升级脚本把 stable 配置拉回 rc 线。
+
+`pmw repair opencode-cache` 同步扩展为扫描：
+
+- `~/.cache/opencode/node_modules/@walke/opencode-pm-workflow`
+- `~/.cache/kilo/node_modules/@walke/opencode-pm-workflow`
+- `~/.cache/opencode/packages/@walke/opencode-pm-workflow*`
+- `~/.cache/kilo/packages/@walke/opencode-pm-workflow*`
+
+因此新装、升级和旧缓存自愈都能覆盖 OpenCode 新旧缓存目录。
+
+### 新增：agent 安装残留修复
+
+新增：
+
+```bash
+pmw repair agents --scope global
+pmw repair agents --scope project --dry-run --json
+```
+
+该命令用于已安装用户升级后清理旧状态：
+
+- 备份 `~/.config/opencode/agent/` / `.opencode/agent/` 单数 legacy 目录里的 pm-workflow agent 残留
+- 备份 `pm_lead` / `pm_advisor` / `pm_backend` / `pm_frontend` / `pm_reviewer` / `pm_researcher` 旧 ID 文件
+- 重建 `commander` / `advisor` / `backendcoder` / `designer` / `fixer` / `writer` 6 个新版 agent md
+- 清理 agent md frontmatter 内旧 `model` / `fallback_models` 字段，避免覆盖 OpenCode 官方 `opencode.json.agent.<id>.model`
+
+### 文档
+
+- README 新增升级后角色 / 模型混乱时的 `pmw repair agents` 修复路径
+- 使用与运维手册同步 CLI 列表与 Change Log
+
 ## 1.0.3
 
 ### 新增：局部主题 override

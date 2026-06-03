@@ -57,5 +57,7 @@ export declare function evaluatePluginHealth(input: {
 export declare function reportPluginHealth(ctx: PluginContext, report: PluginHealthReport): Promise<void>;
 export type PluginActivationGuardResult = "first" | "duplicate";
 export declare function guardPluginActivation(pluginId: string): PluginActivationGuardResult;
+/** 释放 activation 哨兵，供 OpenCode plugin dispose / hot-reload 生命周期使用。 */
+export declare function releasePluginActivation(pluginId: string): void;
 /** 仅供测试使用：清空 activation 哨兵状态 */
 export declare function _resetPluginActivationGuardForTesting(): void;

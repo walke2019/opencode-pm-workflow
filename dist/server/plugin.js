@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { getAutomationMode, buildOpenCodeAgentConfig, migrateLegacyProjectArtifacts, seedWorkflowConfig, syncState, } from "../shared.js";
 import { getProjectDir, log, } from "./runtime.js";
 import { createPmWorkflowHooks } from "./hooks.js";
-import { evaluatePluginHealth, guardPluginActivation, reportPluginHealth, } from "./hooks-health.js";
+import { evaluatePluginHealth, guardPluginActivation, reportPluginHealth, releasePluginActivation, } from "./hooks-health.js";
 import { syncPackagedSkillsToOpenCode } from "./skill-installer.js";
 import { showAgentThemeBanner } from "./agent-theme-banner.js";
 import { createAdminTools } from "./tools/admin-tools.js";
@@ -52,6 +52,7 @@ export const PmWorkflowPlugin = async (ctx, options) => {
     // 重复装配时仍返回完整的 tool / config 集合（无副作用），但跳过 hooks 与 health log，
     // 避免 syncState / 写 review marker 等动作被错误地执行多遍。
     const activation = guardPluginActivation(PLUGIN_ID);
+    let bannerTimer;
     const hooks = activation === "first"
         ? createPmWorkflowHooks(projectDir, ctx)
         : {};
@@ -134,7 +135,7 @@ export const PmWorkflowPlugin = async (ctx, options) => {
         // server plugin 的 first activation 早于 TUI 启动，直接 await showToast 会卡住
         // 等 TUI server 起来。把 banner 调用挪到 setTimeout(2s) 里让 plugin 立刻完成
         // first activation，TUI 起来后再发 toast。
-        setTimeout(() => {
+        bannerTimer = setTimeout(() => {
             void (async () => {
                 try {
                     const bannerResult = await showAgentThemeBanner({
@@ -154,6 +155,17 @@ export const PmWorkflowPlugin = async (ctx, options) => {
         }, 2000);
     }
     return {
+        dispose: async () => {
+            if (bannerTimer) {
+                clearTimeout(bannerTimer);
+                bannerTimer = undefined;
+            }
+            releasePluginActivation(PLUGIN_ID);
+            await log(ctx.client, "info", "pm-workflow plugin disposed", {
+                projectDir,
+                activation,
+            });
+        },
         config: async (input) => {
             if (!config.agents.enabled)
                 return;

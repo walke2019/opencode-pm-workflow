@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.0.3`。
+当前发布版本：`1.1.0`。
 
 ## 适用场景
 
@@ -122,13 +122,23 @@ npm view @walke/opencode-pm-workflow version
 
 ## 缓存自愈
 
-OpenCode 会把 npm plugin 缓存在 `~/.cache/opencode/packages/`（Kilo 场景还会有 `~/.cache/kilo/packages/`）。如果日志里出现旧版 `mkdir '/.pm-workflow' failed`，或插件缓存版本落后于 CLI，可运行：
+OpenCode 当前会把 npm plugin 缓存在 `~/.cache/opencode/node_modules/`（旧版本可能残留在 `~/.cache/opencode/packages/`；Kilo 场景同理）。如果日志里出现旧版 `mkdir '/.pm-workflow' failed`，或插件缓存版本落后于 CLI，可运行：
 
 ```bash
 pmw repair opencode-cache
+pmw repair install-sync --json
+pmw repair install-sync --apply
 ```
 
-该命令会把旧/坏的 pm-workflow plugin 缓存安全改名为 `.bak-<timestamp>`，下次完全重启 OpenCode 时由 OpenCode 重新安装当前版本。
+`opencode-cache` 会同时检查当前 `node_modules` 布局和旧 `packages` 布局，把旧/坏的 pm-workflow plugin 缓存安全改名为 `.bak-<timestamp>`。`install-sync` 会按 OpenCode 配置优先级解析有效 plugin 引用，检查目标 npm tag / CLI / OpenCode cache 是否一致；加 `--apply` 时会备份不一致缓存。下次完全重启 OpenCode 时由 OpenCode 重新安装目标版本。
+
+如果升级后角色列表、旧角色名或模型 ID 仍然混乱，可运行：
+
+```bash
+pmw repair agents --scope global
+```
+
+该命令会备份旧版 `agent/` 目录残留和 `pm_lead` 等旧 ID 文件，重建 6 个新版 agent md，并移除 md 内旧 `model` / `fallback_models`，让模型只走 OpenCode 官方 `opencode.json.agent` 配置。
 
 ## 局部主题与模型配置
 
@@ -149,6 +159,7 @@ pmw models apply --map commander=cx/gpt-5.5,advisor=kr/claude-sonnet-4.5,writer=
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-05-30 | 1.1.0 | 新增 `pmw repair agents`：备份旧 agent 残留、重建 6 个新版 agent md，并清理 md 内旧 model/fallback_models，避免升级用户角色与模型配置混乱 |
 | 2026-05-28 | 1.0.3 | 新增 `pmw agents theme override` 局部覆盖 display_name；新增 `pmw models set/apply` 写入 OpenCode 官方 `opencode.json.agent.<id>.model` 并校验模型 ID；`agents list/doctor` 显示真实模型来源，避免 `model=(default)` 误导 |
 | 2026-05-28 | 1.0.2 | 新增 `pmw repair opencode-cache`：自动检测并备份 OpenCode/Kilo 中旧版或损坏的 pm-workflow npm plugin 缓存，解决旧缓存导致插件启动前崩溃、无法显示 `/pm-workflow` 入口的问题 |
 | 2026-05-25 | 1.0.1 | **修复 commander stream 7 分钟超时**：实测 commander 不真调 task tool，而在 stream 里"演戏"假装多角色对话直到 stream 累积过长被 OpenCode 服务端 terminated（log 显示 +428449ms）。1.0.1 给 commander 加 `steps: 5` 强制最多 5 步内部迭代后必须收敛输出，逼 LLM 真调 task 而不是写长 stream。`AgentThemeRoleSkin` 类型新增 `steps?: number` 字段，渲染时写入 frontmatter |

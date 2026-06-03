@@ -18,17 +18,31 @@ bash ${CLAUDE_SKILL_DIR}/scripts/upgrade.sh
 # 1. 当前 CLI 版本
 pmw --version
 
-# 2. npm registry 上 rc tag 最新版本
-curl -fsSL https://registry.npmjs.org/@walke/opencode-pm-workflow | python3 -c 'import sys,json;print(json.load(sys.stdin)["dist-tags"]["rc"])'
+# 2. 当前 opencode.json plugin 引用决定目标 tag
+python3 - <<'PY'
+import json, os
+path = os.path.expanduser("~/.config/opencode/opencode.json")
+data = json.load(open(path))
+print(next((p for p in data.get("plugin", []) if p.startswith("@walke/opencode-pm-workflow")), "@walke/opencode-pm-workflow@latest"))
+PY
 
-# 3. 当前 OpenCode plugin cache 版本
-cat ~/.cache/opencode/packages/@walke/opencode-pm-workflow@rc/node_modules/@walke/opencode-pm-workflow/package.json | python3 -c 'import sys,json;print(json.load(sys.stdin)["version"])'
+# 3. npm registry 上 latest / rc tag 版本
+curl -fsSL https://registry.npmjs.org/@walke/opencode-pm-workflow | python3 -c 'import sys,json;d=json.load(sys.stdin)["dist-tags"];print({"latest":d.get("latest"),"rc":d.get("rc")})'
+
+# 4. 当前 OpenCode plugin cache 版本（当前布局）
+cat ~/.cache/opencode/node_modules/@walke/opencode-pm-workflow/package.json | python3 -c 'import sys,json;print(json.load(sys.stdin)["version"])'
+
+# 5. 旧 packages 布局残留（如存在，也要清）
+find ~/.cache/opencode/packages/@walke -maxdepth 1 -type d -name 'opencode-pm-workflow@*' 2>/dev/null
 ```
 
 **判断**：
 
-- 如果 CLI 版本 < npm rc tag → 需要升级 CLI
-- 如果 cache 版本 < npm rc tag → 需要清 cache 让 OpenCode 重新拉
+- 如果 plugin 配置是未带 tag 或 `@latest` → 对比 npm `latest`
+- 如果 plugin 配置是 `@rc` → 对比 npm `rc`
+- 如果 plugin 配置是固定版本 → 对比该指定版本
+- 如果 CLI 版本 ≠ 目标版本 → 需要升级 CLI
+- 如果 cache 版本 ≠ 目标版本 → 需要清 cache 让 OpenCode 重新拉
 - 如果 CLI 版本 ≠ cache 版本 → 必须保持一致（清 cache + 重启 OpenCode）
 
 ---
@@ -53,19 +67,18 @@ ps aux | grep -iE "OpenCode\.app/Contents" | grep -v grep | wc -l
 ### Step 2：清 OpenCode plugin cache
 
 ```bash
-rm -rf ~/.cache/opencode/packages/@walke/opencode-pm-workflow@rc
-ls ~/.cache/opencode/packages/@walke/ 2>/dev/null
-# 应空
+rm -rf ~/.cache/opencode/node_modules/@walke/opencode-pm-workflow
+rm -rf ~/.cache/opencode/packages/@walke/opencode-pm-workflow@*
 ```
 
-下次 OpenCode 启动时 Bun 会自动拉最新版。
+下次 OpenCode 启动时 Bun 会按 `opencode.json` 中的 plugin tag 自动拉目标版本。升级脚本会自动清当前 `node_modules` 布局和旧 `packages` 布局。
 
 ### Step 3：升级全局 pmw CLI
 
 ```bash
-npm install -g @walke/opencode-pm-workflow@rc
+npm install -g @walke/opencode-pm-workflow@latest
 pmw --version
-# 应等于 npm rc tag 最新版
+# 应等于当前 plugin tag 的目标版本
 ```
 
 ### Step 4：（可选但建议）清旧 skill md
@@ -91,7 +104,7 @@ shell 启动 GUI 受 macOS 安全限制，必须用户操作：
 
 启动后等约 8-10 秒，让：
 
-- Bun 拉新版 plugin 到 `~/.cache/opencode/packages/`
+- Bun 拉新版 plugin 到 `~/.cache/opencode/node_modules/`
 - plugin 首次激活
 - skill auto-install 把包内 skill 同步到 `~/.config/opencode/skills/<id>/`（rc.9+ 含 supporting files + scripts/）
 
@@ -103,7 +116,7 @@ ${CLAUDE_SKILL_DIR}/scripts/check.sh
 
 应该看到：
 
-- ✓ CLI 与 plugin 版本一致（最新 rc）
+- ✓ CLI 与 plugin 版本一致（当前 plugin tag 的目标版本）
 - ✓ skills 目录都是子目录结构
 - ✓ agent md 含完整字段
 - ✓ pm-workflow log 错误数 = 0

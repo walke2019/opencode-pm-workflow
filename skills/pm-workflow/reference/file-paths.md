@@ -24,18 +24,16 @@
 ### plugin 装在哪
 
 ```
-~/.cache/opencode/packages/
+~/.cache/opencode/node_modules/
 └── @walke/
-    └── opencode-pm-workflow@rc/
-        └── node_modules/
-            └── @walke/
-                └── opencode-pm-workflow/
-                    ├── package.json
-                    ├── dist/
-                    └── skills/        ← 包内的 skill 源
+    └── opencode-pm-workflow/
+        ├── package.json
+        ├── dist/
+        └── skills/        ← 包内的 skill 源
 ```
+
+旧版 OpenCode 或历史安装可能还留有 `~/.cache/opencode/packages/@walke/opencode-pm-workflow@*/`。`check.sh` / `upgrade.sh` / `pmw repair opencode-cache` 都会兼容识别该旧布局。
 
 skill auto-install 把 `skills/<id>/` 同步到 `~/.config/opencode/skills/<id>/`。
 
 ---
-

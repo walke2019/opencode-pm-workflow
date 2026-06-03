@@ -41,6 +41,34 @@ export interface AgentThemeOverrideResult {
         reason: string;
     }>;
 }
+export interface IRepairAgentInstallInput {
+    projectDir: string;
+    scope: AgentThemeWriteScope;
+    themeId?: AgentThemeId;
+    targetDirOverride?: string;
+    dryRun?: boolean;
+}
+export interface IRepairAgentInstallResult {
+    ok: boolean;
+    scope: AgentThemeWriteScope;
+    themeId: AgentThemeId;
+    targetDir: string;
+    legacyDir: string;
+    backupDir: string;
+    dryRun: boolean;
+    backedUp: Array<{
+        filePath: string;
+        backupPath: string;
+        reason: string;
+    }>;
+    removed: string[];
+    written: RenderedAgentMd[];
+    skipped: Array<{
+        agent: DispatchAgent;
+        reason: string;
+    }>;
+    warnings: string[];
+}
 /** 列出所有内置主题的元数据（id / label / summary）。 */
 export declare function listAgentThemes(): Array<{
     id: AgentThemeId;
@@ -71,6 +99,14 @@ export declare function applyAgentTheme(input: ApplyAgentThemeInput): ApplyAgent
  * 但更适合 CLI / UI 直接渲染。
  */
 export declare function previewAgentTheme(input: ApplyAgentThemeInput): ApplyAgentThemeResult;
+/**
+ * 修复已安装用户的 agent 残留：
+ * - 备份旧 ID（pm_lead 等）与 legacy `.opencode/agent` / `~/.config/opencode/agent` 残留；
+ * - 用当前主题重写 6 个官方 agent md；
+ * - 清掉 md frontmatter 内的 model / fallback_models，避免覆盖 OpenCode 官方
+ *   `opencode.json.agent.<id>.model` 配置。
+ */
+export declare function repairAgentInstall(input: IRepairAgentInstallInput): IRepairAgentInstallResult;
 /** 单纯渲染一个 agent 的内容文本（测试与展示用，不写盘）。 */
 export declare function renderAgentMdForTheme(input: {
     agent: DispatchAgent;

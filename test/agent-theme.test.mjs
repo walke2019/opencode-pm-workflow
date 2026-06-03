@@ -21,6 +21,7 @@ import {
   listAgentThemes,
   listBuiltinThemes,
   previewAgentTheme,
+  repairAgentInstall,
   renderAgentMdForTheme,
   resolveThemeTargetDir,
   resolveWorkflowAgentDefinition,
@@ -433,6 +434,59 @@ function testApplyOnlySubsetOfAgents() {
   assert.ok(!existsSync(join(targetDir, 'commander.md')), '未指定的 agent 不应被写');
 }
 
+function testRepairAgentInstallBacksUpLegacyAndDropsModelFields() {
+  const sandbox = mkdtempSync(join(tmpdir(), 'agent-theme-repair-'));
+  const targetDir = join(sandbox, '.opencode', 'agents');
+  const legacyDir = join(sandbox, '.opencode', 'agent');
+  mkdirSync(targetDir, { recursive: true });
+  mkdirSync(legacyDir, { recursive: true });
+
+  writeFileSync(
+    join(targetDir, 'commander.md'),
+    [
+      '---',
+      'description: old commander',
+      'mode: all',
+      'model: stale/provider-model',
+      'fallback_models: stale/fallback',
+      'theme: sanguo',
+      '---',
+      '',
+      'old body',
+      '',
+    ].join('\n'),
+    'utf-8',
+  );
+  writeFileSync(
+    join(targetDir, 'pm_lead.md'),
+    ['---', 'description: old id', 'mode: primary', '---', '', 'old'].join('\n'),
+    'utf-8',
+  );
+  writeFileSync(
+    join(legacyDir, 'commander.md'),
+    ['---', 'description: legacy dir', 'mode: all', '---', '', 'legacy'].join('\n'),
+    'utf-8',
+  );
+
+  const result = repairAgentInstall({
+    projectDir: sandbox,
+    scope: 'project',
+  });
+
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(result.themeId, 'sanguo', '应沿用已有 commander.md 的主题');
+  assert.strictEqual(result.written.length, 6, '应重建 6 个新版 agent');
+  assert.ok(result.backedUp.length >= 3, '应备份旧版和 legacy 残留');
+  assert.ok(!existsSync(join(targetDir, 'pm_lead.md')), '旧 ID 文件应移走');
+  assert.ok(!existsSync(legacyDir), '空 legacy agent/ 目录应删除');
+
+  const commander = readFileSync(join(targetDir, 'commander.md'), 'utf-8');
+  assert.ok(commander.includes('display_name: 诸葛亮'), '应按原主题重建');
+  assert.ok(commander.includes('mode: primary'), 'commander 应强制 primary');
+  assert.ok(!commander.includes('model: stale/provider-model'), '应清理 md 内旧 model');
+  assert.ok(!commander.includes('fallback_models: stale/fallback'), '应清理 md 内旧 fallback');
+}
+
 testListThemesContainsBuiltins();
 testEachBuiltinThemeHasFullSixAgents();
 testGetBuiltinThemeReturnsCopy();
@@ -450,4 +504,5 @@ testResolveThemeTargetDirRoutes();
 testRegistryExtractsDisplayNameAndTheme();
 testRegistryHandlesAgentWithoutDisplayName();
 testApplyOnlySubsetOfAgents();
+testRepairAgentInstallBacksUpLegacyAndDropsModelFields();
 console.log('agent-theme tests passed');

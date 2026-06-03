@@ -21,11 +21,14 @@
 import {
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
+  renameSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import type {
   AgentThemeDefinition,
   AgentThemeId,
@@ -66,6 +69,29 @@ export interface AgentThemeOverrideResult {
   skipped: Array<{ agent: string; reason: string }>;
 }
 
+export interface IRepairAgentInstallInput {
+  projectDir: string;
+  scope: AgentThemeWriteScope;
+  themeId?: AgentThemeId;
+  targetDirOverride?: string;
+  dryRun?: boolean;
+}
+
+export interface IRepairAgentInstallResult {
+  ok: boolean;
+  scope: AgentThemeWriteScope;
+  themeId: AgentThemeId;
+  targetDir: string;
+  legacyDir: string;
+  backupDir: string;
+  dryRun: boolean;
+  backedUp: Array<{ filePath: string; backupPath: string; reason: string }>;
+  removed: string[];
+  written: RenderedAgentMd[];
+  skipped: Array<{ agent: DispatchAgent; reason: string }>;
+  warnings: string[];
+}
+
 const DEFAULT_PRESERVE: AgentThemePreserveExisting = {
   model: true,
   mode: true,
@@ -73,6 +99,15 @@ const DEFAULT_PRESERVE: AgentThemePreserveExisting = {
   fallback_models: true,
   temperature: true,
 };
+
+const LEGACY_AGENT_IDS = [
+  "pm_lead",
+  "pm_advisor",
+  "pm_backend",
+  "pm_frontend",
+  "pm_reviewer",
+  "pm_researcher",
+];
 
 /** 列出所有内置主题的元数据（id / label / summary）。 */
 export function listAgentThemes(): Array<{
@@ -530,6 +565,183 @@ export function applyAgentTheme(input: ApplyAgentThemeInput): ApplyAgentThemeRes
  */
 export function previewAgentTheme(input: ApplyAgentThemeInput): ApplyAgentThemeResult {
   return applyAgentTheme({ ...input, dryRun: true });
+}
+
+function resolveLegacyThemeTargetDir(
+  scope: AgentThemeWriteScope,
+  projectDir: string,
+): string {
+  if (scope === "project") {
+    return join(projectDir, ".opencode", "agent");
+  }
+  const configHome = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
+  return join(configHome, "opencode", "agent");
+}
+
+function readThemeIdFromTargetDir(targetDir: string): AgentThemeId | undefined {
+  const commanderPath = join(targetDir, "commander.md");
+  if (!existsSync(commanderPath)) return undefined;
+  try {
+    const parsed = parseFrontmatter(readFileSync(commanderPath, "utf-8"));
+    return parsed.topLevel.theme || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function buildBackupDir(targetDir: string): string {
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\..+$/, "");
+  return join(dirname(targetDir), `.pm-workflow-agent-backup-${timestamp}`);
+}
+
+function listRepairCandidates(input: {
+  targetDir: string;
+  legacyDir: string;
+}): Array<{ filePath: string; backupName: string; reason: string }> {
+  const candidates: Array<{ filePath: string; backupName: string; reason: string }> = [];
+  const fixed = new Set<string>(FIXED_AGENT_IDS);
+  const legacy = new Set<string>(LEGACY_AGENT_IDS);
+
+  const collect = (dir: string, reasonPrefix: string) => {
+    if (!existsSync(dir)) return;
+    let entries: string[] = [];
+    try {
+      entries = readdirSync(dir);
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (!entry.endsWith(".md")) continue;
+      const id = basename(entry, ".md");
+      if (!fixed.has(id) && !legacy.has(id)) continue;
+      candidates.push({
+        filePath: join(dir, entry),
+        backupName: `${reasonPrefix}-${entry}`,
+        reason: legacy.has(id)
+          ? "旧版 pm-workflow agent ID，OpenCode 新配置不再使用"
+          : "旧版单数 agent/ 目录残留，可能覆盖新版 agents/ 目录",
+      });
+    }
+  };
+
+  collect(input.targetDir, "agents");
+  collect(input.legacyDir, "agent");
+  return candidates;
+}
+
+/**
+ * 修复已安装用户的 agent 残留：
+ * - 备份旧 ID（pm_lead 等）与 legacy `.opencode/agent` / `~/.config/opencode/agent` 残留；
+ * - 用当前主题重写 6 个官方 agent md；
+ * - 清掉 md frontmatter 内的 model / fallback_models，避免覆盖 OpenCode 官方
+ *   `opencode.json.agent.<id>.model` 配置。
+ */
+export function repairAgentInstall(
+  input: IRepairAgentInstallInput,
+): IRepairAgentInstallResult {
+  const targetDir =
+    input.targetDirOverride ?? resolveThemeTargetDir(input.scope, input.projectDir);
+  const legacyDir = resolveLegacyThemeTargetDir(input.scope, input.projectDir);
+  const themeId = input.themeId || readThemeIdFromTargetDir(targetDir) || "default";
+  const dryRun = input.dryRun === true;
+  const backupDir = buildBackupDir(targetDir);
+  const backedUp: IRepairAgentInstallResult["backedUp"] = [];
+  const removed: string[] = [];
+  const warnings: string[] = [];
+
+  const candidates = listRepairCandidates({ targetDir, legacyDir });
+  for (const candidate of candidates) {
+    const backupPath = join(backupDir, candidate.backupName);
+    if (!dryRun) {
+      try {
+        if (!existsSync(backupDir)) mkdirSync(backupDir, { recursive: true });
+        renameSync(candidate.filePath, backupPath);
+      } catch (err) {
+        warnings.push(
+          `备份失败 ${candidate.filePath}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+        continue;
+      }
+    }
+    backedUp.push({
+      filePath: candidate.filePath,
+      backupPath,
+      reason: candidate.reason,
+    });
+  }
+
+  if (!dryRun && existsSync(legacyDir)) {
+    try {
+      if (readdirSync(legacyDir).length === 0) {
+        rmSync(legacyDir, { recursive: true, force: true });
+        removed.push(legacyDir);
+      }
+    } catch (err) {
+      warnings.push(
+        `删除空 legacy agent 目录失败 ${legacyDir}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  let applyResult: ApplyAgentThemeResult;
+  try {
+    applyResult = applyAgentTheme({
+      projectDir: input.projectDir,
+      themeId,
+      scope: input.scope,
+      targetDirOverride: targetDir,
+      dryRun,
+      preserveExisting: {
+        model: false,
+        fallback_models: false,
+        mode: false,
+        permission: false,
+        temperature: false,
+      },
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      scope: input.scope,
+      themeId,
+      targetDir,
+      legacyDir,
+      backupDir,
+      dryRun,
+      backedUp,
+      removed,
+      written: [],
+      skipped: [
+        {
+          agent: "commander",
+          reason: err instanceof Error ? err.message : String(err),
+        },
+      ],
+      warnings,
+    };
+  }
+
+  return {
+    ok: applyResult.skipped.length === 0 && warnings.length === 0,
+    scope: input.scope,
+    themeId,
+    targetDir,
+    legacyDir,
+    backupDir,
+    dryRun,
+    backedUp,
+    removed,
+    written: applyResult.written,
+    skipped: applyResult.skipped,
+    warnings,
+  };
 }
 
 /** 单纯渲染一个 agent 的内容文本（测试与展示用，不写盘）。 */

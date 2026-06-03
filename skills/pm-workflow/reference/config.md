@@ -45,7 +45,7 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
-    "@walke/opencode-pm-workflow@rc",
+    "@walke/opencode-pm-workflow@latest",
     "其他 plugin..."
   ]
 }
@@ -60,7 +60,6 @@
 | `@walke/opencode-pm-workflow@rc` | 装 rc tag → 当前最新 RC |
 | `@walke/opencode-pm-workflow@1.0.0-rc.9` | 锁版本 |
 
-OpenCode 启动时用 Bun 自动装到 `~/.cache/opencode/packages/`。
+OpenCode 启动时用 Bun 自动装到 `~/.cache/opencode/node_modules/`；旧版 OpenCode 或历史安装可能残留在 `~/.cache/opencode/packages/`。
 
 ---
-

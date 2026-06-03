@@ -14,7 +14,7 @@ bash ${CLAUDE_SKILL_DIR}/scripts/check.sh
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [
-    "@walke/opencode-pm-workflow@rc"
+    "@walke/opencode-pm-workflow@latest"
   ]
 }
 ```
@@ -24,7 +24,7 @@ bash ${CLAUDE_SKILL_DIR}/scripts/check.sh
 ### Step 3：装全局 CLI
 
 ```bash
-npm install -g @walke/opencode-pm-workflow@rc
+npm install -g @walke/opencode-pm-workflow@latest
 pmw --version
 ```
 
@@ -32,7 +32,7 @@ pmw --version
 
 GUI 应用必须由用户操作（shell 触不到）。启动时 plugin 会自动：
 
-- Bun 装 plugin 到 `~/.cache/opencode/packages/@walke/opencode-pm-workflow@rc/`
+- Bun 装 plugin 到 `~/.cache/opencode/node_modules/@walke/opencode-pm-workflow/`
 - skill auto-install 把包内 `skills/pm-workflow/` 整个目录递归同步到 `~/.config/opencode/skills/pm-workflow/`（含 SKILL.md + 4 个子目录）
 - 创建 `~/.config/opencode/pm-workflow.config.json`（默认配置）
 

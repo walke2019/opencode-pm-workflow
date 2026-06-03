@@ -11,6 +11,7 @@ export declare const PmWorkflowPlugin: (ctx: PluginContext, options?: Record<str
     "tui.prompt.append": (_input: unknown, output: import("./runtime.js").TuiPromptOutput) => Promise<void>;
     "tool.execute.before": (input: import("./runtime.js").ToolInput, output: import("./runtime.js").ToolOutput) => Promise<void>;
     "tool.execute.after": (input: import("./runtime.js").ToolInput, _output: import("./runtime.js").ToolOutput) => Promise<void>;
+    dispose: () => Promise<void>;
     config: (input: Record<string, unknown>) => Promise<void>;
     tool: {
         "pm-get-execution-plan": {
@@ -251,6 +252,7 @@ declare const _default: {
         "tui.prompt.append": (_input: unknown, output: import("./runtime.js").TuiPromptOutput) => Promise<void>;
         "tool.execute.before": (input: import("./runtime.js").ToolInput, output: import("./runtime.js").ToolOutput) => Promise<void>;
         "tool.execute.after": (input: import("./runtime.js").ToolInput, _output: import("./runtime.js").ToolOutput) => Promise<void>;
+        dispose: () => Promise<void>;
         config: (input: Record<string, unknown>) => Promise<void>;
         tool: {
             "pm-get-execution-plan": {

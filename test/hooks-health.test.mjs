@@ -4,6 +4,7 @@ import {
   _resetPluginActivationGuardForTesting,
   evaluatePluginHealth,
   guardPluginActivation,
+  releasePluginActivation,
 } from '../dist/index.js';
 
 // 1) 满足全部阈值时无 finding，ok=true
@@ -83,6 +84,15 @@ import {
   assert.strictEqual(guardPluginActivation('p1'), 'first');
   _resetPluginActivationGuardForTesting();
   assert.strictEqual(guardPluginActivation('p1'), 'first', 'reset 后应重新视为首次');
+}
+
+// 9) release 后同一 plugin id 可重新 first
+{
+  _resetPluginActivationGuardForTesting();
+  assert.strictEqual(guardPluginActivation('p2'), 'first');
+  assert.strictEqual(guardPluginActivation('p2'), 'duplicate');
+  releasePluginActivation('p2');
+  assert.strictEqual(guardPluginActivation('p2'), 'first');
 }
 
 console.log('hooks-health tests passed');

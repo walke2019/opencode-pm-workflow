@@ -15,6 +15,7 @@ export declare const pmWorkflowServerPlugin: {
         "tui.prompt.append": (_input: unknown, output: import("./server/runtime.js").TuiPromptOutput) => Promise<void>;
         "tool.execute.before": (input: import("./server/runtime.js").ToolInput, output: import("./server/runtime.js").ToolOutput) => Promise<void>;
         "tool.execute.after": (input: import("./server/runtime.js").ToolInput, _output: import("./server/runtime.js").ToolOutput) => Promise<void>;
+        dispose: () => Promise<void>;
         config: (input: Record<string, unknown>) => Promise<void>;
         tool: {
             "pm-get-execution-plan": {
