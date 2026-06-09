@@ -19,7 +19,7 @@ function formatDispatchToast(dispatch) {
         case "collect-spec":
             return {
                 title: "pm-workflow 阶段引导：需求收集",
-                message: `当前建议先补齐 Product-Spec.md。${dispatch.reason}${blockedSuffix}`,
+                message: `当前建议先补齐 .pm-workflow/docs/Product-Spec.md。${dispatch.reason}${blockedSuffix}`,
             };
         case "create-design-brief":
             return {
@@ -29,7 +29,7 @@ function formatDispatchToast(dispatch) {
         case "create-dev-plan":
             return {
                 title: "pm-workflow 阶段引导：开发计划",
-                message: `当前建议先生成 DEV-PLAN.md，再进入开发。${dispatch.reason}${blockedSuffix}`,
+                message: `当前建议先生成 .pm-workflow/docs/DEV-PLAN.md，再进入开发。${dispatch.reason}${blockedSuffix}`,
             };
         case "start-development":
             return {

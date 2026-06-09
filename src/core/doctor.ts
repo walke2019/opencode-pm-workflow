@@ -42,8 +42,10 @@ export function buildDoctorReport(projectDir: string) {
   });
   checks.push({
     name: "preferred_session_id",
-    ok: Boolean(state.session.preferred_session_id),
-    detail: state.session.preferred_session_id || "未设置",
+    ok: true,
+    detail:
+      state.session.preferred_session_id ||
+      "可选：未设置；仅影响可选 session 复用，不影响 dispatch / gate / 主题核心功能。",
   });
   checks.push({
     name: "retry policy",
@@ -76,12 +78,14 @@ export function buildDoctorReport(projectDir: string) {
   });
 
   if (!gates.specGate)
-    warnings.push("缺少 Product-Spec.md，当前仍处于需求收集阶段。");
+    warnings.push("缺少 .pm-workflow/docs/Product-Spec.md，当前仍处于需求收集阶段。");
   if (!gates.planGate)
-    warnings.push("缺少 DEV-PLAN.md，当前不能进入开发主流程。");
+    warnings.push("缺少 .pm-workflow/docs/DEV-PLAN.md，当前不能进入开发主流程。");
   if (!gates.reviewGate) blockers.push("存在待 review 的代码变更。");
   if (!state.session.preferred_session_id)
-    warnings.push("未设置 preferred_session_id，session workaround 不稳定。");
+    warnings.push(
+      "未设置 preferred_session_id；仅影响可选 session 复用，不影响 dispatch / gate / 主题核心功能。",
+    );
   if (recovery.lastFailure)
     warnings.push("存在历史失败事件，可运行 pm-get-last-failure 查看。");
 

@@ -46,8 +46,8 @@ export function buildGateSummary(projectDir) {
         reviewGate,
         releaseGate,
         blockedReasons: [
-            !specGate ? "缺少 Product-Spec.md" : null,
-            !planGate ? "缺少 DEV-PLAN.md" : null,
+            !specGate ? "缺少 .pm-workflow/docs/Product-Spec.md" : null,
+            !planGate ? "缺少 .pm-workflow/docs/DEV-PLAN.md" : null,
             !reviewGate ? "仍有待 review 的代码变更" : null,
             !releaseGate ? "未满足 release gate（review 或 phase 未完成）" : null,
         ].filter(Boolean),
@@ -61,21 +61,21 @@ export function buildExecutionGate(projectDir, action) {
         return { allowed: true, reasons };
     }
     if (action === "create-design-brief" && !gates.specGate) {
-        reasons.push("缺少 Product-Spec.md，不能生成 Design-Brief.md。");
+        reasons.push("缺少 .pm-workflow/docs/Product-Spec.md，不能生成 .pm-workflow/docs/Design-Brief.md。");
     }
     if (action === "create-dev-plan" && !gates.specGate) {
-        reasons.push("缺少 Product-Spec.md，不能生成 DEV-PLAN.md。");
+        reasons.push("缺少 .pm-workflow/docs/Product-Spec.md，不能生成 .pm-workflow/docs/DEV-PLAN.md。");
     }
     if ((action === "start-development" || action === "continue-development") &&
         !gates.planGate) {
-        reasons.push("缺少 DEV-PLAN.md，不能进入开发执行。");
+        reasons.push("缺少 .pm-workflow/docs/DEV-PLAN.md，不能进入开发执行。");
     }
     if ((action === "start-development" || action === "continue-development") &&
         !gates.reviewGate) {
         reasons.push("当前存在待 review 的代码变更，应先执行 code review。");
     }
     if (action === "run-code-review" && !state.documents.product_spec) {
-        reasons.push("缺少 Product-Spec.md，无法按需求基准执行 code review。");
+        reasons.push("缺少 .pm-workflow/docs/Product-Spec.md，无法按需求基准执行 code review。");
     }
     if (action === "prepare-release" && !gates.releaseGate) {
         reasons.push("Release Gate 未通过，不能进入发布执行。");

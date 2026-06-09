@@ -89,6 +89,31 @@ function runCli(args, options = {}) {
   }
 }
 
+// 6.1) preferred_session_id 缺失不应让 doctor overall 失败
+{
+  const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-doctor-session-'));
+  try {
+    const r = runCli(['doctor', '--cwd', projectDir, '--json']);
+    assert.strictEqual(r.status, 0);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.ok, true);
+    assert.deepStrictEqual(parsed.blockers, []);
+    const preferredSessionCheck = parsed.checks.find(
+      (check) => check.name === 'preferred_session_id',
+    );
+    assert.ok(
+      !preferredSessionCheck || preferredSessionCheck.ok === true,
+      'preferred_session_id should be optional and non-blocking',
+    );
+    assert.ok(
+      parsed.warnings.some((warning) => warning.includes('仅影响可选 session 复用')),
+      'doctor should describe missing preferred_session_id as optional',
+    );
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
 // 7) dispatch dry-run 输出推荐命令但不实际执行
 {
   const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-dispatch-'));

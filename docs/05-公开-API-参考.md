@@ -272,5 +272,6 @@ npm run api-snapshot:update
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-06-04 | 1.1.1 | 公开 API 无新增；`buildDoctorReport` 与 dispatch prompt 输出语义修正，补齐 project-scoped 文档路径约束 |
 | 2026-05-28 | 1.0.3 | 新增 3 个公开 API：`applyAgentThemeOverrides`、`configureOpenCodeAgentModels`、`buildDefaultOpenCodeAgentModelAssignments`；快照更新到 135 个符号 |
 | 2026-05-23 | 0.12.0 | 新建：把 `dist/index.js` 全部 120 个公开 export 按 19 个职责分类列出；与 `tools/api-snapshot.json` 互相校验；prepare-publish 自动跑 api-snapshot check + docs check |

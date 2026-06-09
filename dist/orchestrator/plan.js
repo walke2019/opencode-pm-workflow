@@ -191,16 +191,17 @@ export function buildDispatchPlan(projectDir) {
     const gates = buildGateSummary(projectDir);
     let recommendedAgent = "commander";
     let recommendedAction = "collect-spec";
-    let reason = "当前缺少 Product-Spec.md，应先进入需求收集阶段。";
+    let reason = "当前缺少 .pm-workflow/docs/Product-Spec.md，应先进入需求收集阶段。";
     if (!gates.specGate) {
         recommendedAgent = "commander";
         recommendedAction = "collect-spec";
-        reason = "Spec Gate 未通过，必须先生成 Product-Spec.md。";
+        reason = "Spec Gate 未通过，必须先生成 .pm-workflow/docs/Product-Spec.md。";
     }
     else if (state.documents.product_spec && !state.documents.dev_plan) {
         recommendedAgent = "advisor";
         recommendedAction = "create-dev-plan";
-        reason = "已具备 Product-Spec.md，但缺少 DEV-PLAN.md，应先生成开发计划。";
+        reason =
+            "已具备 .pm-workflow/docs/Product-Spec.md，但缺少 .pm-workflow/docs/DEV-PLAN.md，应先生成开发计划。";
     }
     else if (state.stage === "review_pending" || !gates.reviewGate) {
         recommendedAgent = "fixer";
@@ -230,7 +231,7 @@ export function buildDispatchPlan(projectDir) {
     else if (!gates.planGate) {
         recommendedAgent = "advisor";
         recommendedAction = "create-dev-plan";
-        reason = "Plan Gate 未通过，应先生成或补齐 DEV-PLAN.md。";
+        reason = "Plan Gate 未通过，应先生成或补齐 .pm-workflow/docs/DEV-PLAN.md。";
     }
     const actionGate = buildExecutionGate(projectDir, recommendedAction);
     const blocked = !actionGate.allowed;

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.1
+
+### 修复：doctor 与 project-scoped 文档写入提示
+
+- `pmw doctor` 不再把缺失 `preferred_session_id` 当作 hard failure；该字段仅作为可选 session 复用提示，不影响 dispatch / gate / 主题核心功能。
+- dispatch executable prompt 新增 pm-workflow 文档写入规则，明确默认 `project_scoped` 模式下流程文档应写入 `.pm-workflow/docs/Product-Spec.md`、`.pm-workflow/docs/Design-Brief.md`、`.pm-workflow/docs/DEV-PLAN.md`。
+- gate / doctor / dispatch / toast 文案改为优先展示默认 project-scoped 路径，降低 agent 把流程文档写到项目根目录的概率。
+- 补充 doctor 与 dispatch prompt 回归测试。
+
 ## 1.1.0
 
 ### 新增：安装版本一致性诊断

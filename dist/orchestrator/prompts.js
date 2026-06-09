@@ -7,6 +7,15 @@ const DEFAULT_DISPATCH_AGENT_MAP = {
     fixer: "fixer",
     writer: "writer",
 };
+const DOC_WRITE_RULES = [
+    "【pm-workflow 文档写入规则】",
+    "默认文档存储模式为 project_scoped。若本次需要创建或更新流程文档，请写入：",
+    "- Product-Spec.md → .pm-workflow/docs/Product-Spec.md",
+    "- Design-Brief.md → .pm-workflow/docs/Design-Brief.md",
+    "- DEV-PLAN.md → .pm-workflow/docs/DEV-PLAN.md",
+    "",
+    "不要把这些流程文档写到项目根目录，除非 docs.storage_mode=legacy 且 write_legacy=true。",
+].join("\n");
 export function getExecutableAgent(agent, dispatchMap = DEFAULT_DISPATCH_AGENT_MAP) {
     return dispatchMap[agent] || DEFAULT_DISPATCH_AGENT_MAP[agent] || agent;
 }
@@ -152,6 +161,8 @@ ${roleTitle}
 ${roleContext}
 
 ${taskBody}
+
+${DOC_WRITE_RULES}
 
 【执行要求】
 ${executionRequirements}

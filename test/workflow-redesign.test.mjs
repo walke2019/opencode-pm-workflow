@@ -172,6 +172,14 @@ async function testDispatchRouting() {
     !simpleWriterDispatch.executablePrompt.includes('commander 作为主 agent'),
     'Executable prompt should not describe commander as the primary agent',
   );
+  assert.ok(
+    simpleWriterDispatch.executablePrompt.includes('.pm-workflow/docs/Product-Spec.md'),
+    'Executable prompt should include project-scoped Product-Spec write path',
+  );
+  assert.ok(
+    simpleWriterDispatch.executablePrompt.includes('.pm-workflow/docs/DEV-PLAN.md'),
+    'Executable prompt should include project-scoped DEV-PLAN write path',
+  );
   console.log('✓ Simple writer task routes to writer (not commander)');
   console.log('✓ Dispatch includes analysis and handoff packet');
 
