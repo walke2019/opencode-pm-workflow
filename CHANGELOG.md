@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.3
+
+### 修复：规范化 npm bin 路径
+
+- 运行 `npm pkg fix` 后同步 `package.json`，将 `bin.pmw` 从 `./scripts/cli/index.mjs` 规范化为 `scripts/cli/index.mjs`。
+- 消除 `npm publish` 时的 `bin[pmw] script name was cleaned` 自动修正 warning。
+
 ## 1.1.2
 
 ### 调整：commander steps 上限提高到 20
