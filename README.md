@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.1.1`。
+当前发布版本：`1.1.2`。
 
 ## 适用场景
 
@@ -159,6 +159,7 @@ pmw models apply --map commander=cx/gpt-5.5,advisor=kr/claude-sonnet-4.5,writer=
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-06-09 | 1.1.2 | 将 commander OpenCode 原生 `steps` 上限从 5 调整为 20，减少复杂分派时过早触发最大步骤数提示 |
 | 2026-06-04 | 1.1.1 | 修复 `pmw doctor` 将可选 `preferred_session_id` 当作 hard failure 的问题；dispatch prompt 明确默认流程文档写入 `.pm-workflow/docs/*` |
 | 2026-05-30 | 1.1.0 | 新增 `pmw repair agents`：备份旧 agent 残留、重建 6 个新版 agent md，并清理 md 内旧 model/fallback_models，避免升级用户角色与模型配置混乱 |
 | 2026-05-28 | 1.0.3 | 新增 `pmw agents theme override` 局部覆盖 display_name；新增 `pmw models set/apply` 写入 OpenCode 官方 `opencode.json.agent.<id>.model` 并校验模型 ID；`agents list/doctor` 显示真实模型来源，避免 `model=(default)` 误导 |

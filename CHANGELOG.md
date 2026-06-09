@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.2
+
+### 调整：commander steps 上限提高到 20
+
+- 将 commander agent 的 OpenCode 原生 `steps` 从 5 调整为 20，减少复杂任务编排时过早触发"已达到本轮 agent 允许的最大步骤数"提示。
+- 保留 `steps` 上限，避免 commander 在异常情况下无限迭代；auto-continue 的 `max_steps` 保护不变。
+- 同步当前全局 `~/.config/opencode/agents/commander.md`，立即生效。
+
 ## 1.1.1
 
 ### 修复：doctor 与 project-scoped 文档写入提示
