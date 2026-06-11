@@ -6,10 +6,9 @@
  *   designer / fixer / writer。
  * - 主题只换"皮肤"：display_name / description / body 文案；
  *   model 由 pmw models init 单独管，主题不写 model 字段。
- * - 但 mode / temperature / tools / permission 由主题数据**强制声明**：
+ * - 但 mode / temperature / permission 由主题数据**强制声明**：
  *   - mode：commander = primary，其他 = subagent（OpenCode 切换列表只显示 commander）
  *   - temperature：按角色调优
- *   - tools：按角色控制工具集合
  *   - permission：按角色控制 edit/bash/webfetch/task 的细粒度权限
  *   这些都是 pm-workflow 路由设计的核心，preserveExisting 不影响。
  *
@@ -44,16 +43,16 @@ import type {
 } from "./types.js";
 
 // ============================================================================
-// 共享配置：6 个固定 agent 的 mode / temperature / tools / permission
+// 共享配置：6 个固定 agent 的 mode / temperature / permission
 // ============================================================================
 //
 // 所有主题共享这套约束（主题只换 display_name / description / body 文案，
-// 不能改 mode / tools / permission）。把它们抽出来，避免 5 套主题 × 6 个角色
+// 不能改 mode / permission）。把它们抽出来，避免 5 套主题 × 6 个角色
 // 重复 30 次相同配置。
 
 type SharedAgentConfig = Pick<
   AgentThemeRoleSkin,
-  "mode" | "temperature" | "tools" | "permission" | "steps"
+  "mode" | "temperature" | "permission" | "steps"
 >;
 
 const COMMANDER_CONFIG: SharedAgentConfig = {
@@ -64,17 +63,21 @@ const COMMANDER_CONFIG: SharedAgentConfig = {
   // stream 累积过长被 OpenCode 服务端 terminated（实测 7 分钟才 terminated）。
   // steps=20 给复杂编排更多余量，同时仍避免无限迭代。
   steps: 20,
-  tools: {
-    write: false,    // commander 不写文件
-    edit: false,     // commander 不改文件
-    bash: false,     // 1.0.0-rc.20 起：commander 完全不能跑 bash（防止用 cat/echo 绕过 write 禁令）
-    webfetch: true,
-    task: true,
-  },
   permission: {
+    read: "allow",
+    glob: "allow",
+    grep: "allow",
+    list: "allow",
     edit: "deny",    // 强制：commander 不能动代码
     bash: "deny",    // 1.0.0-rc.20 起：彻底禁 bash（之前 ask 实测能被 LLM 用 bash 写文件绕过）
+    external_directory: "deny",
+    todowrite: "allow",
     webfetch: "allow",
+    websearch: "allow",
+    lsp: "allow",
+    skill: "allow",
+    question: "allow",
+    doom_loop: "allow",
     // 严格白名单：只允许 commander 调用 pm-workflow 6 个固定 agent +
     // OpenCode 内置只读子代理 explore/scout。其他第三方 agent 全部拒绝，
     // 保证 pm-workflow dispatch 链路不被 LLM 临时起意破坏。
@@ -94,13 +97,11 @@ const COMMANDER_CONFIG: SharedAgentConfig = {
 const ADVISOR_CONFIG: SharedAgentConfig = {
   mode: "subagent",
   temperature: 0.3,
-  tools: {
-    write: false,
-    edit: false,
-    bash: true,
-    webfetch: true,
-  },
   permission: {
+    read: "allow",
+    glob: "allow",
+    grep: "allow",
+    list: "allow",
     edit: "deny",
     // 1.0.0-rc.23 起：advisor 的 bash 改为只读白名单（跟 writer 同款）。
     // advisor 是调研类 agent，应该能用 ls/find/cat/grep 看代码与文档，
@@ -133,68 +134,88 @@ const ADVISOR_CONFIG: SharedAgentConfig = {
       "npm view*": "allow",
       "yarn list*": "allow",
     },
+    external_directory: "deny",
+    todowrite: "deny",
     webfetch: "allow",
+    websearch: "allow",
+    lsp: "allow",
+    skill: "allow",
+    question: "allow",
+    doom_loop: "allow",
   },
 };
 
 const BACKENDCODER_CONFIG: SharedAgentConfig = {
   mode: "subagent",
   temperature: 0.2,
-  tools: {
-    write: true,
-    edit: true,
-    bash: true,
-    webfetch: true,
-  },
   permission: {
+    read: "allow",
+    glob: "allow",
+    grep: "allow",
+    list: "allow",
     edit: "allow",
     bash: "allow",
+    external_directory: "deny",
+    todowrite: "deny",
     webfetch: "ask",
+    websearch: "ask",
+    lsp: "allow",
+    skill: "allow",
+    question: "allow",
+    doom_loop: "allow",
   },
 };
 
 const DESIGNER_CONFIG: SharedAgentConfig = {
   mode: "subagent",
   temperature: 0.4,
-  tools: {
-    write: true,
-    edit: true,
-    bash: true,
-    webfetch: true,
-  },
   permission: {
+    read: "allow",
+    glob: "allow",
+    grep: "allow",
+    list: "allow",
     edit: "allow",
     bash: "allow",
+    external_directory: "deny",
+    todowrite: "deny",
     webfetch: "ask",
+    websearch: "ask",
+    lsp: "allow",
+    skill: "allow",
+    question: "allow",
+    doom_loop: "allow",
   },
 };
 
 const FIXER_CONFIG: SharedAgentConfig = {
   mode: "subagent",
   temperature: 0.1,
-  tools: {
-    write: true,
-    edit: true,
-    bash: true,
-    webfetch: true,
-  },
   permission: {
+    read: "allow",
+    glob: "allow",
+    grep: "allow",
+    list: "allow",
     edit: "allow",
     bash: "allow",
+    external_directory: "deny",
+    todowrite: "deny",
     webfetch: "ask",
+    websearch: "ask",
+    lsp: "allow",
+    skill: "allow",
+    question: "allow",
+    doom_loop: "allow",
   },
 };
 
 const WRITER_CONFIG: SharedAgentConfig = {
   mode: "subagent",
   temperature: 0.3,
-  tools: {
-    write: true,
-    edit: true,
-    bash: true,    // 1.0.0-rc.22 起：开启 bash tool（writer 写文档前需要 ls/find/cat 收集材料）
-    webfetch: true,
-  },
   permission: {
+    read: "allow",
+    glob: "allow",
+    grep: "allow",
+    list: "allow",
     edit: "allow",
     // writer 细粒度 bash（rc.22 起扩展白名单）：
     // - 写类命令（rm / mv / cp 写盘 / > 重定向 / 修改类）保持 deny
@@ -226,7 +247,14 @@ const WRITER_CONFIG: SharedAgentConfig = {
       // 文档构建（已有）
       "npm run docs:*": "allow",
     },
+    external_directory: "deny",
+    todowrite: "deny",
     webfetch: "allow",
+    websearch: "allow",
+    lsp: "allow",
+    skill: "allow",
+    question: "allow",
+    doom_loop: "allow",
   },
 };
 

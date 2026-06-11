@@ -6,10 +6,9 @@
  *   designer / fixer / writer。
  * - 主题只换"皮肤"：display_name / description / body 文案；
  *   model 由 pmw models init 单独管，主题不写 model 字段。
- * - 但 mode / temperature / tools / permission 由主题数据**强制声明**：
+ * - 但 mode / temperature / permission 由主题数据**强制声明**：
  *   - mode：commander = primary，其他 = subagent（OpenCode 切换列表只显示 commander）
  *   - temperature：按角色调优
- *   - tools：按角色控制工具集合
  *   - permission：按角色控制 edit/bash/webfetch/task 的细粒度权限
  *   这些都是 pm-workflow 路由设计的核心，preserveExisting 不影响。
  *

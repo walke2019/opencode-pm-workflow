@@ -91,21 +91,12 @@ export interface AgentThemeRoleSkin {
    * - writer 0.3（文档类，平衡可读性）
    */
   temperature: number;
-  /**
-   * OpenCode tools 字段。控制 agent 可用的工具集合。
-   *
-   * 1.0.0-rc.8 起按角色配置（参见 `permission` 进一步细化）：
-   * - commander：全 true（含 task）
-   * - advisor：edit/write false（不动代码），bash/webfetch true
-   * - backendcoder/designer/fixer：全 true
-   * - writer：edit/write true（动文档），bash false（不跑命令）
-   */
-  tools: {
+  /** @deprecated OpenCode 1.17 起推荐只写 `permission`，新主题不再生成 `tools`。 */
+  tools?: {
     write?: boolean;
     edit?: boolean;
     bash?: boolean;
     webfetch?: boolean;
-    /** 仅 commander 设为 true，让其能调用 task tool 编排 subagent */
     task?: boolean;
   };
   /**
@@ -117,9 +108,20 @@ export interface AgentThemeRoleSkin {
    * - writer：edit allow（仅文档），bash 细粒度（git log/diff/npm run docs:* allow，其他 deny），webfetch allow
    */
   permission: {
+    read?: "allow" | "ask" | "deny";
     edit?: "allow" | "ask" | "deny";
+    glob?: "allow" | "ask" | "deny";
+    grep?: "allow" | "ask" | "deny";
+    list?: "allow" | "ask" | "deny";
     bash?: "allow" | "ask" | "deny" | Record<string, "allow" | "ask" | "deny">;
+    external_directory?: "allow" | "ask" | "deny";
+    todowrite?: "allow" | "ask" | "deny";
     webfetch?: "allow" | "ask" | "deny";
+    websearch?: "allow" | "ask" | "deny";
+    lsp?: "allow" | "ask" | "deny";
+    skill?: "allow" | "ask" | "deny" | Record<string, "allow" | "ask" | "deny">;
+    question?: "allow" | "ask" | "deny";
+    doom_loop?: "allow" | "ask" | "deny";
     /** 仅 commander 设；按 OpenCode glob 模式控制可调用的 subagent 白名单 */
     task?: Record<string, "allow" | "ask" | "deny">;
   };
@@ -130,7 +132,7 @@ export interface AgentThemeRoleSkin {
    * stream 累积过长被 OpenCode 服务端 terminated。
    *
    * 推荐值：
-   * - commander 5（强制早收敛，逼它真调 task 而不是写长 stream）
+   * - commander 20（给复杂编排更多余量，同时避免无限迭代）
    * - 其他 subagent 不设（它们有具体活要干，不限制）
    *
    * 不设此字段时 OpenCode 不限步数，LLM 自由迭代到模型主动停止或 stream 超时。

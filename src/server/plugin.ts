@@ -1,4 +1,4 @@
-import { tool } from "@opencode-ai/plugin";
+import { tool, type Plugin } from "@opencode-ai/plugin";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -31,7 +31,7 @@ import { createStateTools } from "./tools/state-tools.js";
 
 const PLUGIN_ID = "local.pm-workflow-plugin";
 
-export const PmWorkflowPlugin = async (
+export const PmWorkflowPlugin: Plugin = async (
   ctx: PluginContext,
   options?: Record<string, unknown> & {
     health?: Partial<PluginHealthThresholds>;
@@ -99,7 +99,7 @@ export const PmWorkflowPlugin = async (
     ctxDirectory: ctx.directory ?? null,
   });
 
-  // Skill auto-install：把包内 skills/<id>/SKILL.md 同步到 ~/.config/opencode/skills/<id>.md。
+  // Skill auto-install：把包内 skills/<id>/SKILL.md 同步到 ~/.config/opencode/skills/<id>/SKILL.md。
   // **每次激活都跑**（不仅 first activation）：幂等的，相同内容跳过；用户改过的不覆盖。
   // 也**不依赖 projectDir**：即使 bootstrap 出错（路径异常）skill 仍能落盘，确保对话式
   // 入口可用。这是 1.0.0-rc.4 的关键修复点——之前放在 first activation 分支里，

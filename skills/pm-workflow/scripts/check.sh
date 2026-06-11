@@ -301,16 +301,16 @@ else
     has_desc=$(grep -c "^description:" "$f")
     has_mode=$(grep -c "^mode:" "$f")
     has_temp=$(grep -c "^temperature:" "$f")
-    has_tools=$(grep -c "^tools:" "$f")
     has_perm=$(grep -c "^permission:" "$f")
+    has_tools=$(grep -c "^tools:" "$f")
     body_lines=$(wc -l < "$f" | tr -d ' ')
 
     issues=()
     [ "$has_desc" = "0" ] && issues+=("缺 description")
     [ "$has_mode" = "0" ] && issues+=("缺 mode")
     [ "$has_temp" = "0" ] && issues+=("缺 temperature")
-    [ "$has_tools" = "0" ] && issues+=("缺 tools")
     [ "$has_perm" = "0" ] && issues+=("缺 permission")
+    [ "$has_tools" != "0" ] && issues+=("含 deprecated tools")
     [ "$body_lines" -lt 30 ] && issues+=("body 过短 ($body_lines 行)")
 
     if [ "${#issues[@]}" = "0" ]; then

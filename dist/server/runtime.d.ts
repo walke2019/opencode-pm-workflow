@@ -1,3 +1,4 @@
+import type { PluginInput } from "@opencode-ai/plugin";
 import { buildDispatchCommand } from "../shared.js";
 import type { DispatchCommand, EvaluationResult } from "../core/types.js";
 import { type FallbackPlanRuntime } from "../core/fallback-runtime.js";
@@ -11,13 +12,10 @@ export type OpenCodeClient = {
                 message: string;
                 extra?: Record<string, unknown>;
             };
-        }) => Promise<void> | void;
+        }) => Promise<unknown> | unknown;
     };
 };
-export type PluginContext = {
-    project?: {
-        name?: string;
-    };
+export type PluginContext = Partial<Pick<PluginInput, "project" | "client" | "directory" | "worktree" | "$" | "serverUrl">> & {
     client?: OpenCodeClient;
     directory?: string;
     worktree?: string;
@@ -34,6 +32,9 @@ export type ToolInput = {
 };
 export type ToolOutput = {
     args?: Record<string, unknown>;
+    title?: string;
+    output?: string;
+    metadata?: unknown;
     result?: unknown;
 };
 export type TuiPromptOutput = {

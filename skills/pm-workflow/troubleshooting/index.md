@@ -6,7 +6,7 @@
 | T1 | "command not found: pmw" | [pmw 命令找不到](#t1-pmw-命令找不到) |
 | T2 | OpenCode log 出现 `mkdir '/.pm-workflow' failed` | [plugin 加载 mkdir 失败](#t2-plugin-加载-mkdir-失败) |
 | T3 | UI 切换列表显示 6 个 agent | [切换列表显示太多](#t3-切换列表显示太多) |
-| T4 | Agent md 缺 temperature / tools / permission 字段 | [agent md 字段缺失](#t4-agent-md-字段缺失) |
+| T4 | Agent md 缺 temperature / permission 或仍含 deprecated tools | [agent md 字段缺失](#t4-agent-md-字段缺失) |
 | T5 | commander 不调用 backendcoder / 任意子代理 | [commander task 白名单缺失](#t5-commander-task-白名单缺失) |
 | T6 | writer 跑不了 git log / npm run docs | [writer bash 权限错误](#t6-writer-bash-权限错误) |
 | T7 | OpenCode 不识别主题 / `agent-theme-config` skill 不生效 | [skill 子目录结构错误](#t7-skill-子目录结构错误) |

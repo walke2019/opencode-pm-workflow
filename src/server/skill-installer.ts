@@ -1,6 +1,6 @@
 /**
  * Skill auto-install：把 npm 包内的 skills/*\/SKILL.md 同步到 OpenCode 标准目录
- * `~/.config/opencode/skills/<skill-id>.md`，让 OpenCode 在启动时能自动发现并把
+ * `~/.config/opencode/skills/<skill-id>/SKILL.md`，让 OpenCode 在启动时能自动发现并把
  * skill 注入给 AI。
  *
  * 设计原则：
@@ -12,8 +12,7 @@
  * 不做的事情：
  * - 不删除用户已有的 skill 文件，即使从 npm 包里删除了同名 skill。
  * - 不引入 yaml 依赖；只做按字节对比与拷贝。
- * - 不递归 skill 子目录（如 skills/foo/SKILL.md/sub/...）；当前所有 skill 都是
- *   一级目录 + 单一 SKILL.md。
+ * - 递归同步 skill supporting files（reference/、workflows/、scripts/ 等）。
  */
 
 import {
@@ -118,7 +117,7 @@ export function syncPackagedSkillsToOpenCode(input?: {
         findings: skillIds.map((id) => ({
           skillId: id,
           source: join(skillsSourceDir, id, "SKILL.md"),
-          target: join(skillsTargetDir, `${id}.md`),
+          target: join(skillsTargetDir, id, "SKILL.md"),
           outcome: "failed" as const,
           message: `创建 skill 目录失败: ${err instanceof Error ? err.message : String(err)}`,
         })),

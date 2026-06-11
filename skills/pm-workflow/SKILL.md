@@ -93,7 +93,7 @@ pm-workflow 永远只有这 6 个语义 agent，ID 永不可改：
 | **模型配置写在 `opencode.json` 的 `agent` 段** | OpenCode 只读这里的 model 字段；写到 pm-workflow.config.json 的 agents.definitions[*].model 完全无效 | rc.12 强调 |
 | **CLI 版本对齐** | `pmw --version` ≡ plugin cache 版本 | rc.4 |
 | **Skill 子目录结构** | `~/.config/opencode/skills/<id>/SKILL.md` | rc.7 |
-| **Agent md 完整字段** | 含 description / mode / temperature / tools / permission | rc.8 |
+| **Agent md 完整字段** | 含 description / mode / temperature / permission；不再生成 deprecated `tools` | 1.1.4 |
 | **mode 严格约束** | commander = primary，其他 5 个 = subagent | rc.6 |
 | **6 个固定 ID 永不可改** | commander / advisor / backendcoder / designer / fixer / writer | rc.6 |
 | **跨平台兼容** | 用 `os.homedir()` / `os.tmpdir()` | rc.5 |
@@ -125,7 +125,8 @@ pm-workflow 永远只有这 6 个语义 agent，ID 永不可改：
 | rc.5 | 跨平台兼容（macOS/Linux/Windows） |
 | rc.6 | 6 个 agent 重命名 + 角色合并 |
 | rc.7 | OpenCode skill 必须子目录 + SKILL.md |
-| rc.8 | agent md 完全符合 OpenCode 规范（temperature / tools / permission + 完整 body） |
+| rc.8 | agent md 补齐 temperature / permission + 完整 body |
+| 1.1.4 | 对齐 OpenCode 1.17，移除 deprecated `tools` frontmatter |
 | rc.9 | 新增 pm-workflow-config / agent-theme-config / agent-model-config 三个 skill |
 | rc.10 | 三个 skill 合并为单一 `pm-workflow` skill（顶层 .md 平铺） |
 | **rc.11** | **subdirectory 组织**：reference/ workflows/ troubleshooting/ scripts/ 四个子目录，SKILL.md 仅做导航；7 个顶层 .md 拆分为 16 个语义子文件，AI 按需读取 |

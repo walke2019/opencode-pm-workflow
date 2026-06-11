@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.4
+
+### 对齐：OpenCode 1.17 agent 与 plugin 规范
+
+- 升级 `@opencode-ai/plugin` 到 `^1.17.3`，并让 server plugin 入口使用官方 `Plugin` 类型，提前暴露 SDK hook 签名变化。
+- agent 主题生成改为 permission-only：新渲染的 agent md 不再写 OpenCode 1.17 已 deprecated 的 `tools` 字段。
+- 补全 agent permission key：`read / glob / grep / list / external_directory / todowrite / websearch / lsp / skill / question / doom_loop` 等能力由 `permission` 统一控制。
+- 主题重渲染会移除旧 `tools` frontmatter，诊断脚本改为把 `tools` 视为 deprecated 残留。
+- 更新 pm-workflow skill 参考文档、agent frontmatter 示例和升级排查说明。
+
 ## 1.1.3
 
 ### 修复：规范化 npm bin 路径

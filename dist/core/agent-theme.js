@@ -230,6 +230,8 @@ function renderAgentMd(input) {
             delete topLevel.permission;
             delete nestedRaw.permission;
         }
+        delete topLevel.tools;
+        delete nestedRaw.tools;
     }
     // 写入主题字段
     topLevel.description = skin.description;
@@ -246,11 +248,10 @@ function renderAgentMd(input) {
     // 这个边界。如果用户想把某个 subagent 改成 primary，应该是手动改 md 文件，
     // 而不是通过主题切换实现。
     topLevel.mode = skin.mode;
-    // 1.0.0-rc.8 起：写入 temperature / tools / permission 字段，使 agent md
-    // 完全符合 OpenCode 官方 agent 规范（参见 https://opencode.ai/docs/agents）。
+    // 1.0.0-rc.8 起写入 temperature / permission 字段；1.1.4 起不再写
+    // deprecated `tools` 字段，完全交给 OpenCode 官方 permission 机制控制。
     //
     // - temperature：按角色调优（commander/backendcoder=0.2，advisor/writer=0.3，designer=0.4，fixer=0.1）
-    // - tools：控制工具集合（advisor 关 edit/write，writer 关 bash 等）
     // - permission：细粒度权限（commander 用 task 白名单约束 dispatch 链路）
     //
     // 这三个字段都由主题数据强制写入，preserveExisting 不影响——理由同 mode：
@@ -261,8 +262,6 @@ function renderAgentMd(input) {
     if (typeof skin.steps === "number" && skin.steps > 0) {
         topLevel.steps = String(skin.steps);
     }
-    // tools 是嵌套对象 → 渲染成 YAML 嵌套块
-    nestedRaw.tools = renderToolsBlock(skin.tools);
     // permission 是嵌套对象 → 渲染成 YAML 嵌套块
     // 注意：rc.7 之前 permission 嵌套块由 preserveExisting 守护，可能保留用户旧
     // permission。rc.8 起主题强制写入 permission，确保 commander 的 task 白名单
@@ -277,34 +276,6 @@ function renderAgentMd(input) {
         exists,
         fellBackToDefault,
     };
-}
-/**
- * 渲染 tools 字段为 YAML 嵌套块。
- *
- * 输入：{ write: true, edit: true, bash: false }
- * 输出：
- *   tools:
- *     write: true
- *     edit: true
- *     bash: false
- */
-function renderToolsBlock(tools) {
-    const lines = ["tools:"];
-    // 固定顺序，便于人工 diff
-    const order = [
-        "write",
-        "edit",
-        "bash",
-        "webfetch",
-        "task",
-    ];
-    for (const key of order) {
-        const value = tools[key];
-        if (value === undefined)
-            continue;
-        lines.push(`  ${key}: ${value}`);
-    }
-    return lines.join("\n");
 }
 /**
  * 渲染 permission 字段为 YAML 嵌套块。
@@ -329,9 +300,20 @@ function renderPermissionBlock(permission) {
     const lines = ["permission:"];
     // 固定字段顺序
     const fieldOrder = [
+        "read",
         "edit",
+        "glob",
+        "grep",
+        "list",
         "bash",
+        "external_directory",
+        "todowrite",
         "webfetch",
+        "websearch",
+        "lsp",
+        "skill",
+        "question",
+        "doom_loop",
         "task",
     ];
     for (const key of fieldOrder) {

@@ -2,7 +2,7 @@
 # pm-workflow 重置 agent md 到当前主题最新版
 #
 # 用途：
-#   - 升级 plugin 后让 agent md 跟上新规范（如 rc.7 → rc.8 加 temperature/tools/permission）
+#   - 升级 plugin 后让 agent md 跟上新规范（如 1.1.4 起 permission-only）
 #   - 修复用户手改坏了的 agent md
 #   - 检测当前主题，重新 apply 写新版本
 #
@@ -162,15 +162,15 @@ for agent in commander advisor backendcoder designer fixer writer; do
   has_desc=$(grep -c "^description:" "$f")
   has_mode=$(grep -c "^mode:" "$f")
   has_temp=$(grep -c "^temperature:" "$f")
-  has_tools=$(grep -c "^tools:" "$f")
   has_perm=$(grep -c "^permission:" "$f")
+  has_tools=$(grep -c "^tools:" "$f")
 
-  if [ "$has_desc" = "1" ] && [ "$has_mode" = "1" ] && [ "$has_temp" = "1" ] && [ "$has_tools" = "1" ] && [ "$has_perm" = "1" ]; then
+  if [ "$has_desc" = "1" ] && [ "$has_mode" = "1" ] && [ "$has_temp" = "1" ] && [ "$has_perm" = "1" ] && [ "$has_tools" = "0" ]; then
     mode_value=$(grep "^mode:" "$f" | head -1 | awk '{print $2}')
     body_lines=$(wc -l < "$f" | tr -d ' ')
     ok "$agent.md（mode=$mode_value, $body_lines 行，全部字段就位）"
   else
-    err "$agent.md 字段不全: desc=$has_desc mode=$has_mode temp=$has_temp tools=$has_tools perm=$has_perm"
+    err "$agent.md 字段不全或含旧字段: desc=$has_desc mode=$has_mode temp=$has_temp perm=$has_perm deprecated_tools=$has_tools"
     ALL_OK=false
   fi
 done

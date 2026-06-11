@@ -1,7 +1,7 @@
 # pm-workflow 6 个 agent 完整 frontmatter
 
 
-主题 apply 后的标准 frontmatter（rc.8 起）：
+主题 apply 后的标准 frontmatter（1.1.4 起，OpenCode 1.17 permission-only）：
 
 ### commander.md
 
@@ -13,9 +13,20 @@ temperature: 0.2
 display_name: 主协调官
 theme: default
 permission:
-  edit: ask
-  bash: ask
+  read: allow
+  glob: allow
+  grep: allow
+  list: allow
+  edit: deny
+  bash: deny
+  external_directory: deny
+  todowrite: allow
   webfetch: allow
+  websearch: allow
+  lsp: allow
+  skill: allow
+  question: allow
+  doom_loop: allow
   task:
     "*": deny
     advisor: allow
@@ -25,12 +36,6 @@ permission:
     writer: allow
     explore: allow
     scout: allow
-tools:
-  write: true
-  edit: true
-  bash: true
-  webfetch: true
-  task: true
 ---
 ```
 
@@ -44,14 +49,25 @@ temperature: 0.3
 display_name: 调研顾问
 theme: default
 permission:
+  read: allow
+  glob: allow
+  grep: allow
+  list: allow
   edit: deny       ← 顾问不动代码
-  bash: allow
+  bash:
+    "*": deny
+    "ls *": allow
+    "cat *": allow
+    "rg *": allow
+    "git diff*": allow
+  external_directory: deny
+  todowrite: deny
   webfetch: allow
-tools:
-  write: false
-  edit: false
-  bash: true
-  webfetch: true
+  websearch: allow
+  lsp: allow
+  skill: allow
+  question: allow
+  doom_loop: allow
 ---
 ```
 
@@ -65,14 +81,20 @@ temperature: 0.2
 display_name: 后端工程师
 theme: default
 permission:
+  read: allow
+  glob: allow
+  grep: allow
+  list: allow
   edit: allow
   bash: allow
+  external_directory: deny
+  todowrite: deny
   webfetch: ask
-tools:
-  write: true
-  edit: true
-  bash: true
-  webfetch: true
+  websearch: ask
+  lsp: allow
+  skill: allow
+  question: allow
+  doom_loop: allow
 ---
 ```
 
@@ -86,14 +108,20 @@ temperature: 0.4
 display_name: 设计师
 theme: default
 permission:
+  read: allow
+  glob: allow
+  grep: allow
+  list: allow
   edit: allow
   bash: allow
+  external_directory: deny
+  todowrite: deny
   webfetch: ask
-tools:
-  write: true
-  edit: true
-  bash: true
-  webfetch: true
+  websearch: ask
+  lsp: allow
+  skill: allow
+  question: allow
+  doom_loop: allow
 ---
 ```
 
@@ -107,14 +135,20 @@ temperature: 0.1     ← 最低，工程类要确定性
 display_name: 测试发布员
 theme: default
 permission:
+  read: allow
+  glob: allow
+  grep: allow
+  list: allow
   edit: allow
   bash: allow
+  external_directory: deny
+  todowrite: deny
   webfetch: ask
-tools:
-  write: true
-  edit: true
-  bash: true
-  webfetch: true
+  websearch: ask
+  lsp: allow
+  skill: allow
+  question: allow
+  doom_loop: allow
 ---
 ```
 
@@ -128,6 +162,10 @@ temperature: 0.3
 display_name: 文档撰稿人
 theme: default
 permission:
+  read: allow
+  glob: allow
+  grep: allow
+  list: allow
   edit: allow      ← 文档可改
   bash:            ← 细粒度
     "*": deny
@@ -135,12 +173,14 @@ permission:
     "git diff*": allow
     "git status*": allow
     "npm run docs:*": allow
+  external_directory: deny
+  todowrite: deny
   webfetch: allow
-tools:
-  write: true
-  edit: true
-  bash: false      ← bash 整体关闭，permission 控制例外
-  webfetch: true
+  websearch: allow
+  lsp: allow
+  skill: allow
+  question: allow
+  doom_loop: allow
 ---
 ```
 
@@ -151,11 +191,10 @@ pm-workflow registry 自己读这两个字段做主题展示。安全保留。
 
 ### 主题强制约束的字段
 
-`mode` / `temperature` / `tools` / `permission` 都由主题强制写入，**不受 `preserveExisting` 影响**。理由：
+`mode` / `temperature` / `permission` 都由主题强制写入，**不受 `preserveExisting` 影响**。理由：
 
 - 这些是 OpenCode UI 行为（mode 控切换列表）和 pm-workflow 路由设计（task 白名单）的核心
 - 用户自定义会破坏整体设计
 - 如真要改，应该手动改 md 文件，而非通过主题切换
 
 ---
-

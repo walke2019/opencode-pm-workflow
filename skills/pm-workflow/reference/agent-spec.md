@@ -29,31 +29,30 @@ mode: primary | subagent | all     # 不写默认 all
 | `steps` | 最大迭代次数 | 数字 |
 | `disable` | 禁用 agent | true / false |
 | `prompt` | 自定义系统 prompt 文件 | 相对配置文件路径 |
-| `tools` | 工具集合控制 | 嵌套对象，见下 |
 | `permission` | 细粒度权限 | 嵌套对象，见下 |
 | `hidden` | 是否在 @ 自动补全菜单显示 | true / false（仅 subagent 有效） |
 | `color` | UI 显示颜色 | 十六进制或主题色名 |
 
-### `tools` 字段
-
-```yaml
-tools:
-  write: true
-  edit: true
-  bash: true
-  webfetch: true
-  task: true              # 仅 primary agent 有意义
-  # 也支持通配符
-  mymcp_*: false          # 禁用某 MCP 服务器全部工具
-```
+> OpenCode 1.17 起 `tools` 已 deprecated。新 agent md 应只写 `permission`。
 
 ### `permission` 字段
 
 ```yaml
 permission:
+  read: allow | ask | deny
   edit: allow | ask | deny
+  glob: allow | ask | deny
+  grep: allow | ask | deny
+  list: allow | ask | deny
   bash: allow | ask | deny
+  external_directory: allow | ask | deny
+  todowrite: allow | ask | deny
   webfetch: allow | ask | deny
+  websearch: allow | ask | deny
+  lsp: allow | ask | deny
+  skill: allow | ask | deny
+  question: allow | ask | deny
+  doom_loop: allow | ask | deny
   # bash 支持 glob 形式细粒度控制
   bash:
     "*": deny
@@ -81,4 +80,3 @@ frontmatter 之后的全部内容是系统 prompt。
 OpenCode 已有 5 个内置 agent：`build` / `plan` / `general` / `explore` / `scout`。pm-workflow 不要重名。
 
 ---
-

@@ -42,11 +42,11 @@ $ grep -c "^temperature:" ~/.config/opencode/agents/commander.md
 0
 ```
 
-agent md 缺 `temperature` / `tools` / `permission` 字段。
+agent md 缺 `temperature` / `permission` 字段，或仍包含 OpenCode 1.17 起已 deprecated 的 `tools` 字段。
 
 ### 根因
 
-rc.7 之前的主题渲染没写这些字段，所以 OpenCode 用模型默认 temperature、不限制工具、不限制权限。
+旧版主题渲染会缺少 permission，或写入现在已 deprecated 的 `tools`。OpenCode 最新版本建议统一使用 `permission` 控制工具能力。
 
 ### 修复
 
@@ -70,7 +70,7 @@ for f in ~/.config/opencode/agents/*.md; do
   has_perm=$(grep -c '^permission:' "$f")
   echo "$agent: temp=$has_temp tools=$has_tools perm=$has_perm"
 done
-# 每个 agent 都应是 temp=1 tools=1 perm=1
+# 每个 agent 都应是 temp=1 tools=0 perm=1
 ```
 
 ---
@@ -161,4 +161,3 @@ pmw agents theme apply default --scope global
 让 writer 跑 `git log --oneline -5`，应该被允许。跑 `rm -rf` 应该被拒绝。
 
 ---
-

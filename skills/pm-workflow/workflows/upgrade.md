@@ -125,9 +125,9 @@ ${CLAUDE_SKILL_DIR}/scripts/check.sh
 
 ## 升级后的可选步骤
 
-### 如果 agent md 是旧版（缺 temperature/tools/permission）
+### 如果 agent md 是旧版（缺 temperature/permission 或仍含 tools）
 
-升级到 rc.8+ 后，建议重新 apply 主题让 agent md 升级到完整规范：
+升级到 1.1.4+ 后，建议重新 apply 主题让 agent md 升级到 OpenCode 1.17 的 permission-only 规范：
 
 ```bash
 # 看当前主题
