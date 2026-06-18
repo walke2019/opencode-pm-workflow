@@ -224,7 +224,8 @@ fi
 info "$TARGET_DESC 目标版本: $TARGET_VERSION"
 
 if [ "$PMW_VERSION" = "$TARGET_VERSION" ] && { [ "$CACHED_VERSION" = "$TARGET_VERSION" ] || [ "$CACHED_VERSION" = "不存在" ]; } && [ "$LEGACY_EXTRA_COUNT" = "0" ]; then
-  ok "已是目标版本（CLI=$TARGET_VERSION，plugin cache=$CACHED_VERSION），无需升级"
+  VERSION_STATUS="CLI=${TARGET_VERSION}; plugin cache=${CACHED_VERSION}"
+  ok "已是目标版本（${VERSION_STATUS}），无需升级"
   exit 0
 fi
 

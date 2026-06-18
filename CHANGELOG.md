@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.5
+
+### 修复：升级后自动清理旧版 pm_* agent ID
+
+从 rc.5 及更早版本升级到 rc.6+ 后，项目级 `.pm-workflow/config.json` 中仍残留旧版 agent ID（pm_lead / pm_advisor / pm_backend / pm_frontend / pm_reviewer / pm_researcher），这导致 OpenCode 切换列表出现多余的 primary agent（pm_lead / pm_advisor）。
+
+- `readWorkflowConfig()` 新增旧版 agent ID 自动迁移：读取 config.json 时自动将 pm_lead / pm_advisor / pm_backend / pm_frontend / pm_reviewer / pm_researcher 映射为新版 ID（commander / advisor / backendcoder / designer / fixer / writer），覆盖 `definitions`、`dispatch_map`、`fallback.agent_map` 三处残留，迁移后回写 config.json 并记录 history 事件 `config.migrate_legacy_agent_ids`。
+- `buildOpenCodeAgentConfig()` 新增白名单过滤：仅允许 commander / advisor / backendcoder / designer / fixer / writer 这 6 个固定 agent ID 进入 OpenCode agent 注册列表，非白名单 agent 直接跳过，防止旧 ID 或意外 ID 被注册为 primary agent 导致切换列表显示多余项。
+- `pmw doctor` 新增旧版 agent ID 残留检测：发现 `config.agents.definitions` 中存在 pm_* 残留时输出警告，提示用户运行 pmw doctor 完成自动迁移。
+- **新增**：插件激活时自动检查 `~/.config/opencode/agents/` 下 6 个角色 .md 是否存在，缺失时自动用默认主题创建。已存在文件不受影响，保留用户模型/权限配置。跨平台兼容 macOS/Linux/Windows。
+
+### 文件
+
+- `src/core/config.ts`：`readWorkflowConfig()` 自动迁移 + `buildOpenCodeAgentConfig()` 白名单过滤
+- `src/core/doctor.ts`：`buildDoctorReport()` 残留检测警告
+- `src/server/plugin.ts`：插件激活时自动补齐缺失的 agent .md 文件
+- `dist/core/config.js`：编译产物同步更新
+
 ## 1.1.4
 
 ### 对齐：OpenCode 1.17 agent 与 plugin 规范

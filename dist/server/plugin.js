@@ -1,6 +1,7 @@
+import { existsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
-import { getAutomationMode, buildOpenCodeAgentConfig, migrateLegacyProjectArtifacts, seedWorkflowConfig, syncState, } from "../shared.js";
+import { applyAgentTheme, getAutomationMode, buildOpenCodeAgentConfig, migrateLegacyProjectArtifacts, FIXED_AGENT_IDS, seedWorkflowConfig, syncState, resolveThemeTargetDir, } from "../shared.js";
 import { getProjectDir, log, } from "./runtime.js";
 import { createPmWorkflowHooks } from "./hooks.js";
 import { evaluatePluginHealth, guardPluginActivation, reportPluginHealth, releasePluginActivation, } from "./hooks-health.js";
@@ -106,6 +107,38 @@ export const PmWorkflowPlugin = async (ctx, options) => {
         // 兜底：syncPackagedSkillsToOpenCode 内部已经把所有 IO 异常包成 finding，
         // 这里只接住意外错误（比如 fileURLToPath 路径计算失败）；不阻断加载。
         await log(ctx.client, "warn", "pm-workflow skill auto-install crashed", {
+            message: err instanceof Error ? err.message : String(err),
+        });
+    }
+    // Agent .md 自动补齐：检查 ~/.config/opencode/agents/ 下 6 个角色 .md 是否存在。
+    // 如果缺失任何一个，用默认主题自动创建。已存在的文件不受影响（applyAgentTheme 的
+    // preserveExisting 默认保留用户的 model/mode/permission/fallback_models/temperature 配置）。
+    // 跨平台：resolveThemeTargetDir 内部用 os.homedir() + XDG_CONFIG_HOME 自动适配
+    // macOS/Linux/Windows（Windows 走 %USERPROFILE%\.config 路径）。
+    try {
+        const agentsDir = resolveThemeTargetDir("global", projectDir);
+        const missingAgents = FIXED_AGENT_IDS.filter((id) => !existsSync(join(agentsDir, `${id}.md`)));
+        if (missingAgents.length > 0) {
+            await log(ctx.client, "info", "pm-workflow auto-creating missing agent .md files", {
+                agentsDir,
+                missing: missingAgents,
+            });
+            const result = applyAgentTheme({
+                projectDir,
+                themeId: "default",
+                scope: "global",
+            });
+            await log(ctx.client, "info", "pm-workflow agent auto-create complete", {
+                written: result.written.map((w) => w.agent),
+                skipped: result.skipped.map((s) => ({ agent: s.agent, reason: s.reason })),
+                targetDir: result.targetDir,
+            });
+        }
+    }
+    catch (err) {
+        // 兜底：agent .md 创建失败不阻断插件加载。
+        // 用户仍可通过 `pmw agents theme apply default` 手动修复。
+        await log(ctx.client, "warn", "pm-workflow agent auto-create failed", {
             message: err instanceof Error ? err.message : String(err),
         });
     }

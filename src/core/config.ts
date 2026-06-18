@@ -65,6 +65,16 @@ const WORKFLOW_AGENT_ORDER: DispatchAgent[] = [
   "writer",
 ];
 
+// 旧版 agent ID → 新版 agent ID 映射表
+const LEGACY_TO_CURRENT: Record<string, string> = {
+  pm_lead: "commander",
+  pm_advisor: "advisor",
+  pm_backend: "backendcoder",
+  pm_frontend: "designer",
+  pm_reviewer: "fixer",
+  pm_researcher: "writer",
+};
+
 const DEFAULT_WORKFLOW_AGENTS: Partial<Record<string, WorkflowAgentConfig>> = {
   commander: {
     mode: "primary",
@@ -657,6 +667,46 @@ export function readWorkflowConfig(
     if (!parsed.agents) migrationTypes.push("config.migrate_agents_v1");
     if (!parsed.docs) migrationTypes.push("config.migrate_docs_v1");
 
+    const hasLegacyDefs = Object.keys(merged.agents.definitions).some(
+      (key) => key in LEGACY_TO_CURRENT,
+    );
+    const hasLegacyDispatch = Object.keys(merged.agents.dispatch_map).some(
+      (key) => key in LEGACY_TO_CURRENT,
+    );
+    const hasLegacyFallback = Object.keys(merged.fallback.agent_map).some(
+      (key) => key in LEGACY_TO_CURRENT,
+    );
+
+    if (hasLegacyDefs || hasLegacyDispatch || hasLegacyFallback) {
+      for (const [oldId, newId] of Object.entries(LEGACY_TO_CURRENT)) {
+        // 迁移 definitions
+        if (merged.agents.definitions[oldId]) {
+          merged.agents.definitions[newId] = {
+            ...merged.agents.definitions[newId],
+            ...merged.agents.definitions[oldId],
+          };
+          delete merged.agents.definitions[oldId];
+        }
+
+        // 迁移 dispatch_map
+        const oldDispatchId = oldId as DispatchAgent;
+        const newDispatchId = newId as DispatchAgent;
+        if (merged.agents.dispatch_map[oldDispatchId]) {
+          merged.agents.dispatch_map[newDispatchId] =
+            merged.agents.dispatch_map[oldDispatchId];
+          delete merged.agents.dispatch_map[oldDispatchId];
+        }
+
+        // 迁移 fallback.agent_map
+        if (merged.fallback.agent_map[oldId]) {
+          merged.fallback.agent_map[newId] = merged.fallback.agent_map[oldId];
+          delete merged.fallback.agent_map[oldId];
+        }
+      }
+
+      migrationTypes.push("config.migrate_legacy_agent_ids");
+    }
+
     if (migrationTypes.length > 0) {
       writeFileSync(configPath, JSON.stringify(merged, null, 2));
       for (const type of migrationTypes) {
@@ -716,9 +766,10 @@ function toOpenCodeAgentConfig(
 export function buildOpenCodeAgentConfig(config: WorkflowConfig) {
   if (!config.agents.enabled) return {};
 
+  const FIXED_IDS = new Set(WORKFLOW_AGENT_ORDER);
   const agents: Record<string, Record<string, unknown>> = {};
   for (const [agentName, agent] of Object.entries(config.agents.definitions)) {
-    if (!agent) continue;
+    if (!agent || !FIXED_IDS.has(agentName as DispatchAgent)) continue;
     agents[agentName] = toOpenCodeAgentConfig(
       agentName,
       agent,

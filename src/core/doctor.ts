@@ -10,6 +10,15 @@ import { buildRecoverySummary } from "./recovery.js";
 import { readState } from "./state.js";
 import { readWorkflowConfig } from "./config.js";
 
+const LEGACY_AGENT_IDS = [
+  "pm_lead",
+  "pm_advisor",
+  "pm_backend",
+  "pm_frontend",
+  "pm_reviewer",
+  "pm_researcher",
+];
+
 export function buildDoctorReport(projectDir: string) {
   const checks: Array<{ name: string; ok: boolean; detail: string }> = [];
   const warnings: string[] = [];
@@ -24,6 +33,16 @@ export function buildDoctorReport(projectDir: string) {
   const history = readHistory(projectDir);
   const gates = buildGateSummary(projectDir);
   const recovery = buildRecoverySummary(projectDir);
+
+  // 检测 config 中是否残留旧版 pm_* agent ID
+  const legacyAgentIds = Object.keys(config.agents.definitions).filter((key) =>
+    LEGACY_AGENT_IDS.includes(key),
+  );
+  if (legacyAgentIds.length > 0) {
+    warnings.push(
+      `检测到旧版 agent ID 残留：${legacyAgentIds.join("、")}。运行 pmw doctor 将自动迁移。`,
+    );
+  }
 
   checks.push({
     name: "state.json",
