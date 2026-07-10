@@ -1,8 +1,8 @@
 import assert from 'node:assert';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { defaultWorkflowConfig } from '../dist/core/config.js';
+import { defaultWorkflowConfig, readWorkflowConfig } from '../dist/core/config.js';
 import { buildDispatchPlan } from '../dist/orchestrator/plan.js';
 import { buildDispatchCommand } from '../dist/orchestrator/plan.js';
 import { buildExecutablePrompt } from '../dist/orchestrator/prompts.js';
@@ -295,12 +295,50 @@ async function testStageDefaultRouting() {
   console.log('✓ development defaults to commander');
 }
 
+async function testLegacyExecutableAgentValueMigration() {
+  await withTempProject((projectDir) => {
+    const stateDir = join(projectDir, '.pm-workflow');
+    mkdirSync(stateDir, { recursive: true });
+    writeFileSync(
+      join(stateDir, 'config.json'),
+      JSON.stringify({
+        agents: {
+          dispatch_map: {
+            commander: 'pm_lead',
+            designer: 'pm_frontend',
+          },
+        },
+        fallback: {
+          agent_map: {
+            commander: 'pm_lead',
+            designer: 'pm_frontend',
+          },
+        },
+      }),
+      'utf-8',
+    );
+  }, (projectDir) => {
+    const config = readWorkflowConfig(projectDir);
+    assert.strictEqual(config.agents.dispatch_map.commander, 'commander');
+    assert.strictEqual(config.agents.dispatch_map.designer, 'designer');
+    assert.strictEqual(config.fallback.agent_map.commander, 'commander');
+    assert.strictEqual(config.fallback.agent_map.designer, 'designer');
+
+    const persisted = JSON.parse(
+      readFileSync(join(projectDir, '.pm-workflow', 'config.json'), 'utf-8'),
+    );
+    assert.strictEqual(persisted.agents.dispatch_map.designer, 'designer');
+    assert.strictEqual(persisted.fallback.agent_map.designer, 'designer');
+  });
+}
+
 async function runTests() {
   try {
     await testDefaults();
     await testPrompts();
     await testDispatchRouting();
     await testStageDefaultRouting();
+    await testLegacyExecutableAgentValueMigration();
     console.log('\nAll verification tests passed successfully!');
   } catch (error) {
     console.error('Test failed:', error);

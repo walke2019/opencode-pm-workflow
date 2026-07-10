@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import { dirname, join } from "path";
 import { defaultWorkflowConfig, getGlobalWorkflowConfigPath, readWorkflowConfig, } from "./config.js";
-import { listGlobalOpenCodeModelKeys } from "./model-inventory.js";
+import { readGlobalOpenCodeModelInventory, resolveGlobalOpenCodeModelAlias, } from "./model-inventory.js";
 import { ensureStateDir, getConfigPath } from "./project.js";
 const DEFAULT_MODEL_AGENTS = [
     "commander",
@@ -16,6 +16,14 @@ const DEFAULT_OPENCODE_MODEL_AGENTS = [
     ...DEFAULT_MODEL_AGENTS,
     "explore",
 ];
+const PORTABLE_DEFAULT_AGENT_MODELS = {
+    commander: "gpt-5.6-sol",
+    advisor: "gpt-5.6-sol",
+    backendcoder: "gpt-5.6-terra",
+    designer: "gemini-3.5-flash",
+    fixer: "gpt-5.6-terra",
+    writer: "gpt-5.6-luna",
+};
 function readJsonObject(path) {
     if (!existsSync(path))
         return {};
@@ -27,11 +35,43 @@ function readJsonObject(path) {
 function uniqueNonEmpty(values) {
     return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
-function validateModels(input) {
-    const knownModels = listGlobalOpenCodeModelKeys();
-    if (knownModels.length === 0 || input.allowUnknown)
-        return [];
-    return input.models.filter((model) => !knownModels.includes(model));
+function resolveOpenCodeAssignments(input) {
+    const inventory = readGlobalOpenCodeModelInventory();
+    const warnings = [];
+    const blockers = [];
+    const assignments = input.assignments.map((assignment) => {
+        const resolution = resolveGlobalOpenCodeModelAlias(assignment.model);
+        if (resolution.resolved) {
+            if (resolution.status === "resolved") {
+                warnings.push(`模型别名 ${assignment.model} 已解析为 ${resolution.resolved}`);
+            }
+            return { ...assignment, model: resolution.resolved };
+        }
+        if (input.allowUnknown)
+            return assignment;
+        if (resolution.status === "ambiguous") {
+            blockers.push(`模型别名 ${assignment.model} 匹配多个 provider，请改用完整 ID: ${resolution.candidates.join(", ")}`);
+            return assignment;
+        }
+        if (inventory.models.length === 0 && assignment.model.includes("/")) {
+            warnings.push(`全局 provider.models 清单为空，保留显式完整模型 ID ${assignment.model}`);
+            return assignment;
+        }
+        if (!assignment.model.includes("/")) {
+            blockers.push(`无法从 OpenCode 全局 provider.models 解析模型别名 ${assignment.model}；请先配置该模型，或改用完整 provider/model-id`);
+            return assignment;
+        }
+        blockers.push(`模型不在 OpenCode 全局 provider.models 清单中: ${assignment.model}`);
+        return assignment;
+    });
+    if (input.allowUnknown) {
+        warnings.push("已跳过 OpenCode 全局模型清单校验；未解析别名可能不符合 provider/model-id 格式");
+    }
+    return {
+        assignments,
+        warnings: Array.from(new Set(warnings)),
+        blockers: Array.from(new Set(blockers)),
+    };
 }
 function ensureObjectField(source, key) {
     const current = source[key];
@@ -89,7 +129,7 @@ function applyAssignmentsToOpenCodeConfig(config, assignments) {
  */
 export function configureOpenCodeAgentModels(input) {
     const scope = input.scope || "global";
-    const assignments = input.assignments
+    const normalizedAssignments = input.assignments
         .map((assignment) => ({
         agent: assignment.agent.trim(),
         model: assignment.model.trim(),
@@ -97,19 +137,16 @@ export function configureOpenCodeAgentModels(input) {
         .filter((assignment) => assignment.agent && assignment.model);
     const warnings = [];
     const blockers = [];
-    if (assignments.length === 0) {
+    if (normalizedAssignments.length === 0) {
         blockers.push("至少需要一个 agent=model 分配");
     }
-    const unknownModels = validateModels({
-        models: assignments.map((assignment) => assignment.model),
+    const resolved = resolveOpenCodeAssignments({
+        assignments: normalizedAssignments,
         allowUnknown: Boolean(input.allowUnknown),
     });
-    if (unknownModels.length > 0) {
-        blockers.push(`模型不在 OpenCode 全局 provider.models 清单中: ${Array.from(new Set(unknownModels)).join(", ")}`);
-    }
-    if (input.allowUnknown) {
-        warnings.push("已跳过 OpenCode 全局模型清单校验");
-    }
+    const assignments = resolved.assignments;
+    warnings.push(...resolved.warnings);
+    blockers.push(...resolved.blockers);
     const path = getOpenCodeConfigPath(scope, input.projectDir);
     if (blockers.length > 0) {
         return {
@@ -140,6 +177,13 @@ export function configureOpenCodeAgentModels(input) {
 export function buildDefaultOpenCodeAgentModelAssignments(model) {
     return DEFAULT_OPENCODE_MODEL_AGENTS.map((agent) => ({ agent, model }));
 }
+/** 构建 6 个 pm-workflow agent 的可移植默认模型别名分配。 */
+export function buildPortableDefaultOpenCodeAgentModelAssignments() {
+    return DEFAULT_MODEL_AGENTS.map((agent) => ({
+        agent,
+        model: PORTABLE_DEFAULT_AGENT_MODELS[agent],
+    }));
+}
 /**
  * 初始化 pm-workflow agent 模型配置。
  *
@@ -151,23 +195,30 @@ export function configureWorkflowAgentModels(input) {
     const agents = uniqueNonEmpty(input.agents && input.agents.length > 0
         ? input.agents
         : DEFAULT_MODEL_AGENTS);
-    const model = input.model.trim();
-    const fallbackModel = input.fallbackModel?.trim() || undefined;
+    let model = input.model.trim();
+    let fallbackModel = input.fallbackModel?.trim() || undefined;
     const blockers = [];
     const warnings = [];
     if (!model)
         blockers.push("model 不能为空");
     if (agents.length === 0)
         blockers.push("至少需要一个 agent");
-    const unknownModels = validateModels({
-        models: fallbackModel ? [model, fallbackModel] : [model],
-        allowUnknown: Boolean(input.allowUnknown),
-    });
-    if (unknownModels.length > 0) {
-        blockers.push(`模型不在 OpenCode 全局 provider.models 清单中: ${unknownModels.join(", ")}`);
-    }
-    if (input.allowUnknown) {
-        warnings.push("已跳过 OpenCode 全局模型清单校验");
+    if (model) {
+        const resolved = resolveOpenCodeAssignments({
+            assignments: [
+                { agent: "primary", model },
+                ...(fallbackModel
+                    ? [{ agent: "fallback", model: fallbackModel }]
+                    : []),
+            ],
+            allowUnknown: Boolean(input.allowUnknown),
+        });
+        model = resolved.assignments[0]?.model || model;
+        fallbackModel = fallbackModel
+            ? resolved.assignments[1]?.model || fallbackModel
+            : undefined;
+        warnings.push(...resolved.warnings);
+        blockers.push(...resolved.blockers);
     }
     const path = scope === "project"
         ? getConfigPath(input.projectDir)

@@ -42,6 +42,46 @@ export function listGlobalOpenCodeModelKeys(sourcePath = getGlobalOpenCodeConfig
         return [entry.model, `${entry.provider}/${entry.model}`];
     }))).sort();
 }
+function getConfiguredModelKey(entry) {
+    // Preserve existing installations whose provider model key is already a
+    // fully-qualified route such as `cx/gpt-5.5`.
+    return entry.model.includes("/")
+        ? entry.model
+        : `${entry.provider}/${entry.model}`;
+}
+/**
+ * Resolve a portable model alias against the user's configured providers.
+ *
+ * OpenCode ultimately requires `provider/model-id`. Templates may omit the
+ * provider to stay portable, but only an exact, unique provider model match is
+ * safe to expand automatically. Ambiguous aliases are returned as blockers so
+ * callers can ask the user to select a provider explicitly.
+ */
+export function resolveGlobalOpenCodeModelAlias(input, sourcePath = getGlobalOpenCodeConfigPath()) {
+    const normalized = input.trim();
+    if (!normalized) {
+        return { input: normalized, status: "not_found", candidates: [] };
+    }
+    const candidates = Array.from(new Set(readGlobalOpenCodeModelInventory(sourcePath).models
+        .filter((entry) => {
+        const configuredKey = getConfiguredModelKey(entry);
+        return configuredKey === normalized || entry.model === normalized;
+    })
+        .map(getConfiguredModelKey))).sort();
+    if (candidates.length === 0) {
+        return { input: normalized, status: "not_found", candidates };
+    }
+    if (candidates.length > 1) {
+        return { input: normalized, status: "ambiguous", candidates };
+    }
+    const resolved = candidates[0];
+    return {
+        input: normalized,
+        status: resolved === normalized ? "exact" : "resolved",
+        resolved,
+        candidates,
+    };
+}
 export function isGlobalOpenCodeModelKey(model, sourcePath = getGlobalOpenCodeConfigPath()) {
     return listGlobalOpenCodeModelKeys(sourcePath).includes(model);
 }

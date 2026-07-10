@@ -7,23 +7,26 @@
  * - 完整向后兼容：有 frontmatter `permission.task` 时优先使用；没有则回退到
  *   现有 `dispatch_map`；都没有时回退到默认（self-route）。
  *
- * frontmatter 形式（与 OpenCode 1.15.x 官方约定保持一致）：
+ * frontmatter 形式（与 OpenCode 1.17.x 官方约定保持一致）：
  *
  *   ---
  *   description: PM 主协调官
  *   mode: primary
  *   permission:
  *     task:
- *       backendcoder: allow
+ *       "*": deny
+ *       backend*: allow
  *       designer: allow
- *       fixer: allow
- *       advisor: deny
  *   ---
  *
  * 其中 value 为 `allow` / `deny` / `ask`：
  * - `allow`：该 primary 可以分派到这个 subagent；
  * - `deny`  / 缺省 false：禁止；
  * - `ask`：需要人工确认（pm-workflow 当前等价于 `allow`，由 OpenCode 自身确认面板拦截）。
+ *
+ * 规则语义与 OpenCode 保持一致：
+ * - pattern 支持 `*` / `?` glob；
+ * - 按声明顺序求值，最后一个匹配规则生效。
  *
  * 不做的事情：
  * - 不解析任意复杂 YAML；只支持 `permission.task` 这一项简单 map。
@@ -34,9 +37,9 @@ export type AgentTaskPermission = Partial<Record<string, TaskPermissionValue>>;
 export type ResolvedAgentRouting = {
     /** primary agent id（即 frontmatter 来源的 agent，如 `commander`） */
     primaryAgent: string;
-    /** primary 允许分派的 subagent 列表（`allow` 与 `ask` 都计入） */
+    /** primary 允许分派的 subagent pattern（`allow` 与 `ask` 都计入） */
     allowedSubagents: string[];
-    /** primary 明确禁止的 subagent 列表 */
+    /** primary 明确禁止的 subagent pattern */
     deniedSubagents: string[];
     /** frontmatter 完整的 permission.task map */
     taskPermission: AgentTaskPermission;
@@ -71,10 +74,8 @@ export declare function resolveAgentTaskRouting(input: {
 /**
  * 综合判断 primary 是否被允许把任务委派给 candidate。
  *
- * 优先级：
- * 1. frontmatter `permission.task[candidate] === "deny"` → 拒绝
- * 2. frontmatter `permission.task[candidate] === "allow" | "ask"` → 允许
- * 3. frontmatter 没声明该 candidate → 由 fallbackAllow 决定（默认 true，保持向后兼容）
+ * 按 frontmatter 声明顺序匹配 glob，最后一个匹配规则生效；没有规则命中时由
+ * fallbackAllow 决定（默认 true，保持向后兼容）。
  *
  * 这样新增 frontmatter 是"显式规则"，旧项目无 frontmatter 时一切照旧。
  */

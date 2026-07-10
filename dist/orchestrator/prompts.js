@@ -170,19 +170,26 @@ ${executionRequirements}
 }
 export function buildDispatchCommandStrings(sessionID, executableAgent, executablePrompt, invocation) {
     if (invocation && !invocation.supportsDirectRun) {
+        const delegationPrompt = [
+            `通过 OpenCode 官方 Task tool 把任务委派给 subagent \"${executableAgent}\"。`,
+            `调用 Task tool 时 subagent_type 必须是 \"${executableAgent}\"，prompt 使用下方完整任务。`,
+            "等待子任务结束后，按 summary / verification / risk 汇总；不要由 commander 直接代做专业实现。",
+            "",
+            executablePrompt,
+        ].join("\n");
         const commandArgs = sessionID
             ? [
-                "task",
+                "run",
                 "--session",
                 sessionID,
                 "--agent",
-                executableAgent,
-                executablePrompt,
+                "commander",
+                delegationPrompt,
             ]
-            : ["task", "--agent", executableAgent, executablePrompt];
+            : ["run", "--agent", "commander", delegationPrompt];
         const command = sessionID
-            ? `opencode task --session ${sessionID} --agent ${executableAgent} \"${escapePrompt(executablePrompt)}\"`
-            : `opencode task --agent ${executableAgent} \"${escapePrompt(executablePrompt)}\"`;
+            ? `opencode run --session ${sessionID} --agent commander \"${escapePrompt(delegationPrompt)}\"`
+            : `opencode run --agent commander \"${escapePrompt(delegationPrompt)}\"`;
         return {
             command,
             commandArgs,

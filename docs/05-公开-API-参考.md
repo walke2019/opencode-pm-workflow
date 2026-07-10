@@ -25,7 +25,7 @@ import {
 
 ## 2. 公开 API 分类
 
-总计 **135 个符号**（不含 `__esModule` / `default`）。按职责分类如下。
+总计 **139 个符号**（不含 `__esModule` / `default`）。按职责分类如下。
 
 ### 2.1 OpenCode 插件入口
 
@@ -57,6 +57,7 @@ import {
 | `configureWorkflowAgentModels` | function | 0.11.1 起的 `pmw models init` 内部实现 |
 | `configureOpenCodeAgentModels` | function | 1.0.3 起写入 OpenCode 官方 `opencode.json.agent.<id>.model` |
 | `buildDefaultOpenCodeAgentModelAssignments` | function | 1.0.3 起生成 6 个 pm-workflow agent + explore 的模型分配 |
+| `buildPortableDefaultOpenCodeAgentModelAssignments` | function | 1.1.6 起生成 6 个角色的无 provider 前缀默认别名分配 |
 
 ### 2.3 模型清单（Global OpenCode）
 
@@ -65,6 +66,7 @@ import {
 | `readGlobalOpenCodeModelInventory` | function | 读取全局 `provider.*.models` 清单 |
 | `listGlobalOpenCodeModelKeys` | function | 列出全部完整模型 ID |
 | `isGlobalOpenCodeModelKey` | function | 判断某模型 ID 是否在全局清单中 |
+| `resolveGlobalOpenCodeModelAlias` | function | 1.1.6 起将便携别名唯一解析为完整 provider/model-id，歧义时返回候选 |
 
 ### 2.4 状态机（WorkflowState）
 
@@ -244,6 +246,26 @@ import {
 | --- | --- | --- |
 | `buildOpenCodeAgentConfig` | function | 把 WorkflowAgentConfig 转换为 OpenCode `agent` 字段 |
 
+### 2.20 Agent Theme、Skill 安装与插件生命周期
+
+| 符号 | 类型 | 说明 |
+| --- | --- | --- |
+| `FIXED_AGENT_IDS` | constant | 6 个固定 pm-workflow agent ID |
+| `listAgentThemes` | function | 列出可用主题摘要 |
+| `listBuiltinThemes` | function | 返回内置主题定义副本 |
+| `getBuiltinTheme` | function | 按 ID 获取内置主题 |
+| `getDefaultTheme` | function | 获取默认主题 |
+| `applyAgentTheme` | function | 把主题写入项目级或全局 agent md |
+| `previewAgentTheme` | function | dry-run 预览主题写入结果 |
+| `renderAgentMdForTheme` | function | 渲染单个主题 agent md |
+| `repairAgentInstall` | function | 备份旧 agent 残留并重建当前 agent md |
+| `resolveThemeTargetDir` | function | 解析主题写入目录 |
+| `resolveOpenCodeSkillsDir` | function | 解析 OpenCode skill 安装目录 |
+| `resolvePackageSkillsDir` | function | 解析包内 skill 源目录 |
+| `listFilesRecursively` | function | 递归列出 skill 文件 |
+| `syncPackagedSkillsToOpenCode` | function | 幂等同步包内 skill 到 OpenCode |
+| `releasePluginActivation` | function | dispose 时释放插件 activation guard |
+
 ## 3. 兼容承诺（1.0.0 起生效）
 
 - **新增符号**：minor 版本（如 1.0 → 1.1）。
@@ -272,6 +294,7 @@ npm run api-snapshot:update
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-07-10 | 1.1.6 | 新增便携模型别名解析与默认映射 2 个公开 API；其余补齐 Agent Theme / Skill / lifecycle 既有导出 |
 | 2026-06-04 | 1.1.1 | 公开 API 无新增；`buildDoctorReport` 与 dispatch prompt 输出语义修正，补齐 project-scoped 文档路径约束 |
 | 2026-05-28 | 1.0.3 | 新增 3 个公开 API：`applyAgentThemeOverrides`、`configureOpenCodeAgentModels`、`buildDefaultOpenCodeAgentModelAssignments`；快照更新到 135 个符号 |
 | 2026-05-23 | 0.12.0 | 新建：把 `dist/index.js` 全部 120 个公开 export 按 19 个职责分类列出；与 `tools/api-snapshot.json` 互相校验；prepare-publish 自动跑 api-snapshot check + docs check |

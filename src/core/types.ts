@@ -79,6 +79,8 @@ export interface AgentThemeRoleSkin {
    * 这是核心 UX 修复——之前主题不写 mode 导致 OpenCode 默认当作 `all`，6 个 agent 全部出现在切换列表。
    */
   mode: "primary" | "subagent";
+  /** OpenCode hidden 字段；仅用于不应出现在 @ 自动补全中的内部 subagent。 */
+  hidden?: boolean;
   /**
    * OpenCode temperature 字段。0.0-1.0，控制 LLM 响应的随机性。
    *

@@ -131,6 +131,7 @@ permission:
 ---
 description: 测试发布员 — 测试、修复、打包、部署、CI/CD。
 mode: subagent
+hidden: true
 temperature: 0.1     ← 最低，工程类要确定性
 display_name: 测试发布员
 theme: default
@@ -158,6 +159,7 @@ permission:
 ---
 description: 文档撰稿人 — README、API 文档、注释、发布说明、ADR。
 mode: subagent
+hidden: true
 temperature: 0.3
 display_name: 文档撰稿人
 theme: default
@@ -191,7 +193,7 @@ pm-workflow registry 自己读这两个字段做主题展示。安全保留。
 
 ### 主题强制约束的字段
 
-`mode` / `temperature` / `permission` 都由主题强制写入，**不受 `preserveExisting` 影响**。理由：
+`mode` / `hidden` / `temperature` / `permission` 都由主题强制写入，**不受 `preserveExisting` 影响**。理由：
 
 - 这些是 OpenCode UI 行为（mode 控切换列表）和 pm-workflow 路由设计（task 白名单）的核心
 - 用户自定义会破坏整体设计

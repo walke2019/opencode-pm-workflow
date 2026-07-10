@@ -127,6 +127,7 @@ pm-workflow 永远只有这 6 个语义 agent，ID 永不可改：
 | rc.7 | OpenCode skill 必须子目录 + SKILL.md |
 | rc.8 | agent md 补齐 temperature / permission + 完整 body |
 | 1.1.4 | 对齐 OpenCode 1.17，移除 deprecated `tools` frontmatter |
+| 1.1.6 | 对齐 OpenCode 1.17.18 Task/permission；新增便携模型别名解析与六角色 `models apply --defaults` |
 | rc.9 | 新增 pm-workflow-config / agent-theme-config / agent-model-config 三个 skill |
 | rc.10 | 三个 skill 合并为单一 `pm-workflow` skill（顶层 .md 平铺） |
 | **rc.11** | **subdirectory 组织**：reference/ workflows/ troubleshooting/ scripts/ 四个子目录，SKILL.md 仅做导航；7 个顶层 .md 拆分为 16 个语义子文件，AI 按需读取 |

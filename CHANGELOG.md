@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.6
+
+### 对齐 OpenCode 1.17.18 的 Task 与 permission 语义
+
+- 将 `@opencode-ai/plugin` 从 `^1.17.3` 升级到 `^1.17.18`，同步最新 Plugin/SDK 类型与锁文件。
+- `permission.task` 轻量 parser 支持带引号 pattern、`*` / `?` glob 与 OpenCode 官方 last-match-wins 规则，并补回归测试。
+- 修复 1.1.5 旧 agent ID 迁移只处理 map key、不处理 map value 的遗漏；`designer: pm_frontend` 等旧执行目标会自动迁移到当前 ID 并回写配置。
+- 移除不存在的 `opencode task` CLI 调用。subagent dispatch 现在通过官方 `opencode run --agent commander` 进入 primary，再由 commander 调用 Task tool 委派目标 subagent；fallback 路径使用相同机制。
+- agent 主题生成会给内部 `fixer` / `writer` subagent 写入官方 `hidden: true`，避免它们出现在 `@` 自动补全菜单。
+- 覆盖率守门恢复检查 Node test runner 退出码与 TAP `not ok`，不再把 stdout 中的断言失败误报为通过。
+- 新增无 provider 前缀的便携模型别名解析；`pmw models apply --defaults` 会按用户 `provider.*.models` 将 6 个角色默认值展开为完整 `provider/model-id`，多 provider 同名时阻断并列出候选。
+- 模型模板默认映射更新为 `sol / terra / luna / gemini-3.5-flash` 组合，修复重复 `advisor` 导致配置覆盖和缺少 `writer` 的问题，并移除第三方 provider 优先级偏置。
+- 同步技术架构、运维 FAQ、演进清单、agent frontmatter 参考，并补齐公开 API 文档遗漏的既有导出及 2 个模型解析新 API。
+
 ## 1.1.5
 
 ### 修复：升级后自动清理旧版 pm_* agent ID

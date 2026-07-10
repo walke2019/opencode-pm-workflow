@@ -47,6 +47,8 @@ export interface IOpenCodeAgentModelResult {
 export declare function configureOpenCodeAgentModels(input: IOpenCodeAgentModelInput): IOpenCodeAgentModelResult;
 /** 构建 6 个 pm-workflow agent + explore 的同模型分配。 */
 export declare function buildDefaultOpenCodeAgentModelAssignments(model: string): IOpenCodeAgentModelAssignment[];
+/** 构建 6 个 pm-workflow agent 的可移植默认模型别名分配。 */
+export declare function buildPortableDefaultOpenCodeAgentModelAssignments(): IOpenCodeAgentModelAssignment[];
 /**
  * 初始化 pm-workflow agent 模型配置。
  *

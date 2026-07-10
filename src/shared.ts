@@ -25,9 +25,11 @@ export {
   isGlobalOpenCodeModelKey,
   listGlobalOpenCodeModelKeys,
   readGlobalOpenCodeModelInventory,
+  resolveGlobalOpenCodeModelAlias,
 } from "./core/model-inventory.js";
 export {
   buildDefaultOpenCodeAgentModelAssignments,
+  buildPortableDefaultOpenCodeAgentModelAssignments,
   configureOpenCodeAgentModels,
   configureWorkflowAgentModels,
 } from "./core/model-setup.js";
@@ -35,6 +37,8 @@ export { resolveWorkflowAgentDefinition } from "./core/agent-registry.js";
 export type {
   OpenCodeModelInventory,
   OpenCodeModelInventoryEntry,
+  IOpenCodeModelAliasResolution,
+  OpenCodeModelAliasResolutionStatus,
 } from "./core/model-inventory.js";
 export type {
   IModelSetupInput,

@@ -84,6 +84,22 @@ function testRenderAgentMdProducesValidFrontmatter() {
   assert.ok(rendered.content.includes('theme: sanguo'), '应包含 theme 字段');
   assert.ok(rendered.content.includes('诸葛亮'), 'body 应包含主题角色名');
   assert.strictEqual(rendered.fellBackToDefault, false);
+
+  const fixer = renderAgentMdForTheme({
+    agent: 'fixer',
+    themeId: 'sanguo',
+  });
+  const writer = renderAgentMdForTheme({
+    agent: 'writer',
+    themeId: 'sanguo',
+  });
+  const designer = renderAgentMdForTheme({
+    agent: 'designer',
+    themeId: 'sanguo',
+  });
+  assert.ok(fixer.content.includes('hidden: true'), 'fixer 应隐藏于 @ 自动补全');
+  assert.ok(writer.content.includes('hidden: true'), 'writer 应隐藏于 @ 自动补全');
+  assert.ok(!designer.content.includes('hidden: true'), 'designer 应保持可见');
 }
 
 function testApplyThemeToProjectScopeWritesFiles() {

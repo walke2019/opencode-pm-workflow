@@ -1,9 +1,9 @@
 {
   "$schema": "https://unpkg.com/@walke/opencode-pm-workflow@latest/pm-workflow.models.schema.json",
-  "_doc": "pm-workflow 模型配置模板。每个 agent 的 model 字段同时支持 string 与 string[]：字符串可以是完整模型 ID 或关键词；数组按顺序逐个匹配关键词，第一个命中就停。AI 读取后会从 OpenCode 全局 provider.*.models 解析关键词到完整模型 ID，并在写入配置前把展开结果展示给用户确认。",
+  "_doc": "pm-workflow 模型配置模板。默认值使用不含 provider 前缀的便携模型别名；应用时必须从 OpenCode 全局 provider.*.models 精确解析为唯一的 provider/model-id，不能把无前缀别名直接写入 opencode.json。",
 
   "write_target": "global",
-  "default_model": ["gpt-5", "claude-sonnet"],
+  "default_model": ["gpt-5.6-luna", "gpt-5", "claude-sonnet"],
   "default_fallback_model": ["claude-haiku-4.5", "gpt-5-mini"],
 
   "agent_profiles": {
@@ -15,11 +15,11 @@
       "tips": "不要选纯编码型模型；它要做需求压缩与跨角色编排。"
     },
     "advisor": {
-      "role": "拆解顾问（primary）",
-      "description": "把复杂任务拆成清晰步骤，识别风险，给出推进顺序。比 commander 更聚焦于'怎么拆'。",
-      "model_traits": ["结构化拆解", "风险识别", "中文优先"],
-      "fallback_traits": ["低成本", "结构化输出不丢"],
-      "tips": "可与 commander 共用同一模型；预算紧张时可降一档。"
+      "role": "调研拆解顾问（subagent）",
+      "description": "资料检索、方案比较、事实核查、任务拆解和风险识别；不直接承担实现。",
+      "model_traits": ["结构化拆解", "风险识别", "检索提炼", "中英双语"],
+      "fallback_traits": ["低成本", "结构化输出不丢", "保留检索与提炼能力"],
+      "tips": "复杂调研可与 commander 共用强模型；预算紧张时可降一档。"
     },
     "backendcoder": {
       "role": "后端执行（subagent）",
@@ -36,28 +36,28 @@
       "tips": "重视视觉与设计图理解时，可优先 Gemini 系列（多模态）。"
     },
     "fixer": {
-      "role": "审查与文档（subagent，hidden）",
-      "description": "测试、回归风险、代码审查、发布说明、变更摘要、用户可读文档。",
-      "model_traits": ["细致审查", "找 bug / 安全问题", "文档语感"],
-      "fallback_traits": ["仍能完成检查表与发布说明"],
-      "tips": "可降一档省钱；review 与文档对推理深度要求低于 lead/backend。"
+      "role": "测试与发布（subagent，hidden）",
+      "description": "测试、回归、修复、打包、部署和发布前验收。",
+      "model_traits": ["细致审查", "找 bug / 安全问题", "编码修复", "发布判断"],
+      "fallback_traits": ["仍能完成测试、修复与发布检查"],
+      "tips": "需要可靠执行和修复能力，优先编码与工具调用稳定的模型。"
     },
-    "advisor": {
-      "role": "调研（subagent，hidden）",
-      "description": "资料检索、官方方案调研、事实核查、备选方案比较；不直接动代码。",
-      "model_traits": ["检索能力", "概要提炼", "中英双语"],
-      "fallback_traits": ["保留检索与提炼能力"],
-      "tips": "纯研究角色，token 消耗大但推理深度要求中等；省钱档优先。"
+    "writer": {
+      "role": "文档撰写（subagent，hidden）",
+      "description": "README、API 文档、代码注释、发布说明、ADR 和用户可读说明。",
+      "model_traits": ["文档语感", "结构化表达", "术语一致", "中文优先"],
+      "fallback_traits": ["仍能保持清晰、准确和结构稳定"],
+      "tips": "文档角色可使用成本较低但表达稳定的模型。"
     }
   },
 
   "agent_models": {
-    "commander": ["claude-opus", "gpt-5.5", "gpt-5.4"],
-    "advisor": ["claude-opus", "gpt-5.5", "gpt-5.4"],
-    "backendcoder": ["gpt-5.4", "gpt-5.3-codex"],
-    "designer": ["gemini-3.1-", "gemini-3-"],
-    "fixer": ["claude-sonnet", "claude-haiku-4.5", "gpt-5-mini"],
-    "advisor": ["claude-haiku-4.5", "gpt-5.4-mini", "gpt-5-mini"]
+    "commander": "gpt-5.6-sol",
+    "advisor": "gpt-5.6-sol",
+    "backendcoder": "gpt-5.6-terra",
+    "designer": "gemini-3.5-flash",
+    "fixer": "gpt-5.6-terra",
+    "writer": "gpt-5.6-luna"
   },
 
   "agent_fallback_models": {
@@ -66,28 +66,17 @@
     "backendcoder": ["gpt-5.3-codex", "claude-sonnet", "gpt-5-mini"],
     "designer": ["gemini-3-", "claude-sonnet", "gpt-5-mini"],
     "fixer": ["claude-haiku-4.5", "gpt-5-mini"],
-    "advisor": ["gpt-5-mini", "claude-haiku-4.5"]
+    "writer": ["gpt-5-mini", "claude-haiku-4.5"]
   },
 
   "_resolve_strategy": {
     "summary": "AI 把关键词解析为全局 OpenCode 清单中存在的完整模型 ID。",
     "match_order": [
-      "1) 完整 ID 精确匹配（如 'opencode/gpt-5' 直接命中 provider.*.models 中的同名 key 时优先采纳）。",
-      "2) 子串关键词匹配（如 'claude-opus' 命中 'bestool-anthropic/claude-opus-4.x'、'bestool-route-kr/kr/claude-opus-4.7' 等多条）。",
-      "3) 数组形式时按 keyword 出现顺序逐个尝试，**第一个有命中的 keyword 就停**，不再尝试后续 keyword。",
-      "4) 同一 keyword 多源命中时按 provider_priority 选择第一条。",
-      "5) 全部 keyword 都不命中时报错，并把候选列表展示给用户重选。"
-    ],
-    "provider_priority": [
-      "bestool-route-",
-      "bestool-",
-      "antigravity-manager/",
-      "antigravity/",
-      "opencode/",
-      "kr/",
-      "kg/",
-      "gh/",
-      "cx/"
+      "1) 显式 provider/model-id 与清单中的完整 ID 精确匹配。",
+      "2) 无前缀别名与 provider.*.models 的 model key 精确匹配；唯一命中时展开为 provider/model-id。",
+      "3) 同一别名命中多个 provider 时停止并展示全部候选，必须由用户选择，禁止按内置 provider 偏好静默决定。",
+      "4) 数组形式按顺序尝试，第一个唯一命中的值生效。",
+      "5) 全部值都不命中时报错；禁止把无前缀别名原样写入 opencode.json。"
     ],
     "exclude_keywords_default": [
       "preview",
@@ -98,16 +87,16 @@
 
   "ai_apply_instructions": [
     "1. 读取本文件后，先从全局 OpenCode 配置 ~/.config/opencode/opencode.json 的 provider.*.models 获取可用模型清单。",
-    "2. 对每个 agent 的 model / fallback model 字段（string 或 string[]）按 _resolve_strategy.match_order 解析为唯一的完整模型 ID。",
-    "3. 多源命中时，按 _resolve_strategy.provider_priority 从前到后选第一个匹配的 provider；没有 provider_priority 配置时按 keyword 出现顺序。",
+    "2. 对每个 agent 的 model / fallback model 字段（string 或 string[]）按 _resolve_strategy.match_order 解析为唯一的完整 provider/model-id。",
+    "3. 多 provider 命中时停止并列出候选，等待用户选择；不得内置 mini-gateway、omniroute 或其他第三方 provider 优先级。",
     "4. exclude_keywords_default 中的关键词出现在候选模型 ID 时降权（仍可作为最后兜底，但不优先）。",
     "5. 解析完成后，把'每个 agent 的关键词 → 解析出的完整模型 ID'结果展示给用户确认，**不要静默写入**。",
-    "6. 用户确认后再写入：write_target=global → ~/.config/opencode/pm-workflow.config.json；write_target=project → 当前项目 .pm-workflow/config.json。",
-    "7. 把每个 agent 的主模型写入 agents.definitions.<agent>.model；把回退模型写入 agents.definitions.<agent>.fallback_models（数组），同时同步到 fallback.chains.<agent>。",
+    "6. 用户确认后再写入：write_target=global → ~/.config/opencode/opencode.json；write_target=project → 当前项目 opencode.json。",
+    "7. 把每个 agent 的主模型写入 agent.<agent>.model；回退模型仅写入 pm-workflow 配置 fallback.chains.<agent>，不要把主模型写到 agents.definitions。",
     "8. default_model / default_fallback_model 仅作为 agent_models / agent_fallback_models 中某个 agent 字段缺省时的兜底。",
     "9. agent_profiles 与 _resolve_strategy 是只读元数据，不写入 pm-workflow 配置。",
     "10. 保留已有配置字段，只合并模型相关字段；不要覆盖用户的 prompt / permission / mode 等定制。",
     "11. 关键词 0 命中时报错，列出所有可能候选让用户重选；不要臆造模型 ID。",
-    "12. 关键词在当前清单中暂时 0 命中（如新模型还没接入）属于已知容忍场景：保留模板原样，标记为'未解析'，等用户接入新 provider 后再次跑解析即可。"
+    "12. 便携别名在当前清单中 0 命中（如第三方 provider 尚未接入）时保留模板原样并标记为'未解析'；接入 provider 后可运行 pmw models apply --defaults 再次解析。"
   ]
 }

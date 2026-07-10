@@ -52,7 +52,7 @@ import type {
 
 type SharedAgentConfig = Pick<
   AgentThemeRoleSkin,
-  "mode" | "temperature" | "permission" | "steps"
+  "mode" | "hidden" | "temperature" | "permission" | "steps"
 >;
 
 const COMMANDER_CONFIG: SharedAgentConfig = {
@@ -189,6 +189,7 @@ const DESIGNER_CONFIG: SharedAgentConfig = {
 
 const FIXER_CONFIG: SharedAgentConfig = {
   mode: "subagent",
+  hidden: true,
   temperature: 0.1,
   permission: {
     read: "allow",
@@ -210,6 +211,7 @@ const FIXER_CONFIG: SharedAgentConfig = {
 
 const WRITER_CONFIG: SharedAgentConfig = {
   mode: "subagent",
+  hidden: true,
   temperature: 0.3,
   permission: {
     read: "allow",

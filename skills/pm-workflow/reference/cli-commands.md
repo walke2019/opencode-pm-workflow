@@ -18,6 +18,7 @@ pmw agents theme override --names commander=诸葛亮,writer=陈寿  # 局部改
 pmw models init --model <id> [--fallback <id>]   # 初始化 agent 主模型
 pmw models set --agent commander,advisor --model <id>  # 写 OpenCode agent model
 pmw models apply --map commander=<id>,advisor=<id>     # 批量写 OpenCode agent model
+pmw models apply --defaults                            # 解析六角色便携别名后写完整 ID
 pmw models list                                  # 列出当前模型分配
 
 pmw repair opencode-cache                        # 备份旧/坏 OpenCode/Kilo plugin 缓存

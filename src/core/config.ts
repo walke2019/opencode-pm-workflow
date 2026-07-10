@@ -670,11 +670,19 @@ export function readWorkflowConfig(
     const hasLegacyDefs = Object.keys(merged.agents.definitions).some(
       (key) => key in LEGACY_TO_CURRENT,
     );
-    const hasLegacyDispatch = Object.keys(merged.agents.dispatch_map).some(
-      (key) => key in LEGACY_TO_CURRENT,
+    const hasLegacyDispatch = Object.entries(
+      merged.agents.dispatch_map,
+    ).some(
+      ([key, value]) =>
+        key in LEGACY_TO_CURRENT ||
+        (typeof value === "string" && value in LEGACY_TO_CURRENT),
     );
-    const hasLegacyFallback = Object.keys(merged.fallback.agent_map).some(
-      (key) => key in LEGACY_TO_CURRENT,
+    const hasLegacyFallback = Object.entries(
+      merged.fallback.agent_map,
+    ).some(
+      ([key, value]) =>
+        key in LEGACY_TO_CURRENT ||
+        (typeof value === "string" && value in LEGACY_TO_CURRENT),
     );
 
     if (hasLegacyDefs || hasLegacyDispatch || hasLegacyFallback) {
@@ -701,6 +709,23 @@ export function readWorkflowConfig(
         if (merged.fallback.agent_map[oldId]) {
           merged.fallback.agent_map[newId] = merged.fallback.agent_map[oldId];
           delete merged.fallback.agent_map[oldId];
+        }
+      }
+
+      for (const [agentId, executableId] of Object.entries(
+        merged.agents.dispatch_map,
+      )) {
+        if (executableId && LEGACY_TO_CURRENT[executableId]) {
+          merged.agents.dispatch_map[agentId as DispatchAgent] =
+            LEGACY_TO_CURRENT[executableId];
+        }
+      }
+
+      for (const [agentId, fallbackId] of Object.entries(
+        merged.fallback.agent_map,
+      )) {
+        if (fallbackId && LEGACY_TO_CURRENT[fallbackId]) {
+          merged.fallback.agent_map[agentId] = LEGACY_TO_CURRENT[fallbackId];
         }
       }
 

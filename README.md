@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.1.5`。
+当前发布版本：`1.1.6`。
 
 ## 适用场景
 
@@ -84,9 +84,13 @@ export { default } from "@walke/opencode-pm-workflow/tui";
 
 ## 初次模型配置
 
-推荐让用户和 AI 通过模板完成配置：复制 `pm-workflow.models.example.json` 的内容，参考其中 `agent_profiles` 段对每个 agent 的 role / model_traits / fallback_traits 说明，填好 `default_model`、`default_fallback_model` 或各 agent 的模型映射。每个字段同时支持**完整模型 ID** 和**关键词**（含数组形式），例如 `["claude-opus", "gpt-5.5", "gpt-5.4"]`。然后让 AI 读取该模板：AI 会按 `_resolve_strategy` 把关键词解析为全局清单中存在的完整模型 ID（数组按顺序，第一个命中的关键词就停；多源命中时按 `provider_priority` tiebreak），并在写入前把展开结果展示给你确认，再合并到 `~/.config/opencode/pm-workflow.config.json` 或当前项目 `.pm-workflow/config.json`。
+推荐通过 `pm-workflow.models.example.json` 的便携模型别名配置角色。模板默认不绑定 `mini-gateway`、`omniroute` 等第三方 provider；`pmw` 会从用户自己的 OpenCode 全局 `provider.*.models` 清单精确解析别名，并只把唯一命中的完整 `provider/model-id` 写入 `opencode.json.agent.<id>.model`。同一别名命中多个 provider 时会停止并列出候选，不会静默选择。
 
-模板会指导 AI 只从 OpenCode 全局 `provider.*.models` 清单校验模型，并同步写入 agent `model`、`fallback_models` 与 `fallback.chains`。
+```bash
+pmw models apply --defaults
+```
+
+默认便携映射为：`commander/advisor=gpt-5.6-sol`、`backendcoder/fixer=gpt-5.6-terra`、`designer=gemini-3.5-flash`、`writer=gpt-5.6-luna`。这些只是第三方 API 场景的可移植模型名；用户未配置对应模型时命令会返回 blocker，不会写入无效配置。
 
 ## 当前文档结构
 
@@ -153,12 +157,14 @@ pmw agents theme override --scope global --names commander=诸葛亮,advisor=司
 ```bash
 pmw models set --agent commander,advisor,writer,explore --model cx/gpt-5.5
 pmw models apply --map commander=cx/gpt-5.5,advisor=kr/claude-sonnet-4.5,writer=cx/gpt-5.4
+pmw models apply --defaults
 ```
 
 ## Change Log
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
+| 2026-07-10 | 1.1.6 | 对齐 OpenCode 1.17.18；新增便携模型别名解析与 `pmw models apply --defaults`，最终只写完整 provider/model-id；修复模型模板重复 advisor / 缺 writer |
 | 2026-06-18 | 1.1.5 | 旧版 pm_* agent ID 自动迁移与白名单过滤；插件激活时自动补齐缺失 agent .md |
 | 2026-06-11 | 1.1.4 | 对齐 OpenCode 1.17：升级 `@opencode-ai/plugin` 到 `^1.17.3`，agent 主题改为 permission-only，不再生成 deprecated `tools` |
 | 2026-06-09 | 1.1.3 | 规范化 `package.json` 的 `bin.pmw` 路径，消除 npm publish 自动修正 warning |

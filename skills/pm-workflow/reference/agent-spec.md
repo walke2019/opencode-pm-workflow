@@ -67,6 +67,8 @@ permission:
 
 **永远 `*` 在前，具体规则在后**（OpenCode "最后匹配优先" 规则）。
 
+pm-workflow 1.1.6 起用同一套 `*` / `?` glob 与 last-match-wins 语义校验 Auto-continue 路由。
+
 ### body（系统 prompt）
 
 frontmatter 之后的全部内容是系统 prompt。

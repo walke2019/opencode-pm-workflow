@@ -164,6 +164,7 @@ const DESIGNER_CONFIG = {
 };
 const FIXER_CONFIG = {
     mode: "subagent",
+    hidden: true,
     temperature: 0.1,
     permission: {
         read: "allow",
@@ -184,6 +185,7 @@ const FIXER_CONFIG = {
 };
 const WRITER_CONFIG = {
     mode: "subagent",
+    hidden: true,
     temperature: 0.3,
     permission: {
         read: "allow",

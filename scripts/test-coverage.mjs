@@ -64,22 +64,18 @@ function runCoverage() {
     },
   );
 
-  // Node test runner 在没有 test()/it() 块的脚本里会报告 "tests 0 / fail 0" 但仍 exit 1。
-  // 我们的测试是直接 console.log 风格脚本，所以即便所有 assert 都通过、也会 exit 1。
-  // 因此不能直接用 result.status 判定失败；改为：
-  // - 如果 stdout 里出现 "end of coverage report"，说明 Node 至少完成了覆盖率收集；
-  // - 同时 stderr 里没有真实 throw（AssertionError / uncaughtException 等），则视为成功。
-  // 注意：Node 22+ 起 test reporter 把信息行前缀从 "# " 改为 "ℹ "，所以
-  // "end of coverage report" 这个文本也会带上 "ℹ " 前缀，stdout.includes 仍可命中。
+  // Node 22+ 会把每个直接执行式测试文件包装成 subtest：全部通过时 exit=0，
+  // 任一断言失败时 exit!=0 且 TAP 输出包含 `not ok`。退出码与 TAP 都要检查，
+  // 避免错误只写到 stdout 时被误判为覆盖率通过。
   const stdout = result.stdout || "";
   const stderr = result.stderr || "";
   const hasReport = stdout.includes("end of coverage report");
-  // 真实抛错通常出现在 stderr 中，且形式是 "AssertionError [ERR_ASSERTION]" 或
-  // "throw new Error" 后面的栈帧；只检查 stderr 避免误识别 stdout 里的报告文本。
+  const hasTapFailure = /^not ok \d+|^# fail [1-9]\d*/m.test(stdout);
   const hasRealError =
-    /AssertionError\b|Error: |throw new |Uncaught/i.test(stderr);
+    /AssertionError\b|Error: |throw new |Uncaught/i.test(stderr) ||
+    hasTapFailure;
 
-  if (!hasReport || hasRealError) {
+  if (result.status !== 0 || !hasReport || hasRealError) {
     console.error("[coverage] 测试运行失败或未生成覆盖率报告：");
     if (stdout) console.error(stdout.split("\n").slice(-40).join("\n"));
     if (stderr) console.error(stderr.split("\n").slice(-20).join("\n"));

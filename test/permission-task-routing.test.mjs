@@ -265,4 +265,75 @@ function makeProjectWithAgent(filename, body) {
   }
 }
 
+// 11) OpenCode glob + last-match-wins：带引号的通配规则先拒绝，后续具体规则放行
+{
+  const projectDir = makeProjectWithAgent(
+    'commander.md',
+    [
+      '---',
+      'permission:',
+      '  task:',
+      '    "*": deny',
+      '    "backend*": allow',
+      '    backendcoder: ask',
+      '---',
+    ].join('\n'),
+  );
+  try {
+    const routing = resolveAgentTaskRouting({
+      projectDir,
+      primaryAgent: 'commander',
+    });
+    assert.deepStrictEqual(Object.keys(routing.taskPermission), [
+      '*',
+      'backend*',
+      'backendcoder',
+    ]);
+
+    const exactLast = isSubagentAllowedByDeclarativeRouting({
+      routing,
+      candidate: 'backendcoder',
+    });
+    assert.strictEqual(exactLast.allowed, true);
+    assert.match(exactLast.reason, /backendcoder.*ask/);
+
+    const globAllowed = isSubagentAllowedByDeclarativeRouting({
+      routing,
+      candidate: 'backend-helper',
+    });
+    assert.strictEqual(globAllowed.allowed, true);
+    assert.match(globAllowed.reason, /backend\*/);
+
+    const wildcardDenied = isSubagentAllowedByDeclarativeRouting({
+      routing,
+      candidate: 'third-party',
+    });
+    assert.strictEqual(wildcardDenied.allowed, false);
+    assert.match(wildcardDenied.reason, /permission\.task\[\*\]=deny/);
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
+// 12) OpenCode last-match-wins：后声明的 deny 覆盖前面的 glob allow
+{
+  const routing = {
+    primaryAgent: 'commander',
+    allowedSubagents: ['design*'],
+    deniedSubagents: ['designer'],
+    taskPermission: {
+      'design*': 'allow',
+      designer: 'deny',
+    },
+    source: 'project',
+    filePath: '/tmp/commander.md',
+  };
+  const decision = isSubagentAllowedByDeclarativeRouting({
+    routing,
+    candidate: 'designer',
+  });
+  assert.strictEqual(decision.allowed, false);
+  assert.match(decision.reason, /designer.*deny/);
+}
+
 console.log('permission-task-routing tests passed');

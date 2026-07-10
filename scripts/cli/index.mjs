@@ -24,6 +24,7 @@
  *   pmw models init --model <id> [--fallback <id>]  初始化 agent 模型与回退模型
  *   pmw models set --agent <id[,id]> --model <id>   写入 OpenCode opencode.json.agent 模型
  *   pmw models apply --map a=m,b=m      批量写入 OpenCode opencode.json.agent 模型
+ *   pmw models apply --defaults         解析并应用 6 个角色的便携默认模型
  *   pmw repair opencode-cache [--dry-run] [--json]  备份旧/坏 OpenCode npm plugin 缓存
  *   pmw repair install-sync [--apply] [--json]  对齐 opencode plugin 目标、CLI 与缓存
  *   pmw repair agents [--theme default]  备份旧 agent 残留并重建 6 个新版 agent md
@@ -107,7 +108,7 @@ function printHelp() {
     "  agents theme override       局部覆盖 agent display_name，不重渲染主题",
     "  models init           初始化 agent 主模型与回退模型（默认写全局配置）",
     "  models set            写入 OpenCode opencode.json.agent.<id>.model",
-    "  models apply          批量写入 OpenCode opencode.json.agent 模型",
+    "  models apply          批量写入模型；--defaults 应用便携默认模型映射",
     "  repair opencode-cache  检查并备份旧/坏 OpenCode npm plugin 缓存",
     "  repair install-sync     检查 opencode plugin 目标、CLI 与缓存是否对齐",
     "  repair agents          备份旧 agent 残留并重建 6 个新版 agent md",
@@ -138,6 +139,7 @@ function printHelp() {
     "  pmw models init --scope project --agent backendcoder --model cx/gpt-5.5 --fallback cx/gpt-5.4",
     "  pmw models set --agent commander,advisor,writer,explore --model cx/gpt-5.5",
     "  pmw models apply --map commander=cx/gpt-5.5,advisor=kr/claude-sonnet-4.5,writer=cx/gpt-5.4",
+    "  pmw models apply --defaults",
     "  pmw repair opencode-cache",
     "  pmw repair opencode-cache --dry-run --json",
     "  pmw repair install-sync --json",
@@ -1234,14 +1236,26 @@ async function runModelsApply(args) {
   const dist = await loadDist();
   const projectDir = getProjectDir(args);
   const scope = args.options.scope === "project" ? "project" : "global";
-  let assignments = parseModelAssignmentsFromMap(args.options.map);
+  if (
+    args.flags.defaults &&
+    (args.options.map !== undefined || args.options.model !== undefined)
+  ) {
+    console.error("--defaults 不能与 --map / --model 同时使用");
+    return 2;
+  }
+
+  let assignments = args.flags.defaults
+    ? dist.buildPortableDefaultOpenCodeAgentModelAssignments()
+    : parseModelAssignmentsFromMap(args.options.map);
   if (assignments.length === 0 && args.options.model) {
     assignments = dist.buildDefaultOpenCodeAgentModelAssignments(
       String(args.options.model),
     );
   }
   if (assignments.length === 0) {
-    console.error("用法: pmw models apply --map commander=model,advisor=model 或 --model <model-id>");
+    console.error(
+      "用法: pmw models apply --defaults，或 --map commander=model,advisor=model，或 --model <model-id>",
+    );
     return 2;
   }
 

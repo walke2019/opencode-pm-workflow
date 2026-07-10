@@ -240,9 +240,9 @@ function runCli(args, options = {}) {
         '--cwd',
         projectDir,
         '--model',
-        'openai/gpt-5',
+        'gpt-5',
         '--fallback',
-        'openai/gpt-5-mini',
+        'gpt-5-mini',
         '--json',
       ],
       { env: { XDG_CONFIG_HOME: configHome } },
@@ -252,6 +252,7 @@ function runCli(args, options = {}) {
     assert.strictEqual(parsed.ok, true);
     assert.strictEqual(parsed.scope, 'global');
     assert.ok(parsed.agents.includes('commander'));
+    assert.ok(parsed.warnings.some((warning) => warning.includes('openai/gpt-5')));
 
     const config = JSON.parse(
       readFileSync(join(opencodeDir, 'pm-workflow.config.json'), 'utf-8'),
@@ -396,6 +397,54 @@ function runCli(args, options = {}) {
     assert.strictEqual(opencode.agent.commander.model, 'cx/gpt-5.5');
     assert.strictEqual(opencode.agent.advisor.model, 'kr/claude-sonnet-4.5');
     assert.strictEqual(opencode.agent.explore.model, 'cx/gpt-5.4');
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
+// 14d) models apply --defaults 将便携别名解析为当前用户的完整 provider/model-id
+{
+  const projectDir = mkdtempSync(join(tmpdir(), 'pmw-cli-models-defaults-'));
+  const configHome = join(projectDir, 'config-home');
+  const opencodeDir = join(configHome, 'opencode');
+  mkdirSync(opencodeDir, { recursive: true });
+  writeFileSync(
+    join(opencodeDir, 'opencode.json'),
+    JSON.stringify({
+      provider: {
+        'mini-gateway': {
+          models: {
+            'gpt-5.6-sol': {},
+            'gpt-5.6-terra': {},
+            'gpt-5.6-luna': {},
+          },
+        },
+        omniroute: {
+          models: {
+            'gemini-3.5-flash': {},
+          },
+        },
+      },
+    }),
+    'utf-8',
+  );
+  try {
+    const r = runCli(
+      ['models', 'apply', '--cwd', projectDir, '--defaults', '--json'],
+      { env: { XDG_CONFIG_HOME: configHome } },
+    );
+    assert.strictEqual(r.status, 0, `models apply --defaults 应成功，stdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
+    const parsed = JSON.parse(r.stdout);
+    assert.strictEqual(parsed.assignments.length, 6);
+    assert.ok(parsed.warnings.some((item) => item.includes('gpt-5.6-sol')));
+
+    const opencode = JSON.parse(readFileSync(join(opencodeDir, 'opencode.json'), 'utf-8'));
+    assert.strictEqual(opencode.agent.commander.model, 'mini-gateway/gpt-5.6-sol');
+    assert.strictEqual(opencode.agent.advisor.model, 'mini-gateway/gpt-5.6-sol');
+    assert.strictEqual(opencode.agent.backendcoder.model, 'mini-gateway/gpt-5.6-terra');
+    assert.strictEqual(opencode.agent.designer.model, 'omniroute/gemini-3.5-flash');
+    assert.strictEqual(opencode.agent.fixer.model, 'mini-gateway/gpt-5.6-terra');
+    assert.strictEqual(opencode.agent.writer.model, 'mini-gateway/gpt-5.6-luna');
   } finally {
     rmSync(projectDir, { recursive: true, force: true });
   }

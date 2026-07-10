@@ -319,12 +319,23 @@ export function buildFallbackCommand<T extends FallbackDispatchInput>(
   const sessionID = dispatch.preferredSession;
   const quotedPrompt = prompt?.trim() || "继续当前阶段的 fallback 动作";
   const fallbackPrompt = `原推荐 agent ${dispatch.recommendedAgent}/${dispatch.executableAgent} 执行失败，请以 fallback agent ${fallbackAgent} 处理 pm-workflow 动作 ${dispatch.recommendedAction}：${quotedPrompt}`;
+  const targetIsPrimary = fallbackAgent === "commander";
+  const commandAgent = targetIsPrimary ? fallbackAgent : "commander";
+  const commandPrompt = targetIsPrimary
+    ? fallbackPrompt
+    : [
+        `通过 OpenCode 官方 Task tool 把 fallback 任务委派给 subagent \"${fallbackAgent}\"。`,
+        `调用 Task tool 时 subagent_type 必须是 \"${fallbackAgent}\"，prompt 使用下方完整任务。`,
+        "等待子任务结束后，按 summary / verification / risk 汇总；不要由 commander 直接代做专业实现。",
+        "",
+        fallbackPrompt,
+      ].join("\n");
   const command = sessionID
-    ? `opencode run --session ${sessionID} --agent ${fallbackAgent} "${escapePrompt(fallbackPrompt)}"`
-    : `opencode run --agent ${fallbackAgent} "${escapePrompt(fallbackPrompt)}"`;
+    ? `opencode run --session ${sessionID} --agent ${commandAgent} "${escapePrompt(commandPrompt)}"`
+    : `opencode run --agent ${commandAgent} "${escapePrompt(commandPrompt)}"`;
   const commandArgs = sessionID
-    ? ["run", "--session", sessionID, "--agent", fallbackAgent, fallbackPrompt]
-    : ["run", "--agent", fallbackAgent, fallbackPrompt];
+    ? ["run", "--session", sessionID, "--agent", commandAgent, commandPrompt]
+    : ["run", "--agent", commandAgent, commandPrompt];
 
   return {
     ...dispatch,

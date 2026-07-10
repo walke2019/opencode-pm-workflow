@@ -205,29 +205,35 @@ export function buildAutoContinueDispatch(projectDir, prompt, evaluation) {
         !evaluation.nextAutoAction) {
         return undefined;
     }
-    // 0.7.0：声明式路由门禁。
-    // 如果当前 evaluation.recommendedNextAgent 是某个 primary（commander / advisor）
-    // 推荐分派出去的 subagent，且该 primary 的 frontmatter 明确写了 `permission.task[next]=deny`，
-    // 则 buildAutoContinueDispatch 直接返回 undefined，让 chain 落到 `completed` 状态。
-    // primary 自身缺失 frontmatter（source=none）时按 fallbackAllow=true，保持向后兼容。
-    const lastAgentCandidate = evaluation.lastAgent ||
-        "commander";
-    const routing = resolveAgentTaskRouting({
+    const resolvedAgent = resolveWorkflowAgentDefinition({
         projectDir,
-        primaryAgent: lastAgentCandidate,
+        semanticAgent: evaluation.recommendedNextAgent,
     });
-    const decision = isSubagentAllowedByDeclarativeRouting({
-        routing,
-        candidate: evaluation.recommendedNextAgent,
-    });
-    if (!decision.allowed) {
-        appendHistory(projectDir, {
-            type: "routing.denied",
-            primary_agent: lastAgentCandidate,
-            candidate_agent: evaluation.recommendedNextAgent,
-            reason: decision.reason,
+    const executableAgent = resolvedAgent.id;
+    const invocationMode = resolvedAgent.mode === "primary" ? "primary" : "subagent";
+    // OpenCode permission.task 只约束 primary 通过 Task tool 调用 subagent。
+    // primary → primary 的续跑不经过 Task tool，不能被 commander 的 "*": deny 误拦截。
+    // 匹配对象使用 Registry 解析后的真实 agent ID，而不是语义角色别名。
+    if (invocationMode === "subagent") {
+        const lastAgentCandidate = evaluation.lastAgent ||
+            "commander";
+        const routing = resolveAgentTaskRouting({
+            projectDir,
+            primaryAgent: lastAgentCandidate,
         });
-        return undefined;
+        const decision = isSubagentAllowedByDeclarativeRouting({
+            routing,
+            candidate: executableAgent,
+        });
+        if (!decision.allowed) {
+            appendHistory(projectDir, {
+                type: "routing.denied",
+                primary_agent: lastAgentCandidate,
+                candidate_agent: executableAgent,
+                reason: decision.reason,
+            });
+            return undefined;
+        }
     }
     const plan = buildDispatchPlan(projectDir);
     const sessionID = plan.preferredSession;
@@ -242,12 +248,6 @@ export function buildAutoContinueDispatch(projectDir, prompt, evaluation) {
         analysis,
         targetAgent: evaluation.recommendedNextAgent,
     });
-    const resolvedAgent = resolveWorkflowAgentDefinition({
-        projectDir,
-        semanticAgent: evaluation.recommendedNextAgent,
-    });
-    const executableAgent = resolvedAgent.id;
-    const invocationMode = resolvedAgent.mode === "primary" ? "primary" : "subagent";
     const invocation = resolveAgentInvocationSemantics(executableAgent, invocationMode);
     const executablePrompt = buildExecutablePrompt(evaluation.recommendedNextAgent, prompt, handoffPacket);
     const { command, commandArgs } = buildDispatchCommandStrings(sessionID, executableAgent, executablePrompt, invocation);

@@ -224,7 +224,7 @@ function parseFrontmatter(raw: string): {
  * 渲染 frontmatter：按固定顺序组合字段，便于人工 diff。
  *
  * 顺序：
- *   description → mode → model → fallback_models → temperature →
+ *   description → mode → hidden → model → fallback_models → temperature →
  *   display_name → theme → 其他顶层字段（按 key 排序） → 嵌套块（按 key 排序）
  */
 function renderFrontmatter(input: {
@@ -234,6 +234,7 @@ function renderFrontmatter(input: {
   const ordered = [
     "description",
     "mode",
+    "hidden",
     "model",
     "fallback_models",
     "temperature",
@@ -353,6 +354,11 @@ function renderAgentMd(input: {
   // 这个边界。如果用户想把某个 subagent 改成 primary，应该是手动改 md 文件，
   // 而不是通过主题切换实现。
   topLevel.mode = skin.mode;
+  if (skin.mode === "subagent" && skin.hidden === true) {
+    topLevel.hidden = "true";
+  } else {
+    delete topLevel.hidden;
+  }
 
   // 1.0.0-rc.8 起写入 temperature / permission 字段；1.1.4 起不再写
   // deprecated `tools` 字段，完全交给 OpenCode 官方 permission 机制控制。

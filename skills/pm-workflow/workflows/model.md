@@ -68,27 +68,42 @@ jq -r '.provider | to_entries[] | .key as $p | .value.models | keys[] | "\($p)/\
 
 ## 模型 ID 格式
 
-OpenCode 的 model 字段接受两种形式：
+OpenCode 最终写入的 model 字段使用官方 `provider/model-id` 格式。pm-workflow 允许在模板或 CLI 输入阶段使用无 provider 前缀的便携别名，但落盘前必须解析：
 
 | 形式 | 示例 | 何时用 |
 |---|---|---|
-| `provider/model_id` | `bestool/claude-opus-4.x` | 推荐：明确指定 provider |
-| 直接 `model_id`（OpenCode 自动找匹配 provider） | `claude-opus-4.x` | 简洁但有歧义风险 |
+| 完整 `provider/model-id` | `mini-gateway/gpt-5.6-sol` | OpenCode `opencode.json` 中的最终值 |
+| 便携别名 | `gpt-5.6-sol` | 仅作为 pm-workflow 输入；唯一命中后展开完整 ID |
+
+解析规则：
+
+1. 从 `provider.*.models` 精确匹配 model key。
+2. 唯一命中时展开成 `provider/model-id`。
+3. 同名模型存在于多个 provider 时停止并列出候选，禁止静默选择。
+4. 0 命中时返回 blocker，禁止把无前缀别名直接写入 `opencode.json`。
 
 **绝不要发明 model ID**。如果用户说"用 Opus"但 inventory 没 Opus，明确告诉用户没有 + 列出实际可用的近似选项。
 
 ## 6 个 pm-workflow agent 推荐模型分配
 
-按"成本 / 质量平衡"原则：
+默认便携映射：
 
-| Agent | 推荐模型类型 | 理由 |
-|---|---|---|
-| `commander` | **强模型**（Opus 级 / GPT-5 级 / Gemini Pro 级） | 决策错误代价大 |
-| `backendcoder` | **强模型** | 后端架构判断需要顶级推理 |
-| `designer` | 中等以上（Sonnet / GPT-5 / Gemini Pro） | UI 代码生成中等模型够用 |
-| `fixer` | 中等以上 | 测试/修复需要确定性 |
-| `advisor` | **轻量**（Haiku / GPT-5-mini / DeepSeek Flash） | 调研类大量 token 但不深推理 |
-| `writer` | **轻量** | 文档创作不需要深推理 |
+| Agent | 默认别名 |
+|---|---|
+| `commander` | `gpt-5.6-sol` |
+| `advisor` | `gpt-5.6-sol` |
+| `backendcoder` | `gpt-5.6-terra` |
+| `designer` | `gemini-3.5-flash` |
+| `fixer` | `gpt-5.6-terra` |
+| `writer` | `gpt-5.6-luna` |
+
+应用命令：
+
+```bash
+pmw models apply --defaults
+```
+
+这些别名面向第三方 API 接入，不代表包内绑定某个 provider。用户未配置对应模型时保持未解析状态。
 
 ## 订阅平台预设方案（preset）
 
@@ -99,7 +114,7 @@ OpenCode 的 model 字段接受两种形式：
 - **保持 6 个 agent 名永不改**：commander / advisor / backendcoder / designer / fixer / writer
 - **预设是建议**，不是强制；用户可改任意一个 agent 的模型
 - **混合 provider 完全合法**：commander 用 OpenAI、designer 用 OpenCode-Go 是 OK 的，OpenCode 接受跨 provider 的 fallback 链
-- **模型 ID 必须含 provider 前缀**：详见上文 § 模型 ID 格式 + 下文 § E1 错误诊断
+- **最终模型 ID 必须含 provider 前缀**：预设或便携别名只存在于输入阶段
 
 ---
 
@@ -462,7 +477,7 @@ OpenCode 的 fallback：
 
 如果用户在项目根目录下提供了 `pm-workflow.models.example.json` 或类似模板，可以用它作为 intent，但**仍要按上述工作流写到 opencode.json**。
 
-模板里的 `agent_models` / `default_model` / `agent_profiles` 是用户偏好声明，不是直接的 OpenCode 配置。AI 读模板 → 生成 OpenCode agent 段 → 用户确认 → 写入。
+模板里的 `agent_models` / `default_model` / `agent_profiles` 是用户偏好声明，不是直接的 OpenCode 配置。优先运行 `pmw models apply --defaults`；也可由 AI 读取模板、按相同的唯一匹配规则生成完整 ID，用户确认后写入 OpenCode agent 段。
 
 ## 错误处理（高频问题速查）
 

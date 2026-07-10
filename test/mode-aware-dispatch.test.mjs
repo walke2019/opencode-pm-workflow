@@ -96,39 +96,60 @@ async function testDispatchIncludesInvocationSemantics() {
     requiresTaskPermission: true,
   });
   assert.ok(
-    !specialistDispatch.command.includes('opencode run --agent'),
-    'subagent dispatch should not be rendered as a direct opencode run --agent command',
+    specialistDispatch.command.includes('opencode run --agent commander'),
+    'subagent dispatch should launch the primary commander',
   );
+  assert.ok(!specialistDispatch.command.includes('opencode task'));
+  assert.deepStrictEqual(specialistDispatch.commandArgs.slice(0, 3), [
+    'run',
+    '--agent',
+    'commander',
+  ]);
+  assert.match(specialistDispatch.commandArgs.at(-1), /Task tool/);
+  assert.match(specialistDispatch.commandArgs.at(-1), /subagent_type.*designer/);
 }
 
 async function testAutoContinueDispatchUsesInvocationSemantics() {
-  const projectDir = process.cwd();
-  const autoDispatch = buildAutoContinueDispatch(
-    projectDir,
-    '请修复设置页交互问题并补 UI 回归验证',
-    {
-      status: 'needs_verification',
-      summary: '需要 frontend 继续验证交互修复',
-      matchedDeliverables: [],
-      missingDeliverables: ['交互验证'],
-      gaps: ['仍需前端继续处理'],
-      recommendedNextAgent: 'designer',
-      recommendedNextAction: 'continue-development',
-      canAutoContinue: true,
-      autoContinueSafe: true,
-      nextAutoAction: 'continue-development',
-    },
-  );
-  assert.ok(autoDispatch, 'auto continue dispatch should be created');
-  assert.deepStrictEqual(autoDispatch?.invocation, {
-    mode: 'subagent',
-    supportsDirectRun: false,
-    requiresTaskPermission: true,
-  });
-  assert.ok(
-    !autoDispatch?.command.includes('opencode run --agent'),
-    'auto continue subagent dispatch should not use direct run --agent command',
-  );
+  const projectDir = mkdtempSync(join(tmpdir(), 'pm-workflow-auto-dispatch-'));
+  const previousXdg = process.env.XDG_CONFIG_HOME;
+  process.env.XDG_CONFIG_HOME = join(projectDir, 'xdg');
+  try {
+    const autoDispatch = buildAutoContinueDispatch(
+      projectDir,
+      '请修复设置页交互问题并补 UI 回归验证',
+      {
+        status: 'needs_verification',
+        summary: '需要 frontend 继续验证交互修复',
+        matchedDeliverables: [],
+        missingDeliverables: ['交互验证'],
+        gaps: ['仍需继续处理'],
+        recommendedNextAgent: 'designer',
+        recommendedNextAction: 'continue-development',
+        canAutoContinue: true,
+        autoContinueSafe: true,
+        nextAutoAction: 'continue-development',
+      },
+    );
+    assert.ok(autoDispatch, 'auto continue dispatch should be created');
+    assert.deepStrictEqual(autoDispatch?.invocation, {
+      mode: 'subagent',
+      supportsDirectRun: false,
+      requiresTaskPermission: true,
+    });
+    assert.ok(
+      autoDispatch?.command.includes('opencode run --agent commander'),
+      'auto continue should ask commander to invoke the official Task tool',
+    );
+    assert.ok(!autoDispatch?.command.includes('opencode task'));
+    assert.match(autoDispatch?.commandArgs.at(-1), /subagent_type/);
+    assert.ok(
+      autoDispatch?.commandArgs.at(-1)?.includes(autoDispatch.executableAgent),
+      'Task tool prompt should use the registry-resolved executable agent id',
+    );
+  } finally {
+    if (previousXdg === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = previousXdg;
+  }
 }
 
 async function testAutoContinuePrefersExternalFrontmatterAndExposesDiagnostics() {
@@ -181,9 +202,10 @@ async function testAutoContinuePrefersExternalFrontmatterAndExposesDiagnostics()
     assert.strictEqual(dispatch?.executableAgent, 'qa_engineer');
     assert.strictEqual(dispatch?.invocation?.mode, 'subagent');
     assert.ok(
-      !dispatch?.command.includes('opencode run --agent'),
-      'resolved subagent should not use direct run --agent command',
+      dispatch?.command.includes('opencode run --agent commander'),
+      'resolved subagent should be delegated through commander',
     );
+    assert.match(dispatch?.commandArgs.at(-1), /subagent_type.*qa_engineer/);
     assert.deepStrictEqual(dispatch?.resolvedAgent, {
       id: 'qa_engineer',
       mode: 'subagent',
