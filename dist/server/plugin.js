@@ -7,6 +7,7 @@ import { createPmWorkflowHooks } from "./hooks.js";
 import { evaluatePluginHealth, guardPluginActivation, reportPluginHealth, releasePluginActivation, } from "./hooks-health.js";
 import { syncPackagedSkillsToOpenCode } from "./skill-installer.js";
 import { showAgentThemeBanner } from "./agent-theme-banner.js";
+import { checkAndLogSelfUpdate } from "./self-update.js";
 import { createAdminTools } from "./tools/admin-tools.js";
 import { createDiagnosticTools } from "./tools/diagnostic-tools.js";
 import { createDispatchTools } from "./tools/dispatch-tools.js";
@@ -159,6 +160,10 @@ export const PmWorkflowPlugin = async (ctx, options) => {
             },
         });
         await reportPluginHealth(ctx, health);
+        // 自 1.1.7 起：检查自身版本，如落后于 npm registry 最新版则自动更新缓存。
+        // 避免 OpenCode 桌面端因缓存旧版本导致写权限修复等变更不生效。
+        // 非阻塞——失败不阻断插件加载；用户可手动 `npm install -g @walke/opencode-pm-workflow` 处理。
+        void checkAndLogSelfUpdate(ctx);
         // 1.0.0-rc.16 起：从 server 侧推 toast 显示当前主题与 6 个 agent 的角色名。
         // OpenCode 1.15 不支持外部 TUI plugin 注册（rc.14/rc.15 实测验证），所以
         // 不再依赖 src/tui/agent-theme-banner.ts，改用 SDK v1 的 client.tui.showToast()

@@ -2,7 +2,7 @@
 
 `@walke/opencode-pm-workflow` 是一个可发布的 OpenCode 插件包，用于把项目任务从"长期停留在需求层"推进到可验证的开发执行闭环。
 
-当前发布版本：`1.1.7`。
+当前发布版本：`1.1.8`。
 
 ## 适用场景
 
@@ -164,7 +164,7 @@ pmw models apply --defaults
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
-| 2026-07-19 | 1.1.7 | 对齐 OpenCode 1.18.3；修复 Writer 缺 `write: allow` 导致无法写文件；补充所有写权限 subagent 的 write permission |
+| 2026-07-19 | 1.1.8 | 新增自动更新检测：首次激活时 npm registry 对比版本，自动更新桌面端缓存 |
 | 2026-06-18 | 1.1.5 | 旧版 pm_* agent ID 自动迁移与白名单过滤；插件激活时自动补齐缺失 agent .md |
 | 2026-06-11 | 1.1.4 | 对齐 OpenCode 1.17：升级 `@opencode-ai/plugin` 到 `^1.17.3`，agent 主题改为 permission-only，不再生成 deprecated `tools` |
 | 2026-06-09 | 1.1.3 | 规范化 `package.json` 的 `bin.pmw` 路径，消除 npm publish 自动修正 warning |

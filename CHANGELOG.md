@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.8
+
+### 自动检测并更新桌面端缓存版本
+
+- 新增 `src/server/self-update.ts`：插件首次激活时自动检查 npm registry 是否有新版，如有则下载 tarball 更新 OpenCode 桌面端缓存及 `plugin-meta.json`，重启后生效。非阻塞——失败不阻断插件加载。
+
 ## 1.1.7
 
 ### 对齐 OpenCode 1.18.3 + 修复 Writer 无写权限
