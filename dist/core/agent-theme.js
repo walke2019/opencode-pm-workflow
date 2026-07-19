@@ -308,6 +308,7 @@ function renderPermissionBlock(permission) {
     // 固定字段顺序
     const fieldOrder = [
         "read",
+        "write",
         "edit",
         "glob",
         "grep",

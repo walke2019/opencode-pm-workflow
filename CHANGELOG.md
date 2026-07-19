@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.7
+
+### 对齐 OpenCode 1.18.3 + 修复 Writer 无写权限
+
+- 将 `@opencode-ai/plugin` 从 `^1.17.18` 升级到 `^1.18.3`，同步最新 Plugin/SDK 类型。
+- OpenCode 1.18.2 起默认禁 subagent 嵌套启动（`subagent_depth=1`）；pm-workflow 只由 primary `commander` 调度，subagent 无 `task` 权限，不受影响。
+- **修复** `WRITER_CONFIG` 缺少 `write: "allow"`：OpenCode 1.17+ 只读 `permission` 字段，已弃用的 `tools` 字段不再生效。Writer 的 bash 是只读白名单无法绕道写文件。
+- 同步修复 `BACKENDCODER_CONFIG` / `DESIGNER_CONFIG` / `FIXER_CONFIG` 也缺 `write: "allow"`（有 `bash: allow` 可绕道，非阻塞级）。
+- 补充 `AgentThemeRoleSkin["permission"]` 类型定义中的 `write` 字段。
+- `renderPermissionBlock()` 的 `fieldOrder` 加入 `write`，确保主题渲染时写入该权限。
+
 ## 1.1.6
 
 ### 对齐 OpenCode 1.17.18 的 Task 与 permission 语义

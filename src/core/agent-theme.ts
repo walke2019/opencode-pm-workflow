@@ -420,6 +420,7 @@ function renderPermissionBlock(
   // 固定字段顺序
   const fieldOrder: Array<keyof AgentThemeRoleSkin["permission"]> = [
     "read",
+    "write",
     "edit",
     "glob",
     "grep",

@@ -150,6 +150,7 @@ const BACKENDCODER_CONFIG: SharedAgentConfig = {
   temperature: 0.2,
   permission: {
     read: "allow",
+    write: "allow",
     glob: "allow",
     grep: "allow",
     list: "allow",
@@ -171,6 +172,7 @@ const DESIGNER_CONFIG: SharedAgentConfig = {
   temperature: 0.4,
   permission: {
     read: "allow",
+    write: "allow",
     glob: "allow",
     grep: "allow",
     list: "allow",
@@ -193,6 +195,7 @@ const FIXER_CONFIG: SharedAgentConfig = {
   temperature: 0.1,
   permission: {
     read: "allow",
+    write: "allow",
     glob: "allow",
     grep: "allow",
     list: "allow",
@@ -215,6 +218,7 @@ const WRITER_CONFIG: SharedAgentConfig = {
   temperature: 0.3,
   permission: {
     read: "allow",
+    write: "allow",
     glob: "allow",
     grep: "allow",
     list: "allow",

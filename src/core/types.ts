@@ -107,10 +107,11 @@ export interface AgentThemeRoleSkin {
    * - commander：edit/bash ask，webfetch allow，task 严格白名单
    * - advisor：edit deny（不动代码），bash/webfetch allow
    * - backendcoder/designer/fixer：edit/bash allow，webfetch ask
-   * - writer：edit allow（仅文档），bash 细粒度（git log/diff/npm run docs:* allow，其他 deny），webfetch allow
+   * - writer：write/edit allow（仅文档），bash 细粒度（git log/diff/npm run docs:* allow，其他 deny），webfetch allow
    */
   permission: {
     read?: "allow" | "ask" | "deny";
+    write?: "allow" | "ask" | "deny";
     edit?: "allow" | "ask" | "deny";
     glob?: "allow" | "ask" | "deny";
     grep?: "allow" | "ask" | "deny";
